@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\API\Content\PageContentController;
 use Illuminate\Support\Facades\Route;
 
@@ -11,4 +12,14 @@ Route::prefix('content')->group(function () {
     Route::get('/store', [PageContentController::class, 'store']);
     Route::get('/general', [PageContentController::class, 'general']);
 });
+
+Route::post('signup', [AuthController::class, 'signup']);
+Route::post('login', [AuthController::class, 'login']);
+
+Route::middleware('auth:api')->group(function () {
+    Route::get('me', function () {
+        return auth()->user();
+    });
+});
+
 
