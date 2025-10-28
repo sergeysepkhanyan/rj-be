@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\UserResource;
 use App\Services\UserService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -31,7 +32,7 @@ class UsersController extends Controller
         ]);
 
         $user = $this->userService->updateUser($user->id, $data);
-        return response()->json($user);
+        return response()->json(new UserResource($user));
     }
 
     public function changePassword(Request $request): JsonResponse

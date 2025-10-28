@@ -29,6 +29,12 @@ class User extends Authenticatable implements JWTSubject, CanResetPasswordContra
         'date_of_birth'
     ];
 
+    protected $hidden = [
+        'password',
+        'remember_token',
+    ];
+
+
     /**
      * Get the identifier that will be stored in the JWT token.
      */
