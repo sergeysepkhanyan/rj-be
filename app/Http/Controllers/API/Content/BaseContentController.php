@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API\Content;
 
 use App\Http\Controllers\Controller;
+use App\Services\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\App;
 
@@ -15,17 +16,20 @@ abstract class BaseContentController extends Controller
     {
         $locale = request('locale', App::getLocale());
         App::setLocale($locale);
-        $content = __('content');
+        $content = __('contentc');
         if (!isset($content[$pageKey])) {
-            return response()->json([
-                'error' => "Page '{$pageKey}' not found in content file for locale '{$locale}'.",
-            ], 404);
+            return ApiResponse::error([
+                "$pageKey" => "Page '{$pageKey}' not found in content file for locale '{$locale}'.",
+            ], 'Not Found', 404);
         }
-        return response()->json([
-            'locale' => $locale,
-            'page' => $pageKey,
-            'content' => $content[$pageKey],
-        ]);
+        return ApiResponse::success(
+            [
+                'locale' => $locale,
+                'page' => $pageKey,
+                'content' => $content[$pageKey],
+            ],
+            "Content for $pageKey page."
+        );
     }
 }
 

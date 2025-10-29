@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -10,6 +11,9 @@ use Tymon\JWTAuth\Contracts\JWTSubject;
 use Illuminate\Auth\Passwords\CanResetPassword;
 use Illuminate\Contracts\Auth\CanResetPassword as CanResetPasswordContract;
 
+/**
+ * @property mixed $role
+ */
 class User extends Authenticatable implements JWTSubject, CanResetPasswordContract
 {
 
@@ -66,6 +70,11 @@ class User extends Authenticatable implements JWTSubject, CanResetPasswordContra
     public function sendPasswordResetNotification($token): void
     {
         $this->notify(new \App\Notifications\ResetPasswordNotification($token));
+    }
+
+    public function role(): BelongsTo
+    {
+        return $this->belongsTo(UserRole::class, 'user_role_id');
     }
 
 }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API\Auth;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\UserResource;
 use App\Models\User;
+use App\Services\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -15,56 +16,63 @@ class AuthController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'name' => 'nullable|string|max:255',
-            'email' => 'nullable|email|unique:users,email',
-            'mobile' => 'nullable|string|unique:users,mobile',
+            'email' => 'required|email|unique:users,email',
+//            'mobile' => 'nullable|string|unique:users,mobile',
             'password' => 'required|string|min:6|confirmed',
         ]);
 
         if ($validator->fails()) {
-            return response()->json($validator->errors(), 422);
-        }
-
-        if (! $request->filled('email') && ! $request->filled('mobile')) {
-            return response()->json(['error' => 'Email or Mobile is required'], 422);
+            return ApiResponse::error($validator->errors(), 'Validation failed', 422);
         }
 
         $user = User::create([
             'user_role_id' => 2,
-            'name' => $request->name,
+            'name' => $request->name ?? null,
             'email' => $request->email,
-            'mobile' => $request->mobile,
+            'mobile' => $request->mobile ?? null,
             'password' => Hash::make($request->password),
         ]);
 
         $token = auth()->login($user);
-
-        return response()->json([
+        return ApiResponse::success([[
             'user' => new UserResource($user),
             'token' => $token,
-        ]);
+        ]], 'Successfully registered');
     }
 
 
     public function login(Request $request): JsonResponse
     {
-        $password = $request->input('password');
-        if ($request->filled('email')) {
+        try {
+            $validator = Validator::make($request->all(), [
+                'email' => 'required|email',
+                'password' => 'required|string|min:6',
+            ]);
+
+            if ($validator->fails()) {
+                return ApiResponse::error($validator->errors(), 'Validation failed', 422);
+            }
+            $password = $request->input('password');
             $credentials = ['email' => $request->email, 'password' => $password];
-        } elseif ($request->filled('mobile')) {
-            $credentials = ['mobile' => $request->mobile, 'password' => $password];
-        } else {
-            return response()->json(['error' => 'Email or Mobile is required'], 422);
+
+            if (! $token = auth()->attempt($credentials)) {
+                return ApiResponse::error(
+                    ['credentials' => ['Invalid email or password']],
+                    'Authentication failed',
+                    401
+                );
+            }
+
+            $user = auth()->user();
+
+            return ApiResponse::success([[
+                'user' => new UserResource($user),
+                'token' => $token,
+            ]], 'Successfully logged in');
+        } catch (\Exception $e) {
+            return ApiResponse::error();
         }
 
-        if (! $token = auth()->attempt($credentials)) {
-            return response()->json(['error' => 'Unauthorized'], 401);
-        }
-
-        $user = auth()->user();
-        return response()->json([
-            'user' => new UserResource($user),
-            'token' => $token,
-        ]);
     }
 
 

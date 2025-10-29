@@ -3,8 +3,11 @@
 namespace App\Http\Controllers\API\Auth;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use App\Services\PasswordService;
+use App\Services\ApiResponse;
+use Illuminate\Validation\ValidationException;
 
 class ResetPasswordController extends Controller
 {
@@ -15,32 +18,59 @@ class ResetPasswordController extends Controller
         $this->passwordService = $passwordService;
     }
 
-    public function forgot(Request $request)
+    public function forgot(Request $request): JsonResponse
     {
-        $request->validate([
-            'identifier' => 'required|string'
-        ]);
+        try {
+            $request->validate([
+                'identifier' => 'required|string',
+            ]);
 
-        $response = $this->passwordService->sendResetLink($request->identifier);
+            $response = $this->passwordService->sendResetLink($request->identifier);
 
-        return response()->json($response);
+            return ApiResponse::success($response, 'Reset link sent successfully');
+
+        } catch (ValidationException $e) {
+            return ApiResponse::error($e->errors(), 'Validation failed', 422);
+
+        } catch (\Throwable $e) {
+            return ApiResponse::error();
+        }
     }
 
-    public function reset(Request $request)
+    public function reset(Request $request): JsonResponse
     {
-        $request->validate([
-            'identifier' => 'required|string',
-            'token' => 'required|string',
-            'password' => 'required|string|confirmed|min:6',
-        ]);
+        try {
+            $request->validate([
+                'identifier' => 'required|string',
+                'token' => 'required|string',
+                'password' => 'required|string|confirmed|min:6',
+            ]);
 
-        $response = $this->passwordService->resetPassword(
-            $request->identifier,
-            $request->token,
-            $request->password
-        );
+            $response = $this->passwordService->resetPassword(
+                $request->identifier,
+                $request->token,
+                $request->password
+            );
 
-        return response()->json($response);
+            if (!$response['success']) {
+                return ApiResponse::error(
+                    ['token' => [$response['message'] ?? 'Password reset failed']],
+                    'Password reset failed',
+                    400
+                );
+            }
+
+            return ApiResponse::success(
+                $response,
+                'Password reset successfully'
+            );
+
+        } catch (ValidationException $e) {
+            return ApiResponse::error($e->errors(), 'Validation failed', 422);
+
+        } catch (\Throwable $e) {
+            return ApiResponse::error();
+        }
     }
 }
 

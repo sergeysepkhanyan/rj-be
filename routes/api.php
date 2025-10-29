@@ -19,7 +19,7 @@ Route::prefix('content')->group(function () {
 Route::post('signup', [AuthController::class, 'signup']);
 Route::post('login', [AuthController::class, 'login']);
 
-Route::middleware('auth:api')->group(function () {
+Route::middleware('jwt.custom')->group(function () {
     Route::patch('/user/details', [UsersController::class, 'updateDetails']);
     Route::patch('/user/change-password', [UsersController::class, 'changePassword']);
     Route::get('me', function () {
@@ -28,5 +28,4 @@ Route::middleware('auth:api')->group(function () {
 });
 Route::post('/password/forgot', [ResetPasswordController::class, 'forgot']);
 Route::post('/password/reset', [ResetPasswordController::class, 'reset']);
-
 
