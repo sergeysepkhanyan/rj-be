@@ -22,11 +22,11 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(function (\Throwable $e, $request) {
-            return \App\Services\ApiResponse::error(
-                ['general' => ['Something went wrong.']],
-                'Server error',
-                500
-            );
+//            return \App\Services\ApiResponse::error(
+//                ['general' => ['Something went wrong.']],
+//                'Server error',
+//                500
+//            );
         });
     })
     ->create();

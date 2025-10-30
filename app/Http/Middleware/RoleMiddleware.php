@@ -36,10 +36,14 @@ class RoleMiddleware
         }
 
         if (!$roleName || !in_array($roleName, $roles)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Access denied.'
-            ], 403);
+            return \App\Services\ApiResponse::error(
+                [
+                    'success' => false,
+                    'message' => 'Access denied.'
+                ],
+                'Forbidden',
+                403
+            );
         }
 
         return $next($request);

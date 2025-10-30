@@ -1,7 +1,8 @@
 <?php
 
+use App\Http\Controllers\API\Admin\ServicesController as AdminServicesController;
+use App\Http\Controllers\API\Admin\SubServicesController as AdminSubServicesController;
 use App\Http\Controllers\API\Auth\AuthController;
-use App\Http\Controllers\API\Auth\PasswordController;
 use App\Http\Controllers\API\Auth\ResetPasswordController;
 use App\Http\Controllers\API\Content\PageContentController;
 use App\Http\Controllers\API\UsersController;
@@ -28,4 +29,13 @@ Route::middleware('jwt.custom')->group(function () {
 });
 Route::post('/password/forgot', [ResetPasswordController::class, 'forgot']);
 Route::post('/password/reset', [ResetPasswordController::class, 'reset']);
+
+
+Route::middleware(['jwt.custom', 'role:superadmin'])->group(function () {
+    Route::get('/admin/services', [AdminServicesController::class, 'index']);
+    Route::post('/admin/services', [AdminServicesController::class, 'store']);
+    Route::put('/admin/services/{service}', [AdminServicesController::class, 'update']);
+    Route::post('/admin/sub-services', [AdminSubServicesController::class, 'store']);
+    Route::put('/admin/sub-services/{subService}', [AdminSubServicesController::class, 'update']);
+});
 

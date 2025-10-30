@@ -6,21 +6,19 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
  * @property mixed $name
- * @property mixed $email
- * @property mixed $mobile
- * @property mixed $date_of_birth
+ * @property mixed $description
+ * @property mixed $image
  * @property mixed $id
  */
-class UserResource extends JsonResource
+class SubServiceResource extends JsonResource
 {
     public function toArray($request): array
     {
         return [
             'id' => $this->id,
             'name' => $this->name ?? null,
-            'email' => $this->email ?? null,
-            'mobile' => $this->mobile ?? null,
-            'date_of_birth' => $this->date_of_birth ?? null,
+            'description' => $this->description ?? null,
+            'image' => $this->image ?? null,
         ];
     }
 }
