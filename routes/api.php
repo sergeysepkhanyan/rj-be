@@ -5,6 +5,7 @@ use App\Http\Controllers\API\Admin\SubServicesController as AdminSubServicesCont
 use App\Http\Controllers\API\Auth\AuthController;
 use App\Http\Controllers\API\Auth\ResetPasswordController;
 use App\Http\Controllers\API\Content\PageContentController;
+use App\Http\Controllers\API\ImageUploadController;
 use App\Http\Controllers\API\UsersController;
 use Illuminate\Support\Facades\Route;
 
@@ -21,6 +22,7 @@ Route::post('signup', [AuthController::class, 'signup']);
 Route::post('login', [AuthController::class, 'login']);
 
 Route::middleware('jwt.custom')->group(function () {
+    Route::post('image/upload', [ImageUploadController::class, 'upload']);
     Route::patch('/user/details', [UsersController::class, 'updateDetails']);
     Route::patch('/user/change-password', [UsersController::class, 'changePassword']);
     Route::get('me', function () {

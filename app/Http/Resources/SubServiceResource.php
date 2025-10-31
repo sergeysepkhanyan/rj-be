@@ -9,6 +9,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * @property mixed $description
  * @property mixed $image
  * @property mixed $id
+ * @property mixed $items
  */
 class SubServiceResource extends JsonResource
 {
@@ -19,6 +20,7 @@ class SubServiceResource extends JsonResource
             'name' => $this->name ?? null,
             'description' => $this->description ?? null,
             'image' => $this->image ?? null,
+            'items' => SubServiceItemResource::collection($this->items)
         ];
     }
 }

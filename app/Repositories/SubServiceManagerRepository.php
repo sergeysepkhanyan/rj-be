@@ -22,9 +22,8 @@ class SubServiceManagerRepository implements SubServiceRepositoryInterface
         return SubService::create($data);
     }
 
-    public function update($id, array $data)
+    public function update(SubService $subService, array $data): SubService
     {
-        $subService = SubService::findOrFail($id);
         $subService->update($data);
         return $subService;
     }

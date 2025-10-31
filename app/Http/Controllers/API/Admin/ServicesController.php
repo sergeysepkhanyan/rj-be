@@ -40,18 +40,13 @@ class ServicesController
             $validator = Validator::make($request->all(), [
                 'name' => 'required|string|max:255|unique:services',
                 'description' => 'required|string',
-                'image' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+                'image' => 'required|string',
             ]);
 
             if ($validator->fails()) {
                 return ApiResponse::error($validator->errors(), 'Validation failed', 422);
             }
-            $data = $request->only(['name', 'description']);
-            if ($request->hasFile('image')) {
-                $path = $request->file('image')->store('images/services', 'public');
-                $data['image'] = $path;
-            }
-
+            $data = $request->only(['name', 'description', 'image']);
             $service = $this->serviceManagerService->createService($data);
             $service->load('subServices.items.variants');
             return ApiResponse::success([
@@ -68,18 +63,13 @@ class ServicesController
             $validator = Validator::make($request->all(), [
                 'name' => 'required|string|max:255|unique:services,name,' . $service->id,
                 'description' => 'required|string',
-                'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+                'image' => 'nullable|string',
             ]);
 
             if ($validator->fails()) {
                 return ApiResponse::error($validator->errors(), 'Validation failed', 422);
             }
-            $data = $request->only(['name', 'description']);
-            if ($request->hasFile('image')) {
-                $path = $request->file('image')->store('images/services', 'public');
-                $data['image'] = $path;
-            }
-
+            $data = $request->only(['name', 'description', 'image']);
             $service = $this->serviceManagerService->updateService($service->id, $data);
             return ApiResponse::success([
                 'service' => new ServiceResource($service),
