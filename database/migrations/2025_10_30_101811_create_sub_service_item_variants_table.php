@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('sub_service_item_variants', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('sub_service_item_id')->constrained()->nullOnDelete();
+            $table->foreignId('sub_service_item_id')->nullable()->constrained()->nullOnDelete();
             $table->string('name');
             $table->decimal('price', 8, 2)->default(0)->nullable();
             $table->string('currency')->nullable();
