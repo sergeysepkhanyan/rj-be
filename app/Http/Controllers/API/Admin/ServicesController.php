@@ -20,20 +20,6 @@ class ServicesController
         $this->serviceManagerService = $serviceManagerService;
     }
 
-    public function index(): JsonResponse
-    {
-        $services = Service::with('subServices.items.variants')->paginate(10);
-        return ApiResponse::success([
-            'services' => ServiceResource::collection($services),
-            'meta' => [
-                'current_page' => $services->currentPage(),
-                'last_page' => $services->lastPage(),
-                'per_page' => $services->perPage(),
-                'total' => $services->total(),
-            ],
-        ]);
-    }
-
     public function store(Request $request): JsonResponse
     {
         try {

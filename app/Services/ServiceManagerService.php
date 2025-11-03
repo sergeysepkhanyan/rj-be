@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Repositories\Interfaces\ServiceRepositoryInterface;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class ServiceManagerService
 {
@@ -36,5 +37,10 @@ class ServiceManagerService
     public function deleteService($id)
     {
         return $this->serviceRepository->delete($id);
+    }
+
+    public function getPaginatedServices(?string $search = null, int $perPage = 10): LengthAwarePaginator
+    {
+        return $this->serviceRepository->paginateWithSearch($search, $perPage);
     }
 }

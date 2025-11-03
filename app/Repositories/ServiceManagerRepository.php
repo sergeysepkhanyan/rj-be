@@ -4,6 +4,7 @@ namespace App\Repositories;
 
 use App\Models\Service;
 use App\Repositories\Interfaces\ServiceRepositoryInterface;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class ServiceManagerRepository implements ServiceRepositoryInterface
 {
@@ -34,5 +35,31 @@ class ServiceManagerRepository implements ServiceRepositoryInterface
     {
         $service = Service::findOrFail($id);
         return $service->delete();
+    }
+
+    public function paginateWithSearch(?string $search = null, int $perPage = 10): LengthAwarePaginator
+    {
+        $query = Service::with('subServices.items.variants');
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%");
+
+                $q->orWhereHas('subServices', function ($sub) use ($search) {
+                    $sub->where('name', 'like', "%{$search}%")
+                        ->orWhere('description', 'like', "%{$search}%");
+                });
+                $q->orWhereHas('subServices.items', function ($item) use ($search) {
+                    $item->where('name', 'like', "%{$search}%")
+                        ->orWhere('description', 'like', "%{$search}%");
+                });
+//
+//                $q->orWhereHas('subServices.items.variants', function ($variant) use ($search) {
+//                    $variant->where('name', 'like', "%{$search}%")
+//                        ->orWhere('description', 'like', "%{$search}%");
+//                });
+            });
+        }
+        return $query->paginate($perPage);
     }
 }
