@@ -41,16 +41,17 @@ class UserService
         $role = $this->userRoleRepository->findBySlug($roleName);
         $data = array_diff_key($data, array_flip(['role', 'subservices']));
         $data['user_role_id'] = $role->id;
-        if ($role->name === 'admin') {
-            $generatedPassword = Str::random(6);
+        $generatedPassword = Str::random(6);
+        if ($role->slug === 'admin') {
             $data['password'] = Hash::make($generatedPassword);
+            $data['is_temporary_password'] = true;
         }
         $user = $this->userRepository->create($data);
         if ($role->slug === 'master' && !empty($subservices)) {
             $user->subservices()->sync($subservices);
         }
-        if ($role->name === 'admin') {
-            Mail::to($user->email)->send(new AdminAccessEmail($user));
+        if ($role->slug === 'admin') {
+            Mail::to($user->email)->send(new AdminAccessEmail($user, $generatedPassword));
         }
         return $user;
     }
@@ -90,7 +91,7 @@ class UserService
                     if ($oldRole !== 'admin' && $role->slug === 'admin') {
                         $generatedPassword = Str::random(6);
                         $userFields['password'] = Hash::make($generatedPassword);
-
+                        $data['is_temporary_password'] = true;
                         Mail::to($user->email)->send(new AdminAccessEmail($user, $generatedPassword));
                     }
 

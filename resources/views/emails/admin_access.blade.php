@@ -1,12 +1,18 @@
 <x-mail::message>
-# Introduction
+    # Dear {{ $user->name }},
 
-The body of your message.
+    You’ve been granted **administrator status** for **Romeo & Juliet Beauty Lounge**.
 
-<x-mail::button :url="''">
-Button Text
-</x-mail::button>
+    Use the link below to access your admin panel:
 
-Thanks,<br>
-{{ config('app.name') }}
+    <x-mail::button :url="$actionUrl">
+        Access Admin Panel
+    </x-mail::button>
+
+    **One-Time Passcode:** {{ $password }}
+
+    This passcode is valid for **one-time use only**. Please do not share it with others.
+
+    Warm regards,<br>
+    **Romeo & Juliet Beauty Lounge Team**
 </x-mail::message>

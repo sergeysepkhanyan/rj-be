@@ -31,7 +31,8 @@ class User extends Authenticatable implements JWTSubject, CanResetPasswordContra
         'mobile',
         'password',
         'user_role_id',
-        'date_of_birth'
+        'date_of_birth',
+        'is_temporary_password'
     ];
 
     protected $hidden = [

@@ -12,18 +12,22 @@ class AdminAccessEmail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public $user;
+    public User $user;
+    public string $password;
 
-    public function __construct(User $user)
+    public function __construct(User $user, string $password)
     {
         $this->user = $user;
+        $this->password = $password;
     }
 
     public function build()
     {
-        return $this->subject('Welcome to the Admin Team')
+        return $this->subject('Administrator Access Granted — Romeo & Juliet Beauty Lounge')
             ->markdown('emails.admin_access', [
                 'user' => $this->user,
+                'password' => $this->password,
+                'actionUrl' => 'http://localhost:3000/admin/login'
             ]);
     }
 }
