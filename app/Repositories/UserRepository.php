@@ -34,5 +34,15 @@ class UserRepository implements UserRepositoryInterface
         $user = User::findOrFail($id);
         return $user->delete();
     }
+
+    public function countAdmins(): int
+    {
+        return User::whereHas('role', fn($q) => $q->where('name', 'admin'))->count();
+    }
+
+    public function allExceptSuperadmin()
+    {
+        return User::where('id', '!=', 1)->get();
+    }
 }
 

@@ -19,7 +19,7 @@ class UserRolesSeeder extends Seeder
         $roles = [
             'superadmin' => 'Super Admin',
             'admin' => 'Admin',
-            'specialist' => 'Specialist',
+            'master' => 'Master',
             'client' => 'Client',
         ];
 

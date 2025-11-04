@@ -2,16 +2,26 @@
 
 namespace App\Services;
 
+use App\Mail\AdminAccessEmail;
 use App\Repositories\Interfaces\UserRepositoryInterface;
+use App\Repositories\Interfaces\UserRoleRepositoryInterface;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 
 class UserService
 {
     protected UserRepositoryInterface $userRepository;
+    protected UserRoleRepositoryInterface $userRoleRepository;
 
-    public function __construct(UserRepositoryInterface $userRepository)
+    public function __construct(
+        UserRepositoryInterface $userRepository,
+        UserRoleRepositoryInterface $userRoleRepository
+    )
     {
         $this->userRepository = $userRepository;
+        $this->userRoleRepository = $userRoleRepository;
     }
 
     public function getAllUsers()
@@ -26,8 +36,87 @@ class UserService
 
     public function createUser(array $data)
     {
-        return $this->userRepository->create($data);
+        $subservices = $data['subservices'] ?? [];
+        $roleName = $data['role'] ?? null;
+        $role = $this->userRoleRepository->findBySlug($roleName);
+        $data = array_diff_key($data, array_flip(['role', 'subservices']));
+        $data['user_role_id'] = $role->id;
+        if ($role->name === 'admin') {
+            $generatedPassword = Str::random(6);
+            $data['password'] = Hash::make($generatedPassword);
+        }
+        $user = $this->userRepository->create($data);
+        if ($role->slug === 'master' && !empty($subservices)) {
+            $user->subservices()->sync($subservices);
+        }
+        if ($role->name === 'admin') {
+            Mail::to($user->email)->send(new AdminAccessEmail($user));
+        }
+        return $user;
     }
+
+    public function createMany(array $usersData)
+    {
+        return DB::transaction(function () use ($usersData) {
+            $created = [];
+
+            foreach ($usersData as $userData) {
+                $created[] = $this->createUser($userData);
+            }
+
+            return $created;
+        });
+    }
+
+    public function updateUsers(array $usersData)
+    {
+        return DB::transaction(function () use ($usersData) {
+
+            $currentUsers = $this->userRepository->allExceptSuperadmin();
+            $incomingUserIds = [];
+            $updatedOrCreatedUsers = collect();
+            foreach ($usersData as $userData) {
+                $subservices = $userData['subservices'] ?? [];
+                $roleName = $userData['role'] ?? null;
+                $role = $this->userRoleRepository->findBySlug($roleName);
+                $userFields = array_diff_key($userData, array_flip(['role', 'subservices']));
+                if (!empty($userData['id'])) {
+                    $user = $this->userRepository->find($userData['id']);
+                    if (!$user) continue;
+
+                    $incomingUserIds[] = $user->id;
+                    $oldRole = $user->role->slug;
+                    $userFields['user_role_id'] = $role->id;
+                    if ($oldRole !== 'admin' && $role->slug === 'admin') {
+                        $generatedPassword = Str::random(6);
+                        $userFields['password'] = Hash::make($generatedPassword);
+
+                        Mail::to($user->email)->send(new AdminAccessEmail($user, $generatedPassword));
+                    }
+
+                    $this->updateUser($user->id, $userFields);
+
+                    if ($role->slug === 'master') {
+                        $user->subservices()->sync($subservices);
+                    }
+                    $updatedOrCreatedUsers->push($user);
+                } else {
+                    $newUser = $this->createUser($userData);
+                    $incomingUserIds[] = $newUser->id;
+                    $updatedOrCreatedUsers->push($newUser);
+                }
+            }
+
+            $usersToDelete = $currentUsers->whereNotIn('id', $incomingUserIds);
+            foreach ($usersToDelete as $user) {
+                $this->deleteUser($user->id);
+            }
+            return $updatedOrCreatedUsers->values();
+        });
+    }
+
+
+
 
     public function updateUser($id, array $data)
     {
@@ -65,6 +154,13 @@ class UserService
             'success' => true,
             'message' => 'Password changed successfully',
         ];
+    }
+
+    public function canAddAdmins(int $newAdminsCount): bool
+    {
+        $existingAdminsCount = $this->userRepository->countAdmins();
+
+        return ($existingAdminsCount + $newAdminsCount) <= 2;
     }
 }
 

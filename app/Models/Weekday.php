@@ -4,14 +4,10 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-/**
- * @property mixed $name
- * @property mixed $slug
- */
-class UserRole extends Model
+class Weekday extends Model
 {
     protected $fillable = [
         'name',
-        'slug',
+        'day'
     ];
 }

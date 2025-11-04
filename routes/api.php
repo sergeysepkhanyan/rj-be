@@ -7,7 +7,8 @@ use App\Http\Controllers\API\Auth\AuthController;
 use App\Http\Controllers\API\Auth\ResetPasswordController;
 use App\Http\Controllers\API\Content\PageContentController;
 use App\Http\Controllers\API\ImageUploadController;
-use App\Http\Controllers\API\UsersController;
+use App\Http\Controllers\API\UsersController as UsersController;
+use App\Http\Controllers\API\Admin\UsersController as AdminUsersController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('content')->group(function () {
@@ -39,6 +40,7 @@ Route::middleware(['jwt.custom', 'role:superadmin'])->group(function () {
     Route::put('/admin/services/{service}', [AdminServicesController::class, 'update']);
     Route::post('/admin/sub-services', [AdminSubServicesController::class, 'store']);
     Route::put('/admin/sub-services/{subService}', [AdminSubServicesController::class, 'update']);
+    Route::post('/admin/users', [AdminUsersController::class, 'store']);
 });
 
 Route::get('/services', [ServicesController::class, 'index']);
