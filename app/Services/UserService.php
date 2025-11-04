@@ -55,7 +55,7 @@ class UserService
         return $user;
     }
 
-    public function createMany(array $usersData)
+    public function createStaffMembers(array $usersData)
     {
         return DB::transaction(function () use ($usersData) {
             $created = [];
@@ -68,11 +68,11 @@ class UserService
         });
     }
 
-    public function updateUsers(array $usersData)
+    public function updateStaff(array $usersData)
     {
         return DB::transaction(function () use ($usersData) {
 
-            $currentUsers = $this->userRepository->allExceptSuperadmin();
+            $currentMembers = $this->userRepository->allStaff();
             $incomingUserIds = [];
             $updatedOrCreatedUsers = collect();
             foreach ($usersData as $userData) {
@@ -107,7 +107,7 @@ class UserService
                 }
             }
 
-            $usersToDelete = $currentUsers->whereNotIn('id', $incomingUserIds);
+            $usersToDelete = $currentMembers->whereNotIn('id', $incomingUserIds);
             foreach ($usersToDelete as $user) {
                 $this->deleteUser($user->id);
             }

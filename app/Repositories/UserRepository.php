@@ -40,9 +40,11 @@ class UserRepository implements UserRepositoryInterface
         return User::whereHas('role', fn($q) => $q->where('name', 'admin'))->count();
     }
 
-    public function allExceptSuperadmin()
+    public function allStaff()
     {
-        return User::where('id', '!=', 1)->get();
+        return User::whereHas('role', function($q) {
+            $q->whereNotIn('slug', ['superadmin', 'client']);
+        })->get();
     }
 }
 

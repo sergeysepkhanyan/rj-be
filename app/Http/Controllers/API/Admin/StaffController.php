@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
-class UsersController extends Controller
+class StaffController extends Controller
 {
     protected UserService $userService;
 
@@ -51,13 +51,10 @@ class UsersController extends Controller
                 return ApiResponse::error(null, 'You can only have up to 2 admin users', 422);
             }
 
-            $users = $this->userService->createMany($data);
+            $users = $this->userService->createStaffMembers($data);
 
-            return ApiResponse::success(UserResource::collection($users), 'Users created successfully');
+            return ApiResponse::success(UserResource::collection($users), 'Staff members added successfully');
         } catch (\Exception $e) {
-            Log::error('User creation failed: ' . $e->getMessage(), [
-                'trace' => $e->getTraceAsString(),
-            ]);
             ApiResponse::error();
         }
     }
@@ -104,8 +101,8 @@ class UsersController extends Controller
             if ($validator->fails()) {
                 return ApiResponse::error($validator->errors(), 'Validation failed', 422);
             }
-            $users = $this->userService->updateUsers($data);
-            return ApiResponse::success(UserResource::collection($users), 'Users updated successfully');
+            $users = $this->userService->updateStaff($data);
+            return ApiResponse::success(UserResource::collection($users), 'Staff updated successfully');
         } catch (\Exception $e) {
             return ApiResponse::error();
         }
