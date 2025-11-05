@@ -116,9 +116,6 @@ class UserService
         });
     }
 
-
-
-
     public function updateUser($id, array $data)
     {
         return $this->userRepository->update($id, $data);

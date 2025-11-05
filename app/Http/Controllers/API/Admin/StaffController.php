@@ -25,6 +25,83 @@ class StaffController extends Controller
     public function store(Request $request): JsonResponse
     {
         try {
+            $data = $request->all();
+
+            $validator = Validator::make($data, [
+                'role' => 'required|in:admin,master',
+                'name' => 'required|string',
+                'email' => 'required|email|unique:users,email',
+                'mobile' => 'required|string|unique:users,mobile',
+                'subservices' => 'array',
+                'subservices.*' => 'exists:sub_services,id',
+            ]);
+
+            if ($validator->fails()) {
+                return ApiResponse::error($validator->errors(), 'Validation failed', 422);
+            }
+            if ($data['role'] === 'admin' && !$this->userService->canAddAdmins(1)) {
+                return ApiResponse::error(null, 'You can only have up to 2 admin users', 422);
+            }
+
+            $staff = $this->userService-> createUser($data);
+
+            return ApiResponse::success(new UserResource($staff), 'Staff member added successfully', 201);
+        } catch (\Exception $e) {
+            return ApiResponse::error();
+        }
+    }
+
+    public function update(Request $request, $id): JsonResponse
+    {
+        try {
+            $data = $request->all();
+
+            $validator = Validator::make($data, [
+                'role' => 'required|in:admin,master',
+                'name' => 'required|string',
+                'email' => "required_if:role,admin|email|unique:users,email,{$id}",
+                'mobile' => "required_if:role,admin|string|unique:users,mobile,{$id}",
+                'subservices' => 'array',
+                'subservices.*' => 'exists:sub_services,id',
+            ]);
+
+            if ($validator->fails()) {
+                return ApiResponse::error($validator->errors(), 'Validation failed', 422);
+            }
+
+            $staff = $this->userService->updateUser($id, $data);
+
+            return ApiResponse::success(new UserResource($staff), 'Staff member updated successfully');
+        } catch (\Exception $e) {
+            return ApiResponse::error();
+        }
+    }
+
+    public function destroy(int $id): JsonResponse
+    {
+        try {
+            $staff = $this->userService->getUserById($id);
+
+            if (!$staff) {
+                return ApiResponse::error([], 'Staff member not found', 404);
+            }
+
+            if (in_array($staff->role->slug, ['superadmin', 'client'])) {
+                return ApiResponse::error([], 'You cannot delete this user type', 403);
+            }
+
+            $this->userService->deleteUser($id);
+
+            return ApiResponse::success([], 'Staff member deleted successfully');
+        } catch (\Exception $e) {
+            return ApiResponse::error();
+        }
+    }
+
+
+    public function createMany(Request $request): JsonResponse
+    {
+        try {
 
             $data = $request->all();
 
@@ -59,7 +136,7 @@ class StaffController extends Controller
         }
     }
 
-    public function update(Request $request): JsonResponse
+    public function updateMany(Request $request): JsonResponse
     {
         try {
             $data = $request->all();
