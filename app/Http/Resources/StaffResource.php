@@ -17,6 +17,7 @@ class StaffResource extends JsonResource
 {
     public function toArray($request): array
     {
+        $roleSlug =  $this->role->name ?? null;
         return [
             'id' => $this->id,
             'name' => $this->name ?? null,
@@ -25,10 +26,9 @@ class StaffResource extends JsonResource
             'date_of_birth' => $this->date_of_birth ?? null,
             'role' => $this->role->name ?? null,
             'subservices' => $this->when(
-                $this->relationLoaded('subservices') || $this->subservices,
-                SubServiceResource::collection($this->subservices)
+                $roleSlug === 'master',
+                SubServiceResource::collection($this->whenLoaded('subservices'))
             ),
         ];
     }
 }
-
