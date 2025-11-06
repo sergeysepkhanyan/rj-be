@@ -22,6 +22,36 @@ class StaffController extends Controller
         $this->userService = $userService;
     }
 
+    public function index(Request $request): JsonResponse
+    {
+        try {
+            $perPage = $request->get('per_page', 10);
+            $page = $request->get('page', 1);
+
+            $staff = $this->userService->getPaginatedStaff($perPage, $page);
+
+            return ApiResponse::success([
+                'users' => UserResource::collection($staff),
+                'meta' => [
+                    'current_page' => $staff->currentPage(),
+                    'last_page' => $staff->lastPage(),
+                    'per_page' => $staff->perPage(),
+                    'total' => $staff->total(),
+                ],
+                'links' => [
+                    'first' => $staff->url(1),
+                    'last' => $staff->url($staff->lastPage()),
+                    'prev' => $staff->previousPageUrl(),
+                    'next' => $staff->nextPageUrl(),
+                ],
+            ], 'Staff members retrieved successfully');
+        } catch (\Exception $e) {
+            return ApiResponse::error();
+        }
+    }
+
+
+
     public function store(Request $request): JsonResponse
     {
         try {

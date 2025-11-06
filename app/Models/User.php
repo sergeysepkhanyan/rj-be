@@ -83,6 +83,4 @@ class User extends Authenticatable implements JWTSubject, CanResetPasswordContra
     {
         return $this->belongsToMany(Subservice::class, 'user_sub_services');
     }
-
-
 }

@@ -40,6 +40,7 @@ Route::middleware(['jwt.custom', 'role:superadmin'])->group(function () {
     Route::put('/admin/services/{service}', [AdminServicesController::class, 'update']);
     Route::post('/admin/sub-services', [AdminSubServicesController::class, 'store']);
     Route::put('/admin/sub-services/{subService}', [AdminSubServicesController::class, 'update']);
+    Route::get('/admin/staff', [StaffController::class, 'index']);
     Route::post('/admin/staff/create', [StaffController::class, 'store']);
     Route::put('/admin/staff/update/{id}', [StaffController::class, 'update']);
     Route::delete('/admin/staff/delete/{id}', [StaffController::class, 'destroy']);;

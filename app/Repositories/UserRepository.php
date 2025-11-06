@@ -46,5 +46,16 @@ class UserRepository implements UserRepositoryInterface
             $q->whereNotIn('slug', ['superadmin', 'client']);
         })->get();
     }
+
+    public function paginateStaff(int $perPage = 10, int $page = 1)
+    {
+        return User::whereHas('role', function ($q) {
+            $q->whereNotIn('slug', ['superadmin', 'client']);
+        })
+            ->with(['role', 'subservices.items.variants'])
+            ->orderByDesc('created_at')
+            ->paginate($perPage, ['*'], 'page', $page);
+    }
+
 }
 

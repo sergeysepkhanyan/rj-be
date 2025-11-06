@@ -10,6 +10,8 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * @property mixed $mobile
  * @property mixed $date_of_birth
  * @property mixed $id
+ * @property mixed $subservices
+ * @method relationLoaded(string $string)
  */
 class UserResource extends JsonResource
 {
@@ -21,6 +23,11 @@ class UserResource extends JsonResource
             'email' => $this->email ?? null,
             'mobile' => $this->mobile ?? null,
             'date_of_birth' => $this->date_of_birth ?? null,
+            'role' => $this->role->name ?? null,
+            'subservices' => $this->when(
+                $this->relationLoaded('subservices') || $this->subservices,
+                SubServiceResource::collection($this->subservices)
+            ),
         ];
     }
 }

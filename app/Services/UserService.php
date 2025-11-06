@@ -53,7 +53,7 @@ class UserService
         if ($role->slug === 'admin') {
             Mail::to($user->email)->send(new AdminAccessEmail($user, $generatedPassword));
         }
-        return $user;
+        return $user->load('role', 'subservices.items.variants');
     }
 
     public function createStaffMembers(array $usersData)
@@ -133,7 +133,7 @@ class UserService
             if ($role->slug === 'master') {
                 $user->subservices()->sync($subservices);
             }
-            return $this->userRepository->find($user->id)->load('role', 'subservices');
+            return $this->userRepository->find($user->id)->load('role', 'subservices.items.variants');
         });
     }
 
@@ -181,6 +181,11 @@ class UserService
         $existingAdminsCount = $this->userRepository->countAdmins();
 
         return ($existingAdminsCount + $newAdminsCount) <= 2;
+    }
+
+    public function getPaginatedStaff(int $perPage = 10, int $page = 1)
+    {
+        return $this->userRepository->paginateStaff($perPage, $page);
     }
 }
 
