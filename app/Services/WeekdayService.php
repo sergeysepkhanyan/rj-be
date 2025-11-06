@@ -2,15 +2,8 @@
 
 namespace App\Services;
 
-use App\Mail\AdminAccessEmail;
 use App\Models\Weekday;
-use App\Repositories\Interfaces\UserRepositoryInterface;
-use App\Repositories\Interfaces\UserRoleRepositoryInterface;
 use App\Repositories\Interfaces\WeekdayRepositoryInterface;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Str;
 
 class WeekdayService
 {

@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Repositories\Interfaces\ReferralRepositoryInterface;
 use App\Repositories\Interfaces\ServiceRepositoryInterface;
 use App\Repositories\Interfaces\SubServiceItemRepositoryInterface;
 use App\Repositories\Interfaces\SubServiceItemVariantRepositoryInterface;
@@ -9,6 +10,7 @@ use App\Repositories\Interfaces\SubServiceRepositoryInterface;
 use App\Repositories\Interfaces\UserRepositoryInterface;
 use App\Repositories\Interfaces\UserRoleRepositoryInterface;
 use App\Repositories\Interfaces\WeekdayRepositoryInterface;
+use App\Repositories\ReferralRepository;
 use App\Repositories\ServiceManagerRepository;
 use App\Repositories\SubServiceItemManagerRepository;
 use App\Repositories\SubServiceItemVariantManagerRepository;
@@ -25,6 +27,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->bind(ReferralRepositoryInterface::class, ReferralRepository::class);
         $this->app->bind(WeekdayRepositoryInterface::class, WeekdayRepository::class);
         $this->app->bind(UserRoleRepositoryInterface::class, UserRoleRepository::class);
         $this->app->bind(UserRepositoryInterface::class, UserRepository::class);

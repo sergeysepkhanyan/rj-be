@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\API\Admin\ReferralsController;
 use App\Http\Controllers\API\Admin\ServicesController as AdminServicesController;
 use App\Http\Controllers\API\Admin\SubServicesController as AdminSubServicesController;
 use App\Http\Controllers\API\ServicesController as ServicesController;
@@ -36,7 +37,7 @@ Route::post('/password/forgot', [ResetPasswordController::class, 'forgot']);
 Route::post('/password/reset', [ResetPasswordController::class, 'reset']);
 
 
-Route::middleware(['jwt.custom', 'role:superadmin'])->group(function () {
+Route::middleware(['jwt.custom', 'role:superadmin,admin'])->group(function () {
     Route::post('/admin/services', [AdminServicesController::class, 'store']);
     Route::put('/admin/services/{service}', [AdminServicesController::class, 'update']);
     Route::post('/admin/sub-services', [AdminSubServicesController::class, 'store']);
@@ -47,6 +48,7 @@ Route::middleware(['jwt.custom', 'role:superadmin'])->group(function () {
     Route::delete('/admin/staff/delete/{id}', [StaffController::class, 'destroy']);;
     Route::post('/admin/staff/create-many', [StaffController::class, 'createMany']);
     Route::post('/admin/staff/update-many', [StaffController::class, 'updateMany']);
+    Route::get('/referrals', [ReferralsController::class, 'index']);
 });
 
 Route::get('/services', [ServicesController::class, 'index']);

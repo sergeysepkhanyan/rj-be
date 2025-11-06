@@ -32,7 +32,8 @@ class User extends Authenticatable implements JWTSubject, CanResetPasswordContra
         'password',
         'user_role_id',
         'date_of_birth',
-        'is_temporary_password'
+        'is_temporary_password',
+        'referral_id'
     ];
 
     protected $hidden = [
@@ -87,5 +88,10 @@ class User extends Authenticatable implements JWTSubject, CanResetPasswordContra
     public function weekends(): BelongsToMany
     {
         return $this->belongsToMany(Weekday::class, 'user_weekends');
+    }
+
+    public function referral(): BelongsTo
+    {
+        return $this->belongsTo(Referral::class);
     }
 }
