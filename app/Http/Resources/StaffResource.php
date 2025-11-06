@@ -13,7 +13,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * @property mixed $subservices
  * @method relationLoaded(string $string)
  */
-class UserResource extends JsonResource
+class StaffResource extends JsonResource
 {
     public function toArray($request): array
     {
@@ -23,7 +23,11 @@ class UserResource extends JsonResource
             'email' => $this->email ?? null,
             'mobile' => $this->mobile ?? null,
             'date_of_birth' => $this->date_of_birth ?? null,
-            'role' => $this->role->name ?? null
+            'role' => $this->role->name ?? null,
+            'subservices' => $this->when(
+                $this->relationLoaded('subservices') || $this->subservices,
+                SubServiceResource::collection($this->subservices)
+            ),
         ];
     }
 }
