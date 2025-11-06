@@ -54,6 +54,11 @@ class StaffController extends Controller
     public function update(Request $request, $id): JsonResponse
     {
         try {
+            $staff = $this->userService->getUserById($id);
+
+            if (!$staff) {
+                return ApiResponse::error([], 'Staff member not found', 404);
+            }
             $data = $request->all();
 
             $validator = Validator::make($data, [
@@ -69,7 +74,7 @@ class StaffController extends Controller
                 return ApiResponse::error($validator->errors(), 'Validation failed', 422);
             }
 
-            $staff = $this->userService->updateUser($id, $data);
+            $staff = $this->userService->updateStaffMember($id, $data);
 
             return ApiResponse::success(new UserResource($staff), 'Staff member updated successfully');
         } catch (\Exception $e) {

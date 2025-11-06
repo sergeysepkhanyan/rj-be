@@ -76,31 +76,17 @@ class UserService
             $currentMembers = $this->userRepository->allStaff();
             $incomingUserIds = [];
             $updatedOrCreatedUsers = collect();
+
             foreach ($usersData as $userData) {
-                $subservices = $userData['subservices'] ?? [];
-                $roleName = $userData['role'] ?? null;
-                $role = $this->userRoleRepository->findBySlug($roleName);
-                $userFields = array_diff_key($userData, array_flip(['role', 'subservices']));
+                $user = null;
+
                 if (!empty($userData['id'])) {
                     $user = $this->userRepository->find($userData['id']);
                     if (!$user) continue;
-
                     $incomingUserIds[] = $user->id;
-                    $oldRole = $user->role->slug;
-                    $userFields['user_role_id'] = $role->id;
-                    if ($oldRole !== 'admin' && $role->slug === 'admin') {
-                        $generatedPassword = Str::random(6);
-                        $userFields['password'] = Hash::make($generatedPassword);
-                        $data['is_temporary_password'] = true;
-                        Mail::to($user->email)->send(new AdminAccessEmail($user, $generatedPassword));
-                    }
-
-                    $this->updateUser($user->id, $userFields);
-
-                    if ($role->slug === 'master') {
-                        $user->subservices()->sync($subservices);
-                    }
-                    $updatedOrCreatedUsers->push($user);
+                    $updatedOrCreatedUsers->push(
+                        $this->updateStaffMember($user->id, $userData)
+                    );
                 } else {
                     $newUser = $this->createUser($userData);
                     $incomingUserIds[] = $newUser->id;
@@ -110,11 +96,47 @@ class UserService
 
             $usersToDelete = $currentMembers->whereNotIn('id', $incomingUserIds);
             foreach ($usersToDelete as $user) {
-                $this->deleteUser($user->id);
+                if (!in_array($user->role->slug, ['superadmin', 'client'])) {
+                    $this->deleteUser($user->id);
+                }
             }
+
             return $updatedOrCreatedUsers->values();
         });
     }
+
+
+    public function updateStaffMember(int $id, array $data)
+    {
+        return DB::transaction(function () use ($id, $data) {
+            $user = $this->userRepository->find($id);
+            $subservices = $data['subservices'] ?? [];
+            $roleName = $data['role'] ?? null;
+            $role = $this->userRoleRepository->findBySlug($roleName);
+
+            $fields = array_diff_key($data, array_flip(['role', 'subservices']));
+            $fields['user_role_id'] = $role->id;
+
+            $oldRole = $user->role->slug;
+
+            if ($oldRole !== 'admin' && $role->slug === 'admin') {
+                $generatedPassword = Str::random(6);
+                $fields['password'] = Hash::make($generatedPassword);
+                $fields['is_temporary_password'] = true;
+
+                $accessLink = config('app.url') . '/admin/login';
+                Mail::to($user->email)->send(new AdminAccessEmail($user, $generatedPassword, $accessLink));
+            }
+
+            $this->updateUser($user->id, $fields);
+
+            if ($role->slug === 'master') {
+                $user->subservices()->sync($subservices);
+            }
+            return $this->userRepository->find($user->id)->load('role', 'subservices');
+        });
+    }
+
 
     public function updateUser($id, array $data)
     {
