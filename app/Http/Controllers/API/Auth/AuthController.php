@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API\Auth;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\UserResource;
 use App\Models\User;
+use App\Models\UserRole;
 use App\Services\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -25,8 +26,9 @@ class AuthController extends Controller
             return ApiResponse::error($validator->errors(), 'Validation failed', 422);
         }
 
+        $roleId = UserRole::where('slug', 'client')->first()->id;
         $user = User::create([
-            'user_role_id' => 2,
+            'user_role_id' => $roleId,
             'name' => $request->name ?? null,
             'email' => $request->email,
             'mobile' => $request->mobile ?? null,
