@@ -220,4 +220,30 @@ class StaffController extends Controller
             return ApiResponse::error();
         }
     }
+
+    public function addReferral(Request $request, $id): JsonResponse
+    {
+        try {
+            $staff = $this->userService->getUserById($id);
+
+            if (!$staff) {
+                return ApiResponse::error([], 'Staff member not found', 404);
+            }
+            $data = $request->all();
+
+            $validator = Validator::make($data, [
+                'referral_id' => 'nullable|exists:referrals,id',
+            ]);
+
+            if ($validator->fails()) {
+                return ApiResponse::error($validator->errors(), 'Validation failed', 422);
+            }
+
+            $staff = $this->userService->updateUser($id, $data);
+
+            return ApiResponse::success(new StaffResource($staff), 'Staff member updated successfully');
+        } catch (\Exception $e) {
+            return ApiResponse::error();
+        }
+    }
 }

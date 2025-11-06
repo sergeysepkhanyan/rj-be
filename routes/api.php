@@ -48,6 +48,7 @@ Route::middleware(['jwt.custom', 'role:superadmin,admin'])->group(function () {
     Route::delete('/admin/staff/delete/{id}', [StaffController::class, 'destroy']);;
     Route::post('/admin/staff/create-many', [StaffController::class, 'createMany']);
     Route::post('/admin/staff/update-many', [StaffController::class, 'updateMany']);
+    Route::patch('/admin/staff/add-referral/{id}', [StaffController::class, 'addReferral']);
     Route::get('/referrals', [ReferralsController::class, 'index']);
 });
 
