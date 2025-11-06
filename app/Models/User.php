@@ -83,4 +83,9 @@ class User extends Authenticatable implements JWTSubject, CanResetPasswordContra
     {
         return $this->belongsToMany(SubService::class, 'user_sub_services');
     }
+
+    public function weekends(): BelongsToMany
+    {
+        return $this->belongsToMany(Weekday::class, 'user_weekends');
+    }
 }

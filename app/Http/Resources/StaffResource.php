@@ -11,13 +11,14 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * @property mixed $date_of_birth
  * @property mixed $id
  * @property mixed $subservices
+ * @property mixed $weekends
  * @method relationLoaded(string $string)
  */
 class StaffResource extends JsonResource
 {
     public function toArray($request): array
     {
-        $roleSlug =  $this->role->name ?? null;
+        $roleSlug =  $this->role->slug ?? null;
         return [
             'id' => $this->id,
             'name' => $this->name ?? null,
@@ -28,6 +29,10 @@ class StaffResource extends JsonResource
             'subservices' => $this->when(
                 $roleSlug === 'master',
                 SubServiceResource::collection($this->whenLoaded('subservices'))
+            ),
+            'weekends' => $this->when(
+                $this->relationLoaded('weekends') || $this->weekends,
+                WeekdayResource::collection($this->weekends)
             ),
         ];
     }

@@ -9,6 +9,7 @@ use App\Http\Controllers\API\Content\PageContentController;
 use App\Http\Controllers\API\ImageUploadController;
 use App\Http\Controllers\API\UsersController;
 use App\Http\Controllers\API\Admin\StaffController;
+use App\Http\Controllers\API\WeekdaysController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('content')->group(function () {
@@ -49,3 +50,4 @@ Route::middleware(['jwt.custom', 'role:superadmin'])->group(function () {
 });
 
 Route::get('/services', [ServicesController::class, 'index']);
+Route::get('/weekdays', [WeekdaysController::class, 'index']);

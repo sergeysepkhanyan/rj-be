@@ -8,12 +8,14 @@ use App\Repositories\Interfaces\SubServiceItemVariantRepositoryInterface;
 use App\Repositories\Interfaces\SubServiceRepositoryInterface;
 use App\Repositories\Interfaces\UserRepositoryInterface;
 use App\Repositories\Interfaces\UserRoleRepositoryInterface;
+use App\Repositories\Interfaces\WeekdayRepositoryInterface;
 use App\Repositories\ServiceManagerRepository;
 use App\Repositories\SubServiceItemManagerRepository;
 use App\Repositories\SubServiceItemVariantManagerRepository;
 use App\Repositories\SubServiceManagerRepository;
 use App\Repositories\UserRepository;
 use App\Repositories\UserRoleRepository;
+use App\Repositories\WeekdayRepository;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -23,6 +25,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->bind(WeekdayRepositoryInterface::class, WeekdayRepository::class);
         $this->app->bind(UserRoleRepositoryInterface::class, UserRoleRepository::class);
         $this->app->bind(UserRepositoryInterface::class, UserRepository::class);
         $this->app->bind(ServiceRepositoryInterface::class, ServiceManagerRepository::class);

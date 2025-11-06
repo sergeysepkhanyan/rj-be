@@ -4,15 +4,11 @@ namespace App\Http\Controllers\API\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\StaffResource;
-use App\Http\Resources\UserResource;
-use App\Models\UserRole;
 use App\Services\ApiResponse;
 use App\Services\UserService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\Rule;
 
 class StaffController extends Controller
 {
@@ -65,6 +61,8 @@ class StaffController extends Controller
                 'mobile' => 'required|string|unique:users,mobile',
                 'subservices' => 'array',
                 'subservices.*' => 'exists:sub_services,id',
+                'weekends' => 'array',
+                'weekends.*' => 'exists:weekdays,id',
             ]);
 
             if ($validator->fails()) {
@@ -74,7 +72,7 @@ class StaffController extends Controller
                 return ApiResponse::error(null, 'You can only have up to 2 admin users', 422);
             }
 
-            $staff = $this->userService-> createUser($data);
+            $staff = $this->userService->createUser($data);
 
             return ApiResponse::success(new StaffResource($staff), 'Staff member added successfully', 201);
         } catch (\Exception $e) {
@@ -99,6 +97,8 @@ class StaffController extends Controller
                 'mobile' => "required_if:role,admin|string|unique:users,mobile,{$id}",
                 'subservices' => 'array',
                 'subservices.*' => 'exists:sub_services,id',
+                'weekends' => 'array',
+                'weekends.*' => 'exists:weekdays,id',
             ]);
 
             if ($validator->fails()) {

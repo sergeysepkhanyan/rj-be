@@ -37,9 +37,10 @@ class UserService
     public function createUser(array $data)
     {
         $subservices = $data['subservices'] ?? [];
+        $weekends = $data['weekends'] ?? [];
         $roleName = $data['role'] ?? null;
         $role = $this->userRoleRepository->findBySlug($roleName);
-        $data = array_diff_key($data, array_flip(['role', 'subservices']));
+        $data = array_diff_key($data, array_flip(['role', 'subservices', 'weekends']));
         $data['user_role_id'] = $role->id;
         $generatedPassword = Str::random(6);
         if ($role->slug === 'admin') {
@@ -49,6 +50,9 @@ class UserService
         $user = $this->userRepository->create($data);
         if ($role->slug === 'master' && !empty($subservices)) {
             $user->subservices()->sync($subservices);
+        }
+        if (!empty($weekends)) {
+            $user->weekends()->sync($weekends);
         }
         if ($role->slug === 'admin') {
             Mail::to($user->email)->send(new AdminAccessEmail($user, $generatedPassword));
@@ -111,6 +115,7 @@ class UserService
         return DB::transaction(function () use ($id, $data) {
             $user = $this->userRepository->find($id);
             $subservices = $data['subservices'] ?? [];
+            $weekends = $data['weekends'] ?? [];
             $roleName = $data['role'] ?? null;
             $role = $this->userRoleRepository->findBySlug($roleName);
 
@@ -130,8 +135,11 @@ class UserService
 
             $this->updateUser($user->id, $fields);
 
-            if ($role->slug === 'master') {
+            if ($role->slug === 'master' && !empty($subservices)) {
                 $user->subservices()->sync($subservices);
+            }
+            if (!empty($weekends)) {
+                $user->weekends()->sync($weekends);
             }
             return $this->userRepository->find($user->id)->load('role', 'subservices.items.variants');
         });
