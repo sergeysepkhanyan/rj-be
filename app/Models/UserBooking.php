@@ -21,5 +21,9 @@ class UserBooking extends Model
         'sub_service_id',
         'date',
         'time',
+        'name',
+        'email',
+        'mobile',
+        'notes'
     ];
 }
