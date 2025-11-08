@@ -74,7 +74,9 @@ class StaffController extends Controller
 
             $staff = $this->userService->createUser($data);
 
-            return ApiResponse::success(new StaffResource($staff), 'Staff member added successfully', 201);
+            return ApiResponse::success([
+                'user' => new StaffResource($staff),
+            ], 'Staff member added successfully', 201);
         } catch (\Exception $e) {
             return ApiResponse::error();
         }
@@ -107,7 +109,9 @@ class StaffController extends Controller
 
             $staff = $this->userService->updateStaffMember($id, $data);
 
-            return ApiResponse::success(new StaffResource($staff), 'Staff member updated successfully');
+            return ApiResponse::success([
+                'user' => new StaffResource($staff),
+            ], 'Staff member updated successfully');
         } catch (\Exception $e) {
             return ApiResponse::error();
         }
@@ -166,7 +170,9 @@ class StaffController extends Controller
 
             $users = $this->userService->createStaffMembers($data);
 
-            return ApiResponse::success(StaffResource::collection($users), 'Staff members added successfully');
+            return ApiResponse::success([
+                'users' => StaffResource::collection($users),
+            ], 'Staff members added successfully');
         } catch (\Exception $e) {
             ApiResponse::error();
         }
@@ -215,7 +221,9 @@ class StaffController extends Controller
                 return ApiResponse::error($validator->errors(), 'Validation failed', 422);
             }
             $users = $this->userService->updateStaff($data);
-            return ApiResponse::success(StaffResource::collection($users), 'Staff updated successfully');
+            return ApiResponse::success([
+                'users' => StaffResource::collection($users),
+            ], 'Staff updated successfully');
         } catch (\Exception $e) {
             return ApiResponse::error();
         }
@@ -241,7 +249,9 @@ class StaffController extends Controller
 
             $staff = $this->userService->updateUser($id, $data);
 
-            return ApiResponse::success(new StaffResource($staff), 'Staff member updated successfully');
+            return ApiResponse::success([
+                'user' => new StaffResource($staff),
+            ], 'Staff member updated successfully');
         } catch (\Exception $e) {
             return ApiResponse::error();
         }

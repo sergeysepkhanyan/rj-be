@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Repositories\Interfaces\ProductDetailRepositoryInterface;
+use App\Repositories\Interfaces\ProductRepositoryInterface;
 use App\Repositories\Interfaces\ReferralRepositoryInterface;
 use App\Repositories\Interfaces\ServiceRepositoryInterface;
 use App\Repositories\Interfaces\SubServiceItemRepositoryInterface;
@@ -10,6 +12,8 @@ use App\Repositories\Interfaces\SubServiceRepositoryInterface;
 use App\Repositories\Interfaces\UserRepositoryInterface;
 use App\Repositories\Interfaces\UserRoleRepositoryInterface;
 use App\Repositories\Interfaces\WeekdayRepositoryInterface;
+use App\Repositories\ProductDetailRepository;
+use App\Repositories\ProductRepository;
 use App\Repositories\ReferralRepository;
 use App\Repositories\ServiceManagerRepository;
 use App\Repositories\SubServiceItemManagerRepository;
@@ -35,8 +39,8 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(SubServiceRepositoryInterface::class, SubServiceManagerRepository::class);
         $this->app->bind(SubServiceItemRepositoryInterface::class, SubServiceItemManagerRepository::class);
         $this->app->bind(SubServiceItemVariantRepositoryInterface::class, SubServiceItemVariantManagerRepository::class);
-
-
+        $this->app->bind(ProductRepositoryInterface::class, ProductRepository::class);
+        $this->app->bind(ProductDetailRepositoryInterface::class, ProductDetailRepository::class);
     }
 
     /**

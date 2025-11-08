@@ -11,9 +11,20 @@ class FileRepository
         return $fileable->files()->create(['path' => $path]);
     }
 
-    public function delete(File $file): bool
+    /**
+     * Create multiple file records for a fileable model
+     *
+     * @param  mixed $fileable
+     * @param  array $paths
+     * @return array
+     */
+    public function createMultipleForFileable(mixed $fileable, array $paths): array
     {
-        return $file->delete();
+        $files = [];
+        foreach ($paths as $path) {
+            $files[] = $this->createForFileable($fileable, $path);
+        }
+        return $files;
     }
 }
 

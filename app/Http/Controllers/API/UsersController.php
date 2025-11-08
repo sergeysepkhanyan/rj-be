@@ -34,7 +34,9 @@ class UsersController extends Controller
             ]);
 
             $user = $this->userService->updateUser($user->id, $data);
-            return ApiResponse::success(new UserResource($user), 'User updated successfully.');
+            return ApiResponse::success([
+                'user' => new UserResource($user),
+            ], 'User updated successfully.');
         } catch (\Exception $e){
             return ApiResponse::error();
         }
@@ -60,7 +62,9 @@ class UsersController extends Controller
                 return ApiResponse::error(['message' => $result['message']], '' , 422);
             }
 
-            return ApiResponse::success(new UserResource($user), $result['message']);
+            return ApiResponse::success([
+                'user' => new UserResource($user),
+            ], $result['message']);
         } catch (\Exception $e) {
             return ApiResponse::error();
         }

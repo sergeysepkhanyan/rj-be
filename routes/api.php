@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\API\Admin\ReferralsController;
+use App\Http\Controllers\API\ProductsController;
+use App\Http\Controllers\API\Admin\ProductsController as AdminProductsController;
 use App\Http\Controllers\API\Admin\ServicesController as AdminServicesController;
 use App\Http\Controllers\API\Admin\SubServicesController as AdminSubServicesController;
 use App\Http\Controllers\API\ServicesController as ServicesController;
@@ -26,13 +28,17 @@ Route::post('signup', [AuthController::class, 'signup']);
 Route::post('login', [AuthController::class, 'login']);
 
 Route::middleware('jwt.custom')->group(function () {
+
     Route::post('image/upload', [FilesController::class, 'upload']);
     Route::post('image/upload-multiple', [FilesController::class, 'uploadMultiple']);
+
     Route::patch('/user/details', [UsersController::class, 'updateDetails']);
     Route::patch('/user/change-password', [UsersController::class, 'changePassword']);
     Route::get('me', function () {
         return auth()->user();
     });
+
+    Route::get('/products', [ProductsController::class, 'index']);
 });
 Route::post('/password/forgot', [ResetPasswordController::class, 'forgot']);
 Route::post('/password/reset', [ResetPasswordController::class, 'reset']);
@@ -53,6 +59,8 @@ Route::middleware(['jwt.custom', 'role:superadmin,admin'])->group(function () {
     Route::post('/admin/staff/create-many', [StaffController::class, 'createMany']);
     Route::post('/admin/staff/update-many', [StaffController::class, 'updateMany']);
     Route::patch('/admin/staff/add-referral/{id}', [StaffController::class, 'addReferral']);
+
+    Route::post('/admin/product/create', [AdminProductsController::class, 'store']);
 
     Route::get('/referrals', [ReferralsController::class, 'index']);
 });
