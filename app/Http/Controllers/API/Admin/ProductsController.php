@@ -32,7 +32,7 @@ class ProductsController extends Controller
             'discount' => 'nullable|boolean',
             'discount_type' => 'nullable|string|in:percentage,amount',
             'discount_amount' => 'nullable|numeric',
-            'status' => 'nullable|in:active,inactive',
+            'status' => 'nullable|in:active,draft',
 
             'images' => 'required|array|min:1',
             'images.*' => 'string',
@@ -86,7 +86,7 @@ class ProductsController extends Controller
             'discount' => 'nullable|boolean',
             'discount_type' => 'nullable|string|in:percentage,amount',
             'discount_amount' => 'nullable|numeric',
-            'status' => 'nullable|in:active,inactive',
+            'status' => 'nullable|in:active,draft',
 
             'removed_files' => 'nullable|array',
             'removed_files.*' => 'string',
