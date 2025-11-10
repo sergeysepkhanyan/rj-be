@@ -127,7 +127,7 @@ class ProductsController extends Controller
                 'product' => new ProductResource($product),
             ], 'Product updated successfully');
         } catch (\Exception $e) {
-            return ApiResponse::error($e->getMessage(), 'Update failed');
+            return ApiResponse::error();
         }
     }
 }
