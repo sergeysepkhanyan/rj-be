@@ -48,5 +48,19 @@ class ProductDetailRepository implements ProductDetailRepositoryInterface
         }
         return $created;
     }
+
+    public function updateForProduct($product, int $detailId, array $detailData)
+    {
+        $detail = $product->details()->find($detailId);
+        if ($detail) {
+            $detail->update($detailData);
+        }
+        return $detail;
+    }
+
+    public function deleteByIds(array $detailIds): void
+    {
+        ProductDetail::whereIn('id', $detailIds)->delete();
+    }
 }
 

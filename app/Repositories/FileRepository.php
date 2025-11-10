@@ -26,5 +26,10 @@ class FileRepository
         }
         return $files;
     }
+
+    public function deleteByPaths($model, array $paths): void
+    {
+        $model->files()->whereIn('path', $paths)->delete();
+    }
 }
 

@@ -61,6 +61,7 @@ Route::middleware(['jwt.custom', 'role:superadmin,admin'])->group(function () {
     Route::patch('/admin/staff/add-referral/{id}', [StaffController::class, 'addReferral']);
 
     Route::post('/admin/product/create', [AdminProductsController::class, 'store']);
+    Route::put('/admin/product/update/{id}', [AdminProductsController::class, 'update']);
 
     Route::get('/referrals', [ReferralsController::class, 'index']);
 });

@@ -19,7 +19,7 @@ class ServiceResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name ?? null,
             'description' => $this->description ?? null,
-            'image' => $this->image ?? null,
+            'image' => $this->image ? asset('storage/' . $this->image) : null,
             'subservices' => SubServiceResource::collection($this->subServices)
         ];
     }

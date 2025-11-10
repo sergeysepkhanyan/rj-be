@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\URL;
 
 /**
  * @property mixed $path
@@ -14,7 +15,7 @@ class FileResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'path' => $this->path,
+            'url' => asset('storage/' . $this->path),
         ];
     }
 }
