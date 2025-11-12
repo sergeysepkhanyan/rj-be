@@ -48,7 +48,6 @@ class StaffController extends Controller
     }
 
 
-
     public function store(Request $request): JsonResponse
     {
         try {
@@ -174,7 +173,7 @@ class StaffController extends Controller
                 'users' => StaffResource::collection($users),
             ], 'Staff members added successfully');
         } catch (\Exception $e) {
-            ApiResponse::error();
+            return ApiResponse::error();
         }
     }
 

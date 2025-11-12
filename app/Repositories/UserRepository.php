@@ -57,5 +57,12 @@ class UserRepository implements UserRepositoryInterface
             ->paginate($perPage, ['*'], 'page', $page);
     }
 
+    public function allMasters()
+    {
+        return User::whereHas('role', function($q) {
+            $q->where('slug', 'master');
+        })->get();
+    }
+
 }
 

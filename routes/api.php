@@ -10,8 +10,9 @@ use App\Http\Controllers\API\Auth\AuthController;
 use App\Http\Controllers\API\Auth\ResetPasswordController;
 use App\Http\Controllers\API\Content\PageContentController;
 use App\Http\Controllers\API\FilesController;
+use App\Http\Controllers\API\StaffController;
 use App\Http\Controllers\API\UsersController;
-use App\Http\Controllers\API\Admin\StaffController;
+use App\Http\Controllers\API\Admin\StaffController as AdminStaffController;
 use App\Http\Controllers\API\WeekdaysController;
 use Illuminate\Support\Facades\Route;
 
@@ -52,13 +53,13 @@ Route::middleware(['jwt.custom', 'role:superadmin,admin'])->group(function () {
     Route::post('/admin/sub-services', [AdminSubServicesController::class, 'store']);
     Route::put('/admin/sub-services/{subService}', [AdminSubServicesController::class, 'update']);
 
-    Route::get('/admin/staff', [StaffController::class, 'index']);
-    Route::post('/admin/staff/create', [StaffController::class, 'store']);
-    Route::put('/admin/staff/update/{id}', [StaffController::class, 'update']);
-    Route::delete('/admin/staff/delete/{id}', [StaffController::class, 'destroy']);;
-    Route::post('/admin/staff/create-many', [StaffController::class, 'createMany']);
-    Route::post('/admin/staff/update-many', [StaffController::class, 'updateMany']);
-    Route::patch('/admin/staff/add-referral/{id}', [StaffController::class, 'addReferral']);
+    Route::get('/admin/staff', [AdminStaffController::class, 'index']);
+    Route::post('/admin/staff/create', [AdminStaffController::class, 'store']);
+    Route::put('/admin/staff/update/{id}', [AdminStaffController::class, 'update']);
+    Route::delete('/admin/staff/delete/{id}', [AdminStaffController::class, 'destroy']);;
+    Route::post('/admin/staff/create-many', [AdminStaffController::class, 'createMany']);
+    Route::post('/admin/staff/update-many', [AdminStaffController::class, 'updateMany']);
+    Route::patch('/admin/staff/add-referral/{id}', [AdminStaffController::class, 'addReferral']);
 
     Route::post('/admin/product/create', [AdminProductsController::class, 'store']);
     Route::put('/admin/product/update/{id}', [AdminProductsController::class, 'update']);
@@ -66,5 +67,6 @@ Route::middleware(['jwt.custom', 'role:superadmin,admin'])->group(function () {
     Route::get('/referrals', [ReferralsController::class, 'index']);
 });
 
+Route::get('/masters', [StaffController::class, 'getMasters']);
 Route::get('/services', [ServicesController::class, 'index']);
 Route::get('/weekdays', [WeekdaysController::class, 'index']);

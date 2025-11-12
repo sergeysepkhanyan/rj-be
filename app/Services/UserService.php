@@ -195,5 +195,10 @@ class UserService
     {
         return $this->userRepository->paginateStaff($perPage, $page);
     }
+
+    public function getMasters()
+    {
+        return $this->userRepository->allMasters();
+    }
 }
 
