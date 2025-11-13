@@ -24,6 +24,8 @@ class UserBooking extends Model
         'name',
         'email',
         'mobile',
-        'notes'
+        'notes',
+        'type',
+        'duration'
     ];
 }
