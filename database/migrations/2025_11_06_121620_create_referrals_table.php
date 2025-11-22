@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('referrals', function (Blueprint $table) {
             $table->id();
             $table->string('name');
+            $table->string('name_ar')->nullable();
             $table->enum('type', ['percentage', 'numeric'])->default('percentage');
             $table->decimal('value')->default(0);
             $table->timestamps();

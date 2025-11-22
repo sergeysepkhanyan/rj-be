@@ -20,25 +20,29 @@ class ReferralsSeeder extends Seeder
         $referrals = [
             'bronze' => [
                 'name' => 'Bronze',
+                'name_ar' => 'البرونزي',
                 'value' => 10,
                 'type' => 'percentage'
             ],
             'silver' => [
                 'name' => 'Silver',
+                'name_ar' => 'الفضي',
                 'value' => 15,
                 'type' => 'percentage'
             ],
             'gold' => [
                 'name' => 'Gold',
+                'name_ar' => 'الذهبي',
                 'value' => 20,
                 'type' => 'percentage'
             ]
         ];
 
+
         foreach ($referrals as $referral) {
             Referral::firstOrCreate(
                 ['name' => $referral['name']],
-                ['value' => $referral['value'], 'type' => $referral['type']]
+                ['name_ar' => $referral['name_ar'], 'value' => $referral['value'], 'type' => $referral['type']]
             );
         }
     }

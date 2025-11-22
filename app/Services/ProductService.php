@@ -81,7 +81,7 @@ class ProductService
 
     public function getPaginatedProducts(int $perPage = 15, int $page = 1): LengthAwarePaginator
     {
-        return $this->productRepository->paginateStaff($perPage, $page);
+        return $this->productRepository->paginateProducts($perPage, $page);
     }
 
     public function getProductById($id)

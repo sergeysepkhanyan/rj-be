@@ -14,28 +14,31 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * @property mixed $variants
  * @property mixed $id
  */
-class SubServiceItemResource extends JsonResource
+class SubServiceItemResource extends BaseResource
 {
     public function toArray($request): array
     {
-        $data = [
-            'id' => $this->id ?? null,
-            'name' => $this->name ?? null,
-            'type' => $this->type ?? null,
+        $data = parent::toArray($request);
+        $output = [
+            'id' => $data['id'] ?? null,
+            'name' => $data['name'] ?? null,
+            'type' => $data['type'] ?? null,
         ];
-        if($this->type === 'Simple'){
-            $data = array_merge($data, [
+
+        if ($this->type === 'Simple') {
+            $output = array_merge($output, [
                 'duration' => $this->duration ?? null,
                 'duration_unit' => $this->duration_unit ?? null,
                 'price' => $this->price ?? null,
                 'currency' => $this->currency ?? null,
             ]);
         } else {
-            $data = array_merge($data, [
-                'variants' => SubServiceItemVariantResource::collection($this->variants)
+            $output = array_merge($output, [
+                'variants' => SubServiceItemVariantResource::collection($this->variants),
             ]);
         }
-        return $data;
+
+        return $output;
     }
 }
 

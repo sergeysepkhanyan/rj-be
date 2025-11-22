@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\API\Admin;
 
+use App\Http\Requests\StoreServiceRequest;
+use App\Http\Requests\UpdateServiceRequest;
 use App\Http\Resources\ServiceResource;
 use App\Models\Service;
 use App\Services\ApiResponse;
@@ -20,21 +22,14 @@ class ServicesController
         $this->serviceManagerService = $serviceManagerService;
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreServiceRequest $request): JsonResponse
     {
         try {
-            $validator = Validator::make($request->all(), [
-                'name' => 'required|string|max:255|unique:services',
-                'description' => 'required|string',
-                'image' => 'required|string',
-            ]);
+            $data = $request->validated();
 
-            if ($validator->fails()) {
-                return ApiResponse::error($validator->errors(), 'Validation failed', 422);
-            }
-            $data = $request->only(['name', 'description', 'image']);
             $service = $this->serviceManagerService->createService($data);
             $service->load('subServices.items.variants');
+
             return ApiResponse::success([
                 'service' => new ServiceResource($service),
             ], 'Service created successfully.');
@@ -43,20 +38,13 @@ class ServicesController
         }
     }
 
-    public function update(Request $request, Service $service): JsonResponse
+    public function update(UpdateServiceRequest $request, Service $service): JsonResponse
     {
         try {
-            $validator = Validator::make($request->all(), [
-                'name' => 'required|string|max:255|unique:services,name,' . $service->id,
-                'description' => 'required|string',
-                'image' => 'nullable|string',
-            ]);
+            $data = $request->validated();
 
-            if ($validator->fails()) {
-                return ApiResponse::error($validator->errors(), 'Validation failed', 422);
-            }
-            $data = $request->only(['name', 'description', 'image']);
             $service = $this->serviceManagerService->updateService($service->id, $data);
+
             return ApiResponse::success([
                 'service' => new ServiceResource($service),
             ], 'Service updated successfully.');

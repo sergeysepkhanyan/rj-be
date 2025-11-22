@@ -3,7 +3,10 @@
 namespace App\Http\Controllers\API\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreStaffRequest;
+use App\Http\Requests\UpdateStaffRequest;
 use App\Http\Resources\StaffResource;
+use App\Models\User;
 use App\Services\ApiResponse;
 use App\Services\UserService;
 use Illuminate\Http\JsonResponse;
@@ -48,25 +51,11 @@ class StaffController extends Controller
     }
 
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreStaffRequest $request): JsonResponse
     {
         try {
-            $data = $request->all();
+            $data = $request->validated();
 
-            $validator = Validator::make($data, [
-                'role' => 'required|in:admin,master',
-                'name' => 'required|string',
-                'email' => 'required|email|unique:users,email',
-                'mobile' => 'required|string|unique:users,mobile',
-                'subservices' => 'array',
-                'subservices.*' => 'exists:sub_services,id',
-                'weekends' => 'array',
-                'weekends.*' => 'exists:weekdays,id',
-            ]);
-
-            if ($validator->fails()) {
-                return ApiResponse::error($validator->errors(), 'Validation failed', 422);
-            }
             if ($data['role'] === 'admin' && !$this->userService->canAddAdmins(1)) {
                 return ApiResponse::error(null, 'You can only have up to 2 admin users', 422);
             }
@@ -76,60 +65,38 @@ class StaffController extends Controller
             return ApiResponse::success([
                 'user' => new StaffResource($staff),
             ], 'Staff member added successfully', 201);
+
         } catch (\Exception $e) {
             return ApiResponse::error();
         }
     }
 
-    public function update(Request $request, $id): JsonResponse
+    public function update(UpdateStaffRequest $request, User $user): JsonResponse
     {
         try {
-            $staff = $this->userService->getUserById($id);
+dd($user);
+            $data = $request->validated();
 
-            if (!$staff) {
-                return ApiResponse::error([], 'Staff member not found', 404);
-            }
-            $data = $request->all();
-
-            $validator = Validator::make($data, [
-                'role' => 'required|in:admin,master',
-                'name' => 'required|string',
-                'email' => "required_if:role,admin|email|unique:users,email,{$id}",
-                'mobile' => "required_if:role,admin|string|unique:users,mobile,{$id}",
-                'subservices' => 'array',
-                'subservices.*' => 'exists:sub_services,id',
-                'weekends' => 'array',
-                'weekends.*' => 'exists:weekdays,id',
-            ]);
-
-            if ($validator->fails()) {
-                return ApiResponse::error($validator->errors(), 'Validation failed', 422);
-            }
-
-            $staff = $this->userService->updateStaffMember($id, $data);
+            $user = $this->userService->updateStaffMember($user->id, $data);
 
             return ApiResponse::success([
-                'user' => new StaffResource($staff),
+                'user' => new StaffResource($user),
             ], 'Staff member updated successfully');
+
         } catch (\Exception $e) {
             return ApiResponse::error();
         }
     }
 
-    public function destroy(int $id): JsonResponse
+    public function destroy(User $user): JsonResponse
     {
         try {
-            $staff = $this->userService->getUserById($id);
 
-            if (!$staff) {
-                return ApiResponse::error([], 'Staff member not found', 404);
-            }
-
-            if (in_array($staff->role->slug, ['superadmin', 'client'])) {
+            if (in_array($user->role->slug, ['superadmin', 'client'])) {
                 return ApiResponse::error([], 'You cannot delete this user type', 403);
             }
 
-            $this->userService->deleteUser($id);
+            $this->userService->deleteUser($user->id);
 
             return ApiResponse::success([], 'Staff member deleted successfully');
         } catch (\Exception $e) {
@@ -151,6 +118,7 @@ class StaffController extends Controller
             $validator = Validator::make($data, [
                 '*.role' => 'required|in:admin,master',
                 '*.name' => 'required|string',
+                '*.name_ar' => 'required|string',
                 '*.email' => 'required|email|distinct|unique:users,email',
                 '*.mobile' => 'required|string|distinct|unique:users,mobile',
                 '*.subservices' => 'array',
@@ -184,6 +152,7 @@ class StaffController extends Controller
             $validator = Validator::make($data, [
                 '*.role' => 'required|in:admin,master',
                 '*.name' => 'required|string',
+                '*.name_ar' => 'required|string',
                 '*.email' => [
                     'required_if:*.role,admin',
                     'email',
@@ -228,14 +197,10 @@ class StaffController extends Controller
         }
     }
 
-    public function addReferral(Request $request, $id): JsonResponse
+    public function addReferral(Request $request, User $user): JsonResponse
     {
         try {
-            $staff = $this->userService->getUserById($id);
 
-            if (!$staff) {
-                return ApiResponse::error([], 'Staff member not found', 404);
-            }
             $data = $request->all();
 
             $validator = Validator::make($data, [
@@ -246,7 +211,7 @@ class StaffController extends Controller
                 return ApiResponse::error($validator->errors(), 'Validation failed', 422);
             }
 
-            $staff = $this->userService->updateUser($id, $data);
+            $staff = $this->userService->updateUser($user, $data);
 
             return ApiResponse::success([
                 'user' => new StaffResource($staff),

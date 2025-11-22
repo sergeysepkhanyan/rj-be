@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\API;
 
+use App\Filters\ServiceFilter;
 use App\Http\Resources\ServiceResource;
 use App\Services\ApiResponse;
 use App\Services\ServiceManagerService;
@@ -18,11 +19,11 @@ class ServicesController
         $this->serviceManagerService = $serviceManagerService;
     }
 
-    public function index(Request $request): JsonResponse
+    public function index(Request $request, ServiceFilter $filter): JsonResponse
     {
-        $search = $request->query('search');
         $perPage = $request->query('per_page', 10);
-        $services = $this->serviceManagerService->getPaginatedServices($search, $perPage);
+
+        $services = $this->serviceManagerService->getPaginatedServices($filter, $perPage);
 
         return ApiResponse::success([
             'services' => ServiceResource::collection($services),
@@ -38,6 +39,7 @@ class ServicesController
                 'prev' => $services->previousPageUrl(),
                 'next' => $services->nextPageUrl(),
             ],
+            'filters' => $request->only(['search']),
         ]);
     }
 }

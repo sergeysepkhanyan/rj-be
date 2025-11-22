@@ -2,11 +2,12 @@
 
 namespace App\Repositories;
 
+use App\Filters\BookingFilter;
 use App\Models\UserBooking;
 use App\Repositories\Interfaces\UserBookingRepositoryInterface;
 use Illuminate\Pagination\LengthAwarePaginator;
 
-class UserUserBookingRepository implements UserBookingRepositoryInterface
+class UserBookingRepository implements UserBookingRepositoryInterface
 {
     public function all()
     {
@@ -35,9 +36,14 @@ class UserUserBookingRepository implements UserBookingRepositoryInterface
         return $userBooking->delete();
     }
 
-    public function paginateWithSearch(?string $search = null, int $perPage = 10): LengthAwarePaginator
+    public function paginateWithFilter(?BookingFilter $filter = null, int $perPage = 10): LengthAwarePaginator
     {
-        $query = UserBooking::query();
+        $query = UserBooking::with('master')->orderBy('date')->orderBy('time');
+
+        if ($filter) {
+            $query = $filter->apply($query);
+        }
+
         return $query->paginate($perPage);
     }
 }

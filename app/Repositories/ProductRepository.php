@@ -36,7 +36,7 @@ class ProductRepository implements ProductRepositoryInterface
         return $product->delete();
     }
 
-    public function paginateStaff(int $perPage = 10, int $page = 1): LengthAwarePaginator
+    public function paginateProducts(int $perPage = 10, int $page = 1): LengthAwarePaginator
     {
         return Product::with(['details', 'files'])
             ->orderByDesc('created_at')

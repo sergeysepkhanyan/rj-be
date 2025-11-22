@@ -10,15 +10,16 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * @property mixed $type
  * @property mixed $id
  */
-class ReferralResource extends JsonResource
+class ReferralResource extends BaseResource
 {
     public function toArray($request): array
     {
+        $data = parent::toArray($request);
         return [
-            'id' => $this->id,
-            'name' => $this->name ?? null,
-            'value' => $this->value ?? null,
-            'type' => $this->type === 'percentage' ? '%' : 'Fixed',
+            'id' => $data['id'] ?? null,
+            'name' => $data['name'] ?? null,
+            'value' => $data['value'] ?? null,
+            'type' => $data['type'] === 'percentage' ? '%' : 'Fixed',
         ];
     }
 }

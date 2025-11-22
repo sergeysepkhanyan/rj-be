@@ -13,10 +13,11 @@ use App\Http\Controllers\API\FilesController;
 use App\Http\Controllers\API\StaffController;
 use App\Http\Controllers\API\UsersController;
 use App\Http\Controllers\API\Admin\StaffController as AdminStaffController;
+use App\Http\Controllers\API\Admin\BookingsController as AdminBookingsController;
 use App\Http\Controllers\API\WeekdaysController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['cors.custom'])->group(function () {
+Route::middleware(['cors.custom', 'set.locale'])->group(function () {
 
     Route::prefix('content')->group(function () {
         Route::get('/home', [PageContentController::class, 'home']);
@@ -57,14 +58,17 @@ Route::middleware(['cors.custom'])->group(function () {
 
         Route::get('/admin/staff', [AdminStaffController::class, 'index']);
         Route::post('/admin/staff/create', [AdminStaffController::class, 'store']);
-        Route::put('/admin/staff/update/{id}', [AdminStaffController::class, 'update']);
-        Route::delete('/admin/staff/delete/{id}', [AdminStaffController::class, 'destroy']);;
+        Route::put('/admin/staff/update/{user}', [AdminStaffController::class, 'update']);
+        Route::delete('/admin/staff/delete/{user}', [AdminStaffController::class, 'destroy']);;
         Route::post('/admin/staff/create-many', [AdminStaffController::class, 'createMany']);
         Route::post('/admin/staff/update-many', [AdminStaffController::class, 'updateMany']);
-        Route::patch('/admin/staff/add-referral/{id}', [AdminStaffController::class, 'addReferral']);
+        Route::patch('/admin/staff/add-referral/{user}', [AdminStaffController::class, 'addReferral']);
 
         Route::post('/admin/product/create', [AdminProductsController::class, 'store']);
-        Route::put('/admin/product/update/{id}', [AdminProductsController::class, 'update']);
+        Route::put('/admin/product/update/{product}', [AdminProductsController::class, 'update']);
+
+        Route::post('/admin/booking/break', [AdminBookingsController::class, 'storeBreak']);
+        Route::get('/admin/bookings', [AdminBookingsController::class, 'index']);
 
         Route::get('/referrals', [ReferralsController::class, 'index']);
     });

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ChangeUserPasswordRequest;
+use App\Http\Requests\UpdateUserDetailsRequest;
 use App\Http\Resources\UserResource;
 use App\Services\ApiResponse;
 use App\Services\UserService;
@@ -18,7 +20,7 @@ class UsersController extends Controller
         $this->userService = $userService;
     }
 
-    public function updateDetails(Request $request): JsonResponse
+    public function updateDetails(UpdateUserDetailsRequest $request): JsonResponse
     {
         try {
             $user = auth()->user();
@@ -26,23 +28,19 @@ class UsersController extends Controller
             if (!$user) {
                 return ApiResponse::error(['message' => 'Unauthorized'], 'Unauthorized');
             }
-            $data = $request->validate([
-                'name'  => 'sometimes|required|string|max:255',
-                'email' => 'sometimes|required|email|unique:users,email,' . $user->id,
-                'mobile' => 'sometimes|required|string|unique:users,mobile,' . $user->id,
-                'date_of_birth' => 'sometimes|required|date|date_format:Y-m-d|before_or_equal:' . now()->subYears(18)->toDateString(),
-            ]);
 
+            $data = $request->validated();
             $user = $this->userService->updateUser($user->id, $data);
+
             return ApiResponse::success([
                 'user' => new UserResource($user),
             ], 'User updated successfully.');
-        } catch (\Exception $e){
+        } catch (\Exception $e) {
             return ApiResponse::error();
         }
     }
 
-    public function changePassword(Request $request): JsonResponse
+    public function changePassword(ChangeUserPasswordRequest $request): JsonResponse
     {
         try {
             $user = auth()->user();
@@ -51,15 +49,11 @@ class UsersController extends Controller
                 return ApiResponse::error(['message' => 'Unauthorized'], 'Unauthorized');
             }
 
-            $data = $request->validate([
-                'old_password' => 'required|string',
-                'password' => 'required|string|min:8|confirmed',
-            ]);
-
+            $data = $request->validated();
             $result = $this->userService->changePassword($user->id, $data);
 
             if (!$result['success']) {
-                return ApiResponse::error(['message' => $result['message']], '' , 422);
+                return ApiResponse::error(['message' => $result['message']], '', 422);
             }
 
             return ApiResponse::success([
@@ -69,6 +63,4 @@ class UsersController extends Controller
             return ApiResponse::error();
         }
     }
-
-
 }

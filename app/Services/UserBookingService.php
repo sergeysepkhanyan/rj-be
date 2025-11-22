@@ -2,10 +2,12 @@
 
 namespace App\Services;
 
+use App\Filters\BookingFilter;
 use App\Models\UserBooking;
 use App\Repositories\Interfaces\ServiceRepositoryInterface;
 use App\Repositories\Interfaces\UserBookingRepositoryInterface;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Carbon;
 
 class UserBookingService
 {
@@ -41,33 +43,50 @@ class UserBookingService
         return $this->userBookingRepository->delete($id);
     }
 
-    public function getPaginatedBookings(?string $search = null, int $perPage = 10): LengthAwarePaginator
+    public function getPaginatedBookings(?BookingFilter $filter = null, int $perPage = 10): LengthAwarePaginator
     {
-        return $this->userBookingRepository->paginateWithSearch($search, $perPage);
+        return $this->userBookingRepository->paginateWithFilter($filter, $perPage);
     }
 
-    public function createBreak(array $data): UserBooking
+    public function createBreak(array $data): UserBooking | null
     {
+        $start = Carbon::parse("{$data['date']} {$data['start_time']}");
+        $end = Carbon::parse("{$data['date']} {$data['end_time']}");
+        $duration = $start->diffInMinutes($end);
 
-        // Convert to Carbon for overlap check
-        $start = Carbon::parse("{$data['date']} {$data['time']}");
-        $end = $start->copy()->addMinutes($data['duration']);
-
-        // Check overlap with existing bookings
         $hasOverlap = UserBooking::where('master_id', $data['master_id'])
             ->where('date', $data['date'])
             ->where(function ($query) use ($start, $end) {
-                $query->whereBetween('time', [$start->format('H:i'), $end->format('H:i')])
-                    ->orWhereRaw('? BETWEEN time AND ADDTIME(time, SEC_TO_TIME(duration * 60))', [$start->format('H:i')]);
+                $query->where('time', '<', $end->format('H:i'))
+                    ->whereRaw('ADDTIME(time, SEC_TO_TIME(duration * 60)) > ?', [$start->format('H:i')]);
             })
             ->exists();
 
+        if ($hasOverlap) {
+            return null;
+        }
 
+        $breakData = [
+            'client_id' => null,
+            'master_id' => $data['master_id'],
+            'discount_type' => null,
+            'discount_amount' => null,
+            'discount' => null,
+            'payment_amount' => null,
+            'payment_currency' => null,
+            'payment_status' => null,
+            'sub_service_id' => null,
+            'date' => $data['date'],
+            'time' => $start->format('H:i'),
+            'end_time' => $end->format('H:i'),
+            'name' => 'Break',
+            'email' => null,
+            'mobile' => null,
+            'notes' => $data['notes'] ?? null,
+            'type' => 'break',
+            'duration' => $duration,
+        ];
 
-        $data['type'] = 'break';
-        $data['client_id'] = null;
-        $data['payment_status'] = null;
-
-        return $this->userBookingRepository->create($data);
+        return $this->userBookingRepository->create($breakData);
     }
 }

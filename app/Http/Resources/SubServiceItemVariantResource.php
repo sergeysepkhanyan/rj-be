@@ -13,18 +13,18 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * @property mixed $duration_unit
  * @property mixed $id
  */
-class SubServiceItemVariantResource extends JsonResource
+class SubServiceItemVariantResource extends BaseResource
 {
     public function toArray($request): array
     {
+        $data = parent::toArray($request);
         return [
-            'id' => $this->id ?? null,
-            'name' => $this->name ?? null,
-            'duration' => $this->duration ?? null,
-            'duration_unit' => $this->duration_unit ?? null,
-            'price' => $this->price ?? null,
-            'currency' => $this->currency ?? null,
+            'id' => $data['id'] ?? null,
+            'name' => $data['name'] ?? null,
+            'duration' => $data['duration'] ?? null,
+            'duration_unit' => $data['duration_unit'] ?? null,
+            'price' => $data['price'] ?? null,
+            'currency' => $data['currency'] ?? null,
         ];
     }
 }
-

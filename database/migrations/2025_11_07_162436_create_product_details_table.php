@@ -15,7 +15,9 @@ return new class extends Migration
             $table->id();
             $table->foreignId('product_id')->nullable()->constrained('products')->nullOnDelete();
             $table->text('details')->nullable();
+            $table->text('details_ar')->nullable();
             $table->text('description')->nullable();
+            $table->text('description_ar')->nullable();
             $table->timestamps();
         });
     }

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\UploadFileRequest;
+use App\Http\Requests\UploadMultipleFilesRequest;
 use App\Services\ApiResponse;
 use App\Services\FileService;
 use Illuminate\Http\Request;
@@ -15,20 +17,10 @@ class FilesController extends Controller
     {
         $this->fileService = $fileService;
     }
-    public function upload(Request $request): JsonResponse
+    public function upload(UploadFileRequest $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'slug' => 'required|string',
-            'image' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
-        ]);
-
-        if ($validator->fails()) {
-            return ApiResponse::error($validator->errors(), 'Validation failed', 422);
-        }
-
         try {
             $slug = $request->get('slug');
-
             $imagePath = $this->fileService->upload($request->file('image'), $slug);
 
             return ApiResponse::success(['image' => $imagePath], 'Image uploaded successfully');
@@ -37,18 +29,8 @@ class FilesController extends Controller
         }
     }
 
-    public function uploadMultiple(Request $request): JsonResponse
+    public function uploadMultiple(UploadMultipleFilesRequest $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'slug' => 'required|string',
-            'images' => 'required|array',
-            'images.*' => 'required|file|mimes:jpeg,png,jpg,gif,svg,pdf,doc,docx|max:2048',
-        ]);
-
-        if ($validator->fails()) {
-            return ApiResponse::error($validator->errors(), 'Validation failed', 422);
-        }
-
         try {
             $slug = $request->get('slug');
             $paths = $this->fileService->uploadMultiple($request->file('images'), $slug);

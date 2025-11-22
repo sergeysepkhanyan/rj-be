@@ -13,6 +13,7 @@ class SubServiceItem extends Model
     protected $fillable = [
         'sub_service_id',
         'name',
+        'name_ar',
         'type',
         'price',
         'currency',

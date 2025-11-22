@@ -2,21 +2,18 @@
 
 namespace App\Http\Resources;
 
-use Illuminate\Http\Resources\Json\JsonResource;
-
-/**
- * @property mixed $id
- */
-class ProductDetailResource extends JsonResource
+class ProductDetailResource extends BaseResource
 {
     public function toArray($request): array
     {
+        $data = parent::toArray($request);
         return [
-            'id' => $this->id,
-            'details' => $this->details ?? null,
-            'description' => $this->description ?? null,
+            'id' => $data['id'] ?? null,
+            'details' => $data['details'] ?? null,
+            'description' => $data['description'] ?? null,
         ];
     }
 }
+
 
 

@@ -11,17 +11,17 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * @property mixed $id
  * @property mixed $items
  */
-class SubServiceResource extends JsonResource
+class SubServiceResource extends BaseResource
 {
     public function toArray($request): array
     {
+        $data = parent::toArray($request);
         return [
-            'id' => $this->id,
-            'name' => $this->name ?? null,
-            'description' => $this->description ?? null,
+            'id' => $data['id'] ?? null,
+            'name' => $data['name'] ?? null,
+            'description' => $data['description'] ?? null,
             'image' => $this->image ? asset('storage/' . $this->image) : null,
-            'items' => SubServiceItemResource::collection($this->items)
+            'items' => SubServiceItemResource::collection($this->items),
         ];
     }
 }
-

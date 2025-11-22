@@ -12,6 +12,7 @@ class SubServiceItemVariant extends Model
     protected $fillable = [
         'sub_service_item_id',
         'name',
+        'name_ar',
         'price',
         'currency',
         'duration',

@@ -15,7 +15,9 @@ return new class extends Migration
             $table->id();
             $table->foreignId('service_id')->nullable()->constrained()->nullOnDelete();
             $table->string('name');
+            $table->string('name_ar')->nullable();
             $table->string('description')->nullable();
+            $table->string('description_ar')->nullable();
             $table->string('image')->nullable();
             $table->softDeletes();
             $table->timestamps();

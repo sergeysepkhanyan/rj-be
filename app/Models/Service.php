@@ -11,7 +11,9 @@ class Service extends Model
     use SoftDeletes;
     protected $fillable = [
         'name',
+        'name_ar',
         'description',
+        'description_ar',
         'image'
     ];
 

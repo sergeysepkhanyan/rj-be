@@ -19,6 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => RoleMiddleware::class,
             'jwt.custom' => JwtCustomMiddleware::class,
             'cors.custom' => \App\Http\Middleware\Cors::class,
+            'set.locale' => \App\Http\Middleware\SetLocale::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

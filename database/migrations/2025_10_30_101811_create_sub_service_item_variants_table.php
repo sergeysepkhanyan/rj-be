@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('sub_service_item_id')->nullable()->constrained()->nullOnDelete();
             $table->string('name');
+            $table->string('name_ar')->nullable();
             $table->decimal('price', 8, 2)->default(0)->nullable();
             $table->string('currency')->nullable();
             $table->decimal('duration', 5, 2)->default(0)->nullable();

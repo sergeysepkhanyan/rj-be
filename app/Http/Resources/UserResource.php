@@ -13,17 +13,19 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * @property mixed $subservices
  * @method relationLoaded(string $string)
  */
-class UserResource extends JsonResource
+class UserResource extends BaseResource
 {
     public function toArray($request): array
     {
+        $data = parent::toArray($request);
+
         return [
-            'id' => $this->id,
-            'name' => $this->name ?? null,
-            'email' => $this->email ?? null,
-            'mobile' => $this->mobile ?? null,
-            'date_of_birth' => $this->date_of_birth ?? null,
-            'role' => $this->role->name ?? null
+            'id' => $data['id'] ?? null,
+            'name' => $data['name'] ?? null,
+            'email' => $data['email'] ?? null,
+            'mobile' => $data['mobile'] ?? null,
+            'date_of_birth' => $data['date_of_birth'] ?? null,
+            'role' => $this->role->name ?? null,
         ];
     }
 }

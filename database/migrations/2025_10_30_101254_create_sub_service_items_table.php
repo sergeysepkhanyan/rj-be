@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('sub_service_id')->nullable()->constrained()->nullOnDelete();
             $table->string('name');
+            $table->string('name_ar')->nullable();
             $table->enum('type', ['Simple', 'Variant Based'])->default('Simple');
             $table->decimal('price', 8, 2)->default(0)->nullable();
             $table->string('currency')->nullable();
