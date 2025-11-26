@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\API\Admin\ReferralsController;
+use App\Http\Controllers\API\PostsController;
+use App\Http\Controllers\API\Admin\PostsController as AdminPostsController;
 use App\Http\Controllers\API\ProductsController;
 use App\Http\Controllers\API\Admin\ProductsController as AdminProductsController;
 use App\Http\Controllers\API\Admin\ServicesController as AdminServicesController;
@@ -70,12 +72,16 @@ Route::middleware(['cors.custom', 'set.locale'])->group(function () {
         Route::post('/admin/booking/break', [AdminBookingsController::class, 'storeBreak']);
         Route::get('/admin/bookings', [AdminBookingsController::class, 'index']);
 
+        Route::post('/admin/post/create', [AdminPostsController::class, 'store']);
+        Route::put('/admin/post/update/{post}', [AdminPostsController::class, 'update']);
+
         Route::get('/referrals', [ReferralsController::class, 'index']);
     });
 
     Route::get('/masters', [StaffController::class, 'getMasters']);
     Route::get('/services', [ServicesController::class, 'index']);
     Route::get('/weekdays', [WeekdaysController::class, 'index']);
+    Route::get('/posts', [PostsController::class, 'index']);
 });
 
 

@@ -30,7 +30,7 @@ class UserBookingService
 
     public function createBooking(array $data)
     {
-        return $this->createBooking()->create($data);
+        return $this->userBookingRepository->create($data);
     }
 
     public function updateBooking($id, array $data): UserBooking
@@ -43,9 +43,9 @@ class UserBookingService
         return $this->userBookingRepository->delete($id);
     }
 
-    public function getPaginatedBookings(?BookingFilter $filter = null, int $perPage = 10): LengthAwarePaginator
+    public function getPaginatedBookings(?BookingFilter $filter = null, int $perPage = 15, int $page = 1): LengthAwarePaginator
     {
-        return $this->userBookingRepository->paginateWithFilter($filter, $perPage);
+        return $this->userBookingRepository->paginateWithFilter($filter, $perPage, $page);
     }
 
     public function createBreak(array $data): UserBooking | null

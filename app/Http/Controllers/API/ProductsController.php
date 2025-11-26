@@ -46,7 +46,7 @@ class ProductsController extends Controller
                 'Products retrieved successfully'
             );
         } catch (\Exception $e) {
-            return ApiResponse::error([], $e->getMessage());
+            return ApiResponse::error();
         }
     }
 

@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Repositories\Interfaces\PostRepositoryInterface;
+use App\Repositories\PostRepository;
 use App\Repositories\UserBookingRepository;
 use App\Repositories\Interfaces\UserBookingRepositoryInterface;
 use App\Repositories\Interfaces\ProductDetailRepositoryInterface;
@@ -44,6 +46,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(ProductRepositoryInterface::class, ProductRepository::class);
         $this->app->bind(ProductDetailRepositoryInterface::class, ProductDetailRepository::class);
         $this->app->bind(UserBookingRepositoryInterface::class, UserBookingRepository::class);
+        $this->app->bind(PostRepositoryInterface::class, PostRepository::class);
     }
 
     /**

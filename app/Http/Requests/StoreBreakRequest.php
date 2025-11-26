@@ -11,7 +11,7 @@ class StoreBreakRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true; // you can restrict by role if needed
+        return true;
     }
 
     public function rules(): array

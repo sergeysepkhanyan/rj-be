@@ -36,7 +36,7 @@ class UserBookingRepository implements UserBookingRepositoryInterface
         return $userBooking->delete();
     }
 
-    public function paginateWithFilter(?BookingFilter $filter = null, int $perPage = 10): LengthAwarePaginator
+    public function paginateWithFilter(?BookingFilter $filter = null, int $perPage = 15, int $page = 1): LengthAwarePaginator
     {
         $query = UserBooking::with('master')->orderBy('date')->orderBy('time');
 
@@ -44,6 +44,6 @@ class UserBookingRepository implements UserBookingRepositoryInterface
             $query = $filter->apply($query);
         }
 
-        return $query->paginate($perPage);
+        return $query->paginate($perPage, ['*'], 'page', $page);
     }
 }
