@@ -17,7 +17,7 @@ class CreatePostRequest extends FormRequest
         return true;
     }
 
-    public function rules()
+    public function rules(): array
     {
         return [
             'lang'             => ['required', 'string', 'max:5'],

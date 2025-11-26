@@ -28,9 +28,43 @@ class UserBookingService
         return $this->userBookingRepository->find($id);
     }
 
-    public function createBooking(array $data)
+    /**
+     * Create an appointment
+     */
+    public function createBooking(array $data): ?UserBooking
     {
-        return $this->userBookingRepository->create($data);
+        $start = Carbon::parse("{$data['date']} {$data['time']}");
+        $end = Carbon::parse("{$data['date']} {$data['end_time']}");
+
+        if ($this->hasOverlap($data['master_id'], $data['date'], $start->format('H:i'), $end->format('H:i'))) {
+            return null;
+        }
+
+        $duration = $start->diffInMinutes($end);
+
+        $bookingData = [
+            'client_id' => $data['client_id'] ?? null,
+            'master_id' => $data['master_id'],
+            'payment_type' => $data['payment_type'],
+            'discount_type' => $data['discount_type'] ?? null,
+            'discount_amount' => $data['discount_amount'] ?? 0,
+            'discount' => $data['discount'] ?? 0,
+            'payment_amount' => $data['payment_amount'],
+            'payment_currency' => $data['payment_currency'],
+            'payment_status' => $data['payment_status'],
+            'sub_service_id' => $data['sub_service_id'],
+            'date' => $data['date'],
+            'time' => $start->format('H:i'),
+            'end_time' => $end->format('H:i'),
+            'name' => $data['name'],
+            'email' => $data['email'] ?? null,
+            'mobile' => $data['mobile'],
+            'notes' => $data['notes'] ?? null,
+            'type' => $data['type'] ?? 'appointment',
+            'duration' => $duration,
+        ];
+
+        return $this->userBookingRepository->create($bookingData);
     }
 
     public function updateBooking($id, array $data): UserBooking
@@ -48,21 +82,16 @@ class UserBookingService
         return $this->userBookingRepository->paginateWithFilter($filter, $perPage, $page);
     }
 
+    /**
+     * Create a break
+     */
     public function createBreak(array $data): UserBooking | null
     {
         $start = Carbon::parse("{$data['date']} {$data['start_time']}");
         $end = Carbon::parse("{$data['date']} {$data['end_time']}");
         $duration = $start->diffInMinutes($end);
 
-        $hasOverlap = UserBooking::where('master_id', $data['master_id'])
-            ->where('date', $data['date'])
-            ->where(function ($query) use ($start, $end) {
-                $query->where('time', '<', $end->format('H:i'))
-                    ->whereRaw('ADDTIME(time, SEC_TO_TIME(duration * 60)) > ?', [$start->format('H:i')]);
-            })
-            ->exists();
-
-        if ($hasOverlap) {
+        if ($this->hasOverlap($data['master_id'], $data['date'], $start->format('H:i'), $end->format('H:i'))) {
             return null;
         }
 
@@ -88,5 +117,16 @@ class UserBookingService
         ];
 
         return $this->userBookingRepository->create($breakData);
+    }
+
+    public function hasOverlap(int $masterId, string $date, string $startTime, string $endTime): bool
+    {
+        return UserBooking::where('master_id', $masterId)
+            ->where('date', $date)
+            ->where(function ($query) use ($startTime, $endTime) {
+                $query->whereTime('time', '<', $endTime)
+                    ->whereTime('end_time', '>', $startTime);
+            })
+            ->exists();
     }
 }

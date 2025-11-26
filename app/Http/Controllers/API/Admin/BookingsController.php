@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API\Admin;
 
 use App\Filters\BookingFilter;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreAppointmentRequest;
 use App\Http\Requests\StoreBreakRequest;
 use App\Http\Resources\BookingResource;
 use App\Http\Resources\BreakResource;
@@ -12,7 +13,6 @@ use App\Services\UserBookingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
-use Illuminate\Support\Facades\Validator;
 
 class BookingsController extends Controller
 {
@@ -26,8 +26,9 @@ class BookingsController extends Controller
     public function index(Request $request, BookingFilter $filter): AnonymousResourceCollection
     {
         $perPage = $request->input('per_page', 10);
+        $page = $request->input('per_page', 1);
 
-        $bookings = $this->userBookingService->getPaginatedBookings($filter, $perPage);
+        $bookings = $this->userBookingService->getPaginatedBookings($filter, $perPage, $page);
 
         return BookingResource::collection($bookings)
             ->additional([
@@ -39,6 +40,25 @@ class BookingsController extends Controller
                 ],
                 'filters' => $request->only(['master_id', 'date', 'search']),
             ]);
+    }
+
+    public function storeAppointment(StoreAppointmentRequest $request): JsonResponse
+    {
+        try {
+            $data = $request->validated();
+            $booking = $this->userBookingService->createBooking($data);
+            if (!$booking) {
+                return ApiResponse::error(
+                    ['message' => 'Booking overlaps with existing booking or invalid time.'],
+                    'Validation failed', 422
+                );
+            }
+            return ApiResponse::success([
+                'booking' => new BookingResource($booking),
+            ], 'Booking created successfully');
+        } catch (\Throwable $e) {
+            return ApiResponse::error();
+        }
     }
 
     public function storeBreak(StoreBreakRequest $request): JsonResponse
