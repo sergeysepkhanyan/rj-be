@@ -7,8 +7,19 @@ use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use App\Services\ApiResponse;
 
-class UpdateProductRequest extends FormRequest
+class UpdateProductRequest extends BaseFormRequest
 {
+    protected array $fieldMap = [
+        'nameAr' => 'name_ar',
+        'descriptionAr' => 'description_ar',
+        'mainImage' => 'main_image',
+        'maxQuantity' => 'max_quantity',
+        'referralId' => 'referral_id',
+        'discountType' => 'discount_type',
+        'discountAmount' => 'discount_amount',
+        'removedFiles' => 'removed_files',
+        'newFiles' => 'new_files',
+    ];
     public function authorize(): bool
     {
         return true;
@@ -18,31 +29,31 @@ class UpdateProductRequest extends FormRequest
     {
         return [
             'name' => 'required|string|max:255',
-            'name_ar' => 'required|string|max:255',
+            'nameAr' => 'required|string|max:255',
             'description' => 'required|string',
-            'description_ar' => 'required|string',
-            'max_quantity' => 'nullable|integer',
+            'descriptionAr' => 'required|string',
+            'maxQuantity' => 'nullable|integer',
             'price' => 'required|numeric',
             'currency' => 'required|string|max:10',
-            'main_image' => 'nullable|string',
-            'referral_id' => 'nullable|integer',
+            'mainImage' => 'nullable|string',
+            'referralId' => 'nullable|integer',
             'discount' => 'nullable|boolean',
-            'discount_type' => 'nullable|string|in:percentage,amount',
-            'discount_amount' => 'nullable|numeric',
+            'discountType' => 'nullable|string|in:percentage,amount',
+            'discountAmount' => 'nullable|numeric',
             'status' => 'nullable|in:active,draft',
 
-            'removed_files' => 'nullable|array',
-            'removed_files.*' => 'string',
+            'removedFiles' => 'nullable|array',
+            'removedFiles.*' => 'string',
 
-            'new_files' => 'nullable|array',
-            'new_files.*' => 'string',
+            'newFiles' => 'nullable|array',
+            'newFiles.*' => 'string',
 
             'details' => 'nullable|array',
             'details.*.id' => 'nullable|integer',
             'details.*.details' => 'required|string',
-            'details.*.details_ar' => 'required|string',
+            'details.*.detailsAr' => 'required|string',
             'details.*.description' => 'nullable|string',
-            'details.*.description_ar' => 'nullable|string',
+            'details.*.descriptionAr' => 'nullable|string',
         ];
     }
 
