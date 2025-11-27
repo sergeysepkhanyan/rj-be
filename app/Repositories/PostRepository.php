@@ -38,7 +38,12 @@ class PostRepository implements PostRepositoryInterface
 
     public function paginated(int $perPage = 15, int $page = 1): LengthAwarePaginator
     {
-        return Post::orderBy('date')->paginate($perPage, ['*'], 'page', $page);
+        return Post::orderBy('created_at')->paginate($perPage, ['*'], 'page', $page);
+    }
+
+    public function findByUrlSlug(string $slug)
+    {
+        return Post::where('slug', $slug)->firstOrFail();
     }
 }
 

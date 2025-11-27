@@ -48,4 +48,20 @@ class PostsController extends Controller
             return ApiResponse::error();
         }
     }
+
+    public function getBySlug(string $slug): JsonResponse
+    {
+
+        try {
+            $post = $this->postService->getBySlug($slug);
+            return ApiResponse::success(
+                [
+                    'post' => new PostResource($post)
+                ],
+                'Post selected successfully'
+            );
+        } catch (\Exception $e) {
+            return ApiResponse::error();
+        }
+    }
 }

@@ -36,5 +36,10 @@ class PostService
     {
         return $this->postRepository->paginated($perPage, $page);
     }
+
+    public function getBySlug(string $slug)
+    {
+        return $this->postRepository->findByUrlSlug($slug);
+    }
 }
 

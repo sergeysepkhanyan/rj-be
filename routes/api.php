@@ -82,6 +82,7 @@ Route::middleware(['cors.custom', 'set.locale'])->group(function () {
     Route::get('/services', [ServicesController::class, 'index']);
     Route::get('/weekdays', [WeekdaysController::class, 'index']);
     Route::get('/posts', [PostsController::class, 'index']);
+    Route::get('/posts/{slug}', [PostsController::class, 'getBySlug']);
 });
 
 

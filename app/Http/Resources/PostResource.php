@@ -33,7 +33,7 @@ class PostResource extends JsonResource
             'slug'             => $this->slug,
             'preview'          => $this->preview ?? null,
             'content'          => $this->content,
-            'image'            => $this->image,
+            'image'            => $this->image ? asset('storage/' . $this->image) : null,
             'show_author'      => (bool) $this->show_author,
             'status'           => $this->status,
             'publish_date'     => $this->publish_date
