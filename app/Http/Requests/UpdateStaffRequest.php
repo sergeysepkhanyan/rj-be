@@ -7,8 +7,11 @@ use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use App\Services\ApiResponse;
 
-class UpdateStaffRequest extends FormRequest
+class UpdateStaffRequest extends BaseFormRequest
 {
+    protected array $fieldMap = [
+        'nameAr' => 'name_ar',
+    ];
     public function authorize(): bool
     {
         return true;
@@ -16,12 +19,12 @@ class UpdateStaffRequest extends FormRequest
 
     public function rules(): array
     {
-        $id = $this->route('id'); // get staff id from route
+        $id = $this->route('id');
 
         return [
             'role' => 'required|in:admin,master',
             'name' => 'required|string',
-            'name_ar' => 'required|string',
+            'nameAr' => 'required|string',
             'email' => "required_if:role,admin|email|unique:users,email,{$id}",
             'mobile' => "required_if:role,admin|string|unique:users,mobile,{$id}",
             'subservices' => 'nullable|array',

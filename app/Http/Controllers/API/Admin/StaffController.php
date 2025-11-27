@@ -54,8 +54,7 @@ class StaffController extends Controller
     public function store(StoreStaffRequest $request): JsonResponse
     {
         try {
-            $data = $request->validated();
-
+            $data = $request->all();
             if ($data['role'] === 'admin' && !$this->userService->canAddAdmins(1)) {
                 return ApiResponse::error(null, 'You can only have up to 2 admin users', 422);
             }
@@ -74,9 +73,7 @@ class StaffController extends Controller
     public function update(UpdateStaffRequest $request, User $user): JsonResponse
     {
         try {
-dd($user);
-            $data = $request->validated();
-
+            $data = $request->all();
             $user = $this->userService->updateStaffMember($user->id, $data);
 
             return ApiResponse::success([
