@@ -21,16 +21,25 @@ class SignupRequest extends FormRequest
             'email' => 'required|email|unique:users,email',
             'mobile' => 'nullable|string|unique:users,mobile',
             'password' => 'required|string|min:6|confirmed',
+            'passwordConfirmation' => 'required|string',
         ];
     }
 
-    public function messages(): array
+    protected function prepareForValidation(): void
     {
-        return [
-            'email.unique' => 'This email is already registered.',
-            'password.confirmed' => 'Password confirmation does not match.',
+        $fieldMap = [
+            'passwordConfirmation' => 'password_confirmation',
         ];
+
+        foreach ($fieldMap as $camel => $snake) {
+            if ($this->has($camel)) {
+                $this->merge([
+                    $snake => $this->input($camel),
+                ]);
+            }
+        }
     }
+
 
     protected function failedValidation(Validator $validator)
     {

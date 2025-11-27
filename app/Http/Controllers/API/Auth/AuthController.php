@@ -17,7 +17,7 @@ class AuthController extends Controller
 {
     public function signup(SignupRequest $request): JsonResponse
     {
-        $data = $request->validated();
+        $data = $request->all();
         $roleId = UserRole::where('slug', 'client')->first()->id;
         $user = User::create([
             'user_role_id' => $roleId,
