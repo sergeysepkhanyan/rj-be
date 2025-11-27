@@ -49,7 +49,7 @@ class UsersController extends Controller
                 return ApiResponse::error(['message' => 'Unauthorized'], 'Unauthorized');
             }
 
-            $data = $request->validated();
+            $data = $request->only('password', 'old_password');
             $result = $this->userService->changePassword($user->id, $data);
 
             if (!$result['success']) {

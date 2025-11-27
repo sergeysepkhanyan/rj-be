@@ -7,8 +7,13 @@ use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use App\Services\ApiResponse;
 
-class ChangeUserPasswordRequest extends FormRequest
+class ChangeUserPasswordRequest extends BaseFormRequest
 {
+    protected array $fieldMap = [
+        'oldPassword' => 'old_password',
+        'passwordConfirmation' => 'password_confirmation',
+    ];
+
     public function authorize(): bool
     {
         return true;
@@ -17,9 +22,19 @@ class ChangeUserPasswordRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'old_password' => 'required|string',
+            'oldPassword' => 'required|string',
             'password' => 'required|string|min:8|confirmed',
+            'passwordConfirmation' => 'required|string',
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('passwordConfirmation')) {
+            $this->merge([
+                'password_confirmation' => $this->input('passwordConfirmation')
+            ]);
+        }
     }
 
     protected function failedValidation(Validator $validator)
