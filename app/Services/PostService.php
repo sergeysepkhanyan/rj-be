@@ -32,9 +32,9 @@ class PostService
         return $this->postRepository->update($id, $data);
     }
 
-    public function getPaginatedPosts(int $perPage = 15, int $page = 1): LengthAwarePaginator
+    public function getPaginatedPosts($lang = 'en',int $perPage = 15, int $page = 1): LengthAwarePaginator
     {
-        return $this->postRepository->paginated($perPage, $page);
+        return $this->postRepository->paginated($lang, $perPage, $page);
     }
 
     public function getBySlug(string $slug)

@@ -23,8 +23,9 @@ class PostsController extends Controller
         try {
             $perPage = $request->get('per_page', 15);
             $page = $request->get('page', 1);
+            $lang = $request->header('Accept-Language');
 
-            $posts = $this->postService->getPaginatedPosts($perPage, $page);
+            $posts = $this->postService->getPaginatedPosts($lang, $perPage, $page);
 
             return ApiResponse::success(
                 [

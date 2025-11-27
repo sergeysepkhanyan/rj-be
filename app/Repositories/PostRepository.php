@@ -36,9 +36,9 @@ class PostRepository implements PostRepositoryInterface
         return $post->delete();
     }
 
-    public function paginated(int $perPage = 15, int $page = 1): LengthAwarePaginator
+    public function paginated($lang = 'en', int $perPage = 15, int $page = 1): LengthAwarePaginator
     {
-        return Post::orderBy('created_at')->paginate($perPage, ['*'], 'page', $page);
+        return Post::orderBy('created_at')->where('lang', $lang)->paginate($perPage, ['*'], 'page', $page);
     }
 
     public function findByUrlSlug(string $slug)
