@@ -25,8 +25,8 @@ class ServicesController
     public function store(StoreServiceRequest $request): JsonResponse
     {
         try {
-            $data = $request->validated();
-
+            $data = $request->all();
+            $data = array_intersect_key($data, array_flip((new Service)->getFillable()));
             $service = $this->serviceManagerService->createService($data);
             $service->load('subServices.items.variants');
 

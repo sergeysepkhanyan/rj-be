@@ -7,8 +7,15 @@ use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use App\Services\ApiResponse;
 
-class StoreServiceRequest extends FormRequest
+class StoreServiceRequest extends BaseFormRequest
 {
+    protected array $fieldMap = [
+        'name' => 'name',
+        'nameAr' => 'name_ar',
+        'description' => 'description',
+        'descriptionAr' => 'description_ar',
+        'image' => 'image',
+    ];
     public function authorize(): bool
     {
         return true;
@@ -17,10 +24,10 @@ class StoreServiceRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => 'required|string|max:255|unique:services',
-            'name_ar' => 'required|string|max:255|unique:services,name_ar',
+            'name' => 'required|string|max:255|unique:services,name',
+            'nameAr' => 'required|string|max:255|unique:services,name_ar',
             'description' => 'required|string',
-            'description_ar' => 'required|string',
+            'descriptionAr' => 'required|string',
             'image' => 'required|string',
         ];
     }
