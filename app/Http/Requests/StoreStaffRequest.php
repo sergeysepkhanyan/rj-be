@@ -2,13 +2,15 @@
 
 namespace App\Http\Requests;
 
-use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use App\Services\ApiResponse;
 
-class StoreStaffRequest extends FormRequest
+class StoreStaffRequest extends BaseFormRequest
 {
+    protected array $fieldMap = [
+        'nameAr' => 'name_ar',
+    ];
     public function authorize(): bool
     {
         return true;
@@ -19,7 +21,7 @@ class StoreStaffRequest extends FormRequest
         return [
             'role' => 'required|in:admin,master',
             'name' => 'required|string',
-            'name_ar' => 'required|string',
+            'nameAr' => 'required|string',
             'email' => 'required|email|unique:users,email',
             'mobile' => 'required|string|unique:users,mobile',
             'subservices' => 'nullable|array',
