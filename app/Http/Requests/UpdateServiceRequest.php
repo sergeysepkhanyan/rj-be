@@ -7,8 +7,15 @@ use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use App\Services\ApiResponse;
 
-class UpdateServiceRequest extends FormRequest
+class UpdateServiceRequest extends BaseFormRequest
 {
+    protected array $fieldMap = [
+        'name' => 'name',
+        'nameAr' => 'name_ar',
+        'description' => 'description',
+        'descriptionAr' => 'description_ar',
+        'image' => 'image',
+    ];
     public function authorize(): bool
     {
         return true;
@@ -20,12 +27,13 @@ class UpdateServiceRequest extends FormRequest
 
         return [
             'name' => 'required|string|max:255|unique:services,name,' . $serviceId,
-            'name_ar' => 'required|string|max:255|unique:services,name_ar,' . $serviceId,
+            'nameAr' => 'required|string|max:255|unique:services,name_ar,' . $serviceId,
             'description' => 'required|string',
-            'description_ar' => 'required|string',
+            'descriptionAr' => 'required|string',
             'image' => 'nullable|string',
         ];
     }
+
 
     protected function failedValidation(Validator $validator)
     {
