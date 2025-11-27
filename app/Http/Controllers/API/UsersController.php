@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\ChangeUserPasswordRequest;
 use App\Http\Requests\UpdateUserDetailsRequest;
 use App\Http\Resources\UserResource;
+use App\Models\User;
 use App\Services\ApiResponse;
 use App\Services\UserService;
 use Illuminate\Http\JsonResponse;
@@ -29,7 +30,8 @@ class UsersController extends Controller
                 return ApiResponse::error(['message' => 'Unauthorized'], 'Unauthorized');
             }
 
-            $data = $request->validated();
+            $data = $request->all();
+            $data = array_intersect_key($data, array_flip((new User)->getFillable()));
             $user = $this->userService->updateUser($user->id, $data);
 
             return ApiResponse::success([

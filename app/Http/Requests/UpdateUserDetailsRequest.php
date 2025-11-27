@@ -7,8 +7,12 @@ use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use App\Services\ApiResponse;
 
-class UpdateUserDetailsRequest extends FormRequest
+class UpdateUserDetailsRequest extends BaseFormRequest
 {
+    protected array $fieldMap = [
+        'dateOfBirth' => 'date_of_birth',
+    ];
+
     public function authorize(): bool
     {
         return true;
@@ -22,7 +26,7 @@ class UpdateUserDetailsRequest extends FormRequest
             'name' => 'sometimes|required|string|max:255',
             'email' => "sometimes|required|email|unique:users,email,{$userId}",
             'mobile' => "sometimes|required|string|unique:users,mobile,{$userId}",
-            'date_of_birth' => 'sometimes|required|date|date_format:Y-m-d|before_or_equal:' . now()->subYears(18)->toDateString(),
+            'dateOfBirth' => 'sometimes|required|date|date_format:Y-m-d|before_or_equal:' . now()->subYears(18)->toDateString(),
         ];
     }
 
