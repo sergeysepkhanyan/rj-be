@@ -8,8 +8,14 @@ use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Validation\Rule;
 use App\Services\ApiResponse;
 
-class StoreSubServiceRequest extends FormRequest
+class StoreSubServiceRequest extends BaseFormRequest
 {
+    protected array $fieldMap = [
+        'serviceId' => 'service_id',
+        'nameAr' => 'name_ar',
+        'descriptionAr' => 'description_ar',
+        'durationUnit' => 'duration_unit',
+    ];
     public function authorize(): bool
     {
         return true;
@@ -17,40 +23,43 @@ class StoreSubServiceRequest extends FormRequest
 
     public function rules(): array
     {
+        $serviceId = $this->input('serviceId');
+
         return [
-            'service_id' => 'required|integer|exists:services,id',
+            'serviceId' => 'required|integer|exists:services,id',
             'name' => [
                 'required', 'string', 'max:255',
-                Rule::unique('sub_services')->where(fn($query) =>
-                $query->where('service_id', $this->input('service_id'))
+                Rule::unique('sub_services', 'name')->where(fn($query) =>
+                $query->where('service_id', $serviceId)
                 ),
             ],
-            'name_ar' => [
+            'nameAr' => [
                 'required', 'string', 'max:255',
-                Rule::unique('sub_services')->where(fn($query) =>
-                $query->where('service_id', $this->input('service_id'))
+                Rule::unique('sub_services', 'name_ar')->where(fn($query) =>
+                $query->where('service_id', $serviceId)
                 ),
             ],
             'description' => 'required|string',
-            'description_ar' => 'required|string',
+            'descriptionAr' => 'required|string',
             'image' => 'required|string',
             'items' => 'required|array',
             'items.*.name' => 'required|string|max:255',
-            'items.*.name_ar' => 'required|string|max:255',
+            'items.*.nameAr' => 'required|string|max:255',
             'items.*.type' => 'required|string|in:Simple,Variant Based',
             'items.*.price' => 'required_if:items.*.type,Simple|nullable|numeric',
             'items.*.duration' => 'required_if:items.*.type,Simple|nullable|numeric',
             'items.*.currency' => 'required_if:items.*.type,Simple|nullable|string',
-            'items.*.duration_unit' => 'required_if:items.*.type,Simple|nullable|string',
+            'items.*.durationUnit' => 'required_if:items.*.type,Simple|nullable|string',
             'items.*.variants' => 'required_if:items.*.type,Variant Based|array',
             'items.*.variants.*.name' => 'required_if:items.*.type,Variant Based|string|max:255',
-            'items.*.variants.*.name_ar' => 'required_if:items.*.type,Variant Based|string|max:255',
+            'items.*.variants.*.nameAr' => 'required_if:items.*.type,Variant Based|string|max:255',
             'items.*.variants.*.price' => 'required_if:items.*.type,Variant Based|numeric',
             'items.*.variants.*.duration' => 'required_if:items.*.type,Variant Based|numeric',
             'items.*.variants.*.currency' => 'required_if:items.*.type,Variant Based|string',
-            'items.*.variants.*.duration_unit' => 'required_if:items.*.type,Variant Based|string',
+            'items.*.variants.*.durationUnit' => 'required_if:items.*.type,Variant Based|string',
         ];
     }
+
 
     protected function failedValidation(Validator $validator)
     {

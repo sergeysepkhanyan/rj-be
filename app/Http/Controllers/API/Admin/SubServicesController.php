@@ -27,7 +27,6 @@ class SubServicesController
     public function store(StoreSubServiceRequest $request): JsonResponse
     {
         try {
-            $data = $request->validated();
 
             $subService = $this->subServiceManagerService->createSubServiceWithItems(
                 $request->only(['name', 'description', 'name_ar', 'description_ar', 'service_id', 'image']),
@@ -48,7 +47,6 @@ class SubServicesController
     public function update(UpdateSubServiceRequest $request, SubService $subService): JsonResponse
     {
         try {
-            $data = $request->validated();
 
             $subService = $this->subServiceManagerService->updateSubServiceWithItems(
                 $subService,
