@@ -23,4 +23,9 @@ class Post extends Model
         'status',
         'publish_date',
     ];
+
+    protected $casts = [
+        'publish_date' => 'date',
+    ];
+
 }

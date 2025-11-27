@@ -4,11 +4,22 @@ namespace App\Http\Requests;
 
 use App\Services\ApiResponse;
 use Illuminate\Contracts\Validation\Validator;
-use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Validation\Rule;
 
-class CreatePostRequest extends FormRequest
+class CreatePostRequest extends BaseFormRequest
 {
+    protected array $fieldMap = [
+        'urlSlug'          => 'slug',
+        'previewText'      => 'preview',
+        'featureImage'     => 'image',
+        'showAuthorName'   => 'show_author',
+        'publishDate'      => 'publish_date',
+        'metaTitle'        => 'meta_title',
+        'metaDescription'  => 'meta_description',
+        'authorName'       => 'author',
+    ];
+
     /**
      * Determine if the user is authorized to make this request.
      */
@@ -20,17 +31,33 @@ class CreatePostRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'lang'             => ['required', 'string', 'max:5'],
-            'title'            => ['required', 'string', 'max:255'],
-            'slug'             => ['required', 'string', 'max:255', 'unique:posts,slug'],
-            'preview'          => ['required', 'string'],
-            'content'          => ['required', 'string'],
-            'image'            => ['required', 'string'],
-            'show_author'      => ['nullable', 'boolean'],
-            'status'           => ['required', 'in:Draft,Published,Archived'],
-            'publish_date'     => ['nullable', 'date', 'before_or_equal:today'],
+            'title'           => ['required', 'string'],
+            'urlSlug' => [
+                'required',
+                'string',
+                'max:255',
+                'regex:/^[a-z0-9-]+$/',
+                Rule::unique('posts', 'slug'),
+            ],
+            'previewText'     => ['required', 'string'],
+            'content'         => ['required', 'string'],
+            'featureImage'    => ['nullable', 'string'],
+            'publishDate'     => ['nullable', 'date', 'before_or_equal:today'],
+            'showAuthorName'  => ['nullable', 'boolean'],
+            'status'          => ['required', 'in:Draft,Published,Archived'],
+            'authorName'     => ['nullable', 'string', 'max:255'],
         ];
     }
+
+    protected function prepareForValidation(): void
+    {
+        if (!$this->has('authorName')) {
+            $this->merge([
+                'authorName' => auth()->user()->name,
+            ]);
+        }
+    }
+
 
     /**
      * Override failed validation to use custom API response

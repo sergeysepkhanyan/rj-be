@@ -11,8 +11,19 @@ use Illuminate\Validation\Rule;
 /**
  * @property mixed $post
  */
-class UpdatePostRequest extends FormRequest
+class UpdatePostRequest extends BaseFormRequest
 {
+    protected array $fieldMap = [
+        'urlSlug'          => 'slug',
+        'previewText'      => 'preview',
+        'featureImage'     => 'image',
+        'showAuthorName'   => 'show_author',
+        'publishDate'      => 'publish_date',
+        'metaTitle'        => 'meta_title',
+        'metaDescription'  => 'meta_description',
+        'authorName'       => 'author',
+    ];
+
     /**
      * Determine if the user is authorized to make this request.
      */
@@ -21,23 +32,23 @@ class UpdatePostRequest extends FormRequest
         return true;
     }
 
-    public function rules()
+    public function rules(): array
     {
         return [
             'lang'             => ['required', 'string', 'max:5'],
             'title'            => ['required', 'string', 'max:255'],
-            'slug'             => [
+            'urlSlug'          => [
                 'required',
                 'string',
                 'max:255',
                 Rule::unique('posts', 'slug')->ignore($this->post->id),
             ],
-            'preview'          => ['required', 'string'],
+            'previewText'      => ['required', 'string'],
             'content'          => ['required', 'string'],
-            'image'            => ['nullable', 'string'],
-            'show_author'      => ['nullable', 'boolean'],
+            'featureImage'     => ['nullable', 'string'],
+            'showAuthorName'   => ['nullable', 'boolean'],
             'status'           => ['required', 'in:Draft,Published,Archived'],
-            'publish_date'     => ['nullable', 'date', 'before_or_equal:today'],
+            'publishDate'      => ['nullable', 'date', 'before_or_equal:today'],
         ];
     }
 
