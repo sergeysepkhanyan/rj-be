@@ -64,7 +64,7 @@ class BookingsController extends Controller
     public function storeBreak(StoreBreakRequest $request): JsonResponse
     {
         try {
-            $data = $request->validated();
+            $data = $request->only('date', 'start_time', 'end_time', 'master_id');
 
             $break = $this->userBookingService->createBreak($data);
 

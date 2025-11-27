@@ -7,8 +7,13 @@ use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use App\Services\ApiResponse;
 
-class StoreBreakRequest extends FormRequest
+class StoreBreakRequest extends BaseFormRequest
 {
+    protected array $fieldMap = [
+        'masterId' => 'master_id',
+        'startTime' => 'start_time',
+        'endTime' => 'end_time',
+    ];
     public function authorize(): bool
     {
         return true;
@@ -17,21 +22,11 @@ class StoreBreakRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'master_id' => [
-                'required',
-                'exists:users,id,user_role_id,3'
-            ],
+            'masterId' => ['required', 'exists:users,id,user_role_id,3'],
             'date' => 'required|date',
-            'start_time' => 'required|date_format:H:i',
-            'end_time' => 'required|date_format:H:i|after:start_time',
-        ];
-    }
-
-    public function messages(): array
-    {
-        return [
-            'master_id.exists' => 'Selected master is invalid.',
-            'end_time.after' => 'End time must be after start time.',
+            'startTime' => 'required|date_format:H:i',
+            'endTime' => 'required|date_format:H:i|after:startTime',
+            'notes' => 'nullable|string',
         ];
     }
 
