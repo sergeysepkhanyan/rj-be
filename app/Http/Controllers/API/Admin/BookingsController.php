@@ -8,6 +8,7 @@ use App\Http\Requests\StoreAppointmentRequest;
 use App\Http\Requests\StoreBreakRequest;
 use App\Http\Resources\BookingResource;
 use App\Http\Resources\BreakResource;
+use App\Models\UserBooking;
 use App\Services\ApiResponse;
 use App\Services\UserBookingService;
 use Illuminate\Http\JsonResponse;
@@ -45,7 +46,9 @@ class BookingsController extends Controller
     public function storeAppointment(StoreAppointmentRequest $request): JsonResponse
     {
         try {
-            $data = $request->validated();
+            $data = $request->all();
+            $data = array_intersect_key($data, array_flip((new UserBooking)->getFillable()));
+
             $booking = $this->userBookingService->createBooking($data);
             if (!$booking) {
                 return ApiResponse::error(
