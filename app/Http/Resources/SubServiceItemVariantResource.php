@@ -22,7 +22,7 @@ class SubServiceItemVariantResource extends BaseResource
             'id' => $data['id'] ?? null,
             'name' => $data['name'] ?? null,
             'duration' => $data['duration'] ?? null,
-            'duration_unit' => $data['duration_unit'] ?? null,
+            'durationUnit' => $data['duration_unit'] ?? null,
             'price' => $data['price'] ?? null,
             'currency' => $data['currency'] ?? null,
         ];

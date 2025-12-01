@@ -27,9 +27,9 @@ class StaffResource extends BaseResource
             'name' => $data['name'] ?? null,
             'email' => $data['email'] ?? null,
             'mobile' => $data['mobile'] ?? null,
-            'date_of_birth' => $data['date_of_birth'] ?? null,
+            'dateOfBirth' => $data['date_of_birth'] ?? null,
             'role' => $this->role->name ?? null,
-            'bookings_count' => $this->masterBookings->count(),
+            'bookingsCount' => $this->masterBookings->count(),
             'referral' => $this->referral ? new ReferralResource($this->referral) : null,
             'subservices' => $this->when(
                 $roleSlug === 'master',

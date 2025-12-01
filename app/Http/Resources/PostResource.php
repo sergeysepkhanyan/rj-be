@@ -28,15 +28,15 @@ class PostResource extends JsonResource
             'lang'             => $this->lang,
             'author'           => $this->author,
             'title'            => $this->title,
-            'meta_title'       => $this->meta_title ?? null,
-            'meta_description' => $this->meta_description ?? null,
+            'metaTitle'       => $this->meta_title ?? null,
+            'metaDescription' => $this->meta_description ?? null,
             'slug'             => $this->slug,
             'preview'          => $this->preview ?? null,
             'content'          => $this->content,
             'image'            => $this->image ? asset('storage/' . $this->image) : null,
-            'show_author'      => (bool) $this->show_author,
+            'showAuthor'      => (bool) $this->show_author,
             'status'           => $this->status,
-            'publish_date'     => $this->publish_date
+            'publishDate'     => $this->publish_date
         ];
     }
 }

@@ -28,7 +28,7 @@ class SubServiceItemResource extends BaseResource
         if ($this->type === 'Simple') {
             $output = array_merge($output, [
                 'duration' => $this->duration ?? null,
-                'duration_unit' => $this->duration_unit ?? null,
+                'durationUnit' => $this->duration_unit ?? null,
                 'price' => $this->price ?? null,
                 'currency' => $this->currency ?? null,
             ]);
