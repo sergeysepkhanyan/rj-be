@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Repositories\AddressRepository;
+use App\Repositories\Interfaces\AddressRepositoryInterface;
 use App\Repositories\Interfaces\PostRepositoryInterface;
 use App\Repositories\PostRepository;
 use App\Repositories\UserBookingRepository;
@@ -47,6 +49,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(ProductDetailRepositoryInterface::class, ProductDetailRepository::class);
         $this->app->bind(UserBookingRepositoryInterface::class, UserBookingRepository::class);
         $this->app->bind(PostRepositoryInterface::class, PostRepository::class);
+        $this->app->bind(AddressRepositoryInterface::class, AddressRepository::class);
     }
 
     /**
