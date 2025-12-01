@@ -21,7 +21,7 @@ class StoreStaffRequest extends BaseFormRequest
         return [
             'role' => 'required|in:admin,master',
             'name' => 'required|string',
-            'nameAr' => 'required|string',
+            'nameAr' => 'required_if:role,master|string',
             'email' => 'required|email|unique:users,email',
             'mobile' => 'required|string|unique:users,mobile',
             'subservices' => 'nullable|array',

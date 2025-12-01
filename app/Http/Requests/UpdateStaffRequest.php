@@ -24,7 +24,7 @@ class UpdateStaffRequest extends BaseFormRequest
         return [
             'role' => 'required|in:admin,master',
             'name' => 'required|string',
-            'nameAr' => 'required|string',
+            'nameAr' => 'required_if:role,master|string',
             'email' => "required_if:role,admin|email|unique:users,email,{$id}",
             'mobile' => "required_if:role,admin|string|unique:users,mobile,{$id}",
             'subservices' => 'nullable|array',

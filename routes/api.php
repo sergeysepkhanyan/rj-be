@@ -50,7 +50,7 @@ Route::middleware(['cors.custom', 'set.locale'])->group(function () {
     Route::post('/password/reset', [ResetPasswordController::class, 'reset']);
 
 
-    Route::middleware(['jwt.custom', 'role:superadmin,admin'])->group(function () {
+    Route::middleware(['jwt.custom', 'role:superadmin'])->group(function () {
 
         Route::post('/admin/services', [AdminServicesController::class, 'store']);
         Route::put('/admin/services/{service}', [AdminServicesController::class, 'update']);
@@ -64,10 +64,19 @@ Route::middleware(['cors.custom', 'set.locale'])->group(function () {
         Route::delete('/admin/staff/delete/{user}', [AdminStaffController::class, 'destroy']);;
         Route::post('/admin/staff/create-many', [AdminStaffController::class, 'createMany']);
         Route::post('/admin/staff/update-many', [AdminStaffController::class, 'updateMany']);
-        Route::patch('/admin/staff/add-referral/{user}', [AdminStaffController::class, 'addReferral']);
 
         Route::post('/admin/product/create', [AdminProductsController::class, 'store']);
         Route::put('/admin/product/update/{product}', [AdminProductsController::class, 'update']);
+
+        Route::post('/admin/post/create', [AdminPostsController::class, 'store']);
+        Route::put('/admin/post/update/{post}', [AdminPostsController::class, 'update']);
+
+        Route::get('/referrals', [ReferralsController::class, 'index']);
+    });
+
+    Route::middleware(['jwt.custom', 'role:superadmin,admin'])->group(function () {
+
+        Route::patch('/admin/staff/add-referral/{user}', [AdminStaffController::class, 'addReferral']);
 
         Route::post('/admin/booking/break', [AdminBookingsController::class, 'storeBreak']);
         Route::get('/admin/bookings', [AdminBookingsController::class, 'index']);
