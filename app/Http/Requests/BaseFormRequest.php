@@ -9,17 +9,26 @@ abstract class BaseFormRequest extends FormRequest
 {
     protected array $fieldMap = [];
 
-    /**
-     * Automatically convert fields after validation
-     */
     protected function passedValidation(): void
     {
+        $this->replace($this->mapKeysRecursively($this->all()));
+    }
+
+    private function mapKeysRecursively(array $data): array
+    {
         $mapped = [];
-        foreach ($this->all() as $key => $value) {
+
+        foreach ($data as $key => $value) {
+
             $newKey = $this->fieldMap[$key] ?? Str::snake($key);
-            $mapped[$newKey] = $value;
+
+            if (is_array($value)) {
+                $mapped[$newKey] = $this->mapKeysRecursively($value);
+            } else {
+                $mapped[$newKey] = $value;
+            }
         }
 
-        $this->replace($mapped);
+        return $mapped;
     }
 }
