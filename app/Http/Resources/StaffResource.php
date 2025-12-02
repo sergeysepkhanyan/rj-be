@@ -14,6 +14,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * @property mixed $weekends
  * @property mixed $masterBookings
  * @property mixed $referral
+ * @property mixed $image
  * @method relationLoaded(string $string)
  */
 class StaffResource extends BaseResource
@@ -25,6 +26,8 @@ class StaffResource extends BaseResource
         return [
             'id' => $data['id'] ?? null,
             'name' => $data['name'] ?? null,
+            'description' => $data['description'] ?? null,
+            'image' => $this->image ? asset('storage/' . $this->image) : null,
             'email' => $data['email'] ?? null,
             'mobile' => $data['mobile'] ?? null,
             'dateOfBirth' => $data['date_of_birth'] ?? null,

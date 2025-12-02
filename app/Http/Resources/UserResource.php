@@ -11,6 +11,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * @property mixed $date_of_birth
  * @property mixed $id
  * @property mixed $subservices
+ * @property mixed $image
  * @method relationLoaded(string $string)
  */
 class UserResource extends BaseResource
@@ -26,6 +27,7 @@ class UserResource extends BaseResource
             'mobile' => $data['mobile'] ?? null,
             'dateOfBirth' => $data['date_of_birth'] ?? null,
             'role' => $this->role->name ?? null,
+            'image' => $this->image ? asset('storage/' . $this->image) : null,
         ];
     }
 }
