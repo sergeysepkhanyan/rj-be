@@ -23,7 +23,6 @@ class ClientResource extends BaseResource
     public function toArray($request): array
     {
         $data = parent::toArray($request);
-        $roleSlug = $this->role->slug ?? null;
         return [
             'id' => $data['id'] ?? null,
             'name' => $data['name'] ?? null,
