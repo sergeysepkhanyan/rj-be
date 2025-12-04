@@ -19,7 +19,7 @@ class UploadMultipleFilesRequest extends FormRequest
         return [
             'slug' => 'required|string',
             'images' => 'required|array',
-            'images.*' => 'required|file|mimes:jpeg,png,jpg,gif,svg,pdf,doc,docx|max:2048',
+            'images.*' => 'required|file|mimes:jpeg,png,jpg,gif,svg,webp|max:2048',
         ];
     }
 
