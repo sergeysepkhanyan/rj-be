@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\API\Admin\ClientsController;
 use App\Http\Controllers\API\Admin\ReferralsController;
 use App\Http\Controllers\API\PostsController;
 use App\Http\Controllers\API\Admin\PostsController as AdminPostsController;
@@ -76,7 +77,9 @@ Route::middleware(['cors.custom', 'set.locale'])->group(function () {
 
     Route::middleware(['jwt.custom', 'role:superadmin,admin'])->group(function () {
 
-        Route::patch('/admin/staff/add-referral/{user}', [AdminStaffController::class, 'addReferral']);
+        Route::patch('/admin/clients/{user}/add-referral', [ClientsController::class, 'addReferral']);
+        Route::get('/admin/clients', [ClientsController::class, 'index']);
+
 
         Route::post('/admin/booking/break', [AdminBookingsController::class, 'storeBreak']);
         Route::get('/admin/bookings', [AdminBookingsController::class, 'index']);

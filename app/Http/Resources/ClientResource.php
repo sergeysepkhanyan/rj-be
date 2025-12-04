@@ -15,9 +15,10 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * @property mixed $masterBookings
  * @property mixed $referral
  * @property mixed $image
+ * @property mixed $clientBookings
  * @method relationLoaded(string $string)
  */
-class StaffResource extends BaseResource
+class ClientResource extends BaseResource
 {
     public function toArray($request): array
     {
@@ -32,15 +33,9 @@ class StaffResource extends BaseResource
             'mobile' => $data['mobile'] ?? null,
             'dateOfBirth' => $data['date_of_birth'] ?? null,
             'role' => $this->role->name ?? null,
-            'bookingsCount' => $this->masterBookings->count(),
-            'subservices' => $this->when(
-                $roleSlug === 'master',
-                SubServiceResource::collection($this->whenLoaded('subservices'))
-            ),
-            'weekends' => $this->when(
-                $this->relationLoaded('weekends') || $this->weekends,
-                WeekdayResource::collection($this->weekends)
-            ),
+            'bookingsCount' => $this->clientBookings->count(),
+            'ordersCount' => 0,
+            'referral' => $this->referral ? new ReferralResource($this->referral) : null
         ];
     }
 }

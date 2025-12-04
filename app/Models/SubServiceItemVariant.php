@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class SubServiceItemVariant extends Model
@@ -22,5 +23,10 @@ class SubServiceItemVariant extends Model
     public function subServiceItem(): BelongsTo
     {
         return $this->belongsTo(SubServiceItem::class);
+    }
+
+    public function booking(): MorphOne
+    {
+        return $this->morphOne(UserBookingSubserviceItem::class, 'bookable');
     }
 }

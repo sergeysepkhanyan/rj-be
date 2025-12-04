@@ -33,9 +33,16 @@ class SubServiceItemResource extends BaseResource
                 'currency' => $this->currency ?? null,
             ]);
         } else {
-            $output = array_merge($output, [
-                'variants' => SubServiceItemVariantResource::collection($this->variants),
-            ]);
+            $this->variants->map(function ($variant) use (&$output) {
+
+                $output = array_merge($output, [
+                    'duration' => $variant->duration ?? null,
+                    'durationUnit' => $variant->duration_unit ?? null,
+                    'price' => $variant->price ?? null,
+                    'currency' => $variant->currency ?? null,
+                ]);
+            });
+
         }
 
         return $output;

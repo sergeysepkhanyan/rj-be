@@ -64,5 +64,14 @@ class UserRepository implements UserRepositoryInterface
         })->get();
     }
 
+    public function paginateClients(int $perPage = 10, int $page = 1)
+    {
+        return User::whereHas('role', function ($q) {
+            $q->where('slug', 'client');
+        })
+            ->with(['role'])
+            ->orderByDesc('created_at')
+            ->paginate($perPage, ['*'], 'page', $page);
+    }
 }
 

@@ -200,5 +200,10 @@ class UserService
     {
         return $this->userRepository->allMasters();
     }
+
+    public function getPaginatedClients(int $perPage = 1, int $page = 1)
+    {
+        return $this->userRepository->paginateClients($perPage, $page);
+    }
 }
 
