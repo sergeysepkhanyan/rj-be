@@ -6,6 +6,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use App\Services\ApiResponse;
+use Illuminate\Validation\Rule;
 
 class UpdateStaffRequest extends BaseFormRequest
 {
@@ -25,8 +26,21 @@ class UpdateStaffRequest extends BaseFormRequest
             'role' => 'required|in:admin,master',
             'name' => 'required|string',
             'nameAr' => 'required_if:role,master|string',
-            'email' => "required_if:role,admin|email|unique:users,email,{$id}",
-            'mobile' => "required_if:role,admin|string|unique:users,mobile,{$id}",
+            'email' => [
+                'required_if:role,admin',
+                'email',
+                Rule::unique('users', 'email')
+                    ->ignore($id)
+                    ->whereNull('deleted_at'),
+            ],
+
+            'mobile' => [
+                'required_if:role,admin',
+                'string',
+                Rule::unique('users', 'mobile')
+                    ->ignore($id)
+                    ->whereNull('deleted_at'),
+            ],
             'subservices' => 'nullable|array',
             'subservices.*' => 'exists:sub_services,id',
             'weekends' => 'nullable|array',

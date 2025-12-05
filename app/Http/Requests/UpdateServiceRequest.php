@@ -6,6 +6,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use App\Services\ApiResponse;
+use Illuminate\Validation\Rule;
 
 class UpdateServiceRequest extends BaseFormRequest
 {
@@ -26,8 +27,23 @@ class UpdateServiceRequest extends BaseFormRequest
         $serviceId = $this->route('service')->id ?? null;
 
         return [
-            'name' => 'required|string|max:255|unique:services,name,' . $serviceId,
-            'nameAr' => 'required|string|max:255|unique:services,name_ar,' . $serviceId,
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('services', 'name')
+                    ->ignore($serviceId)
+                    ->whereNull('deleted_at'),
+            ],
+
+            'nameAr' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('services', 'name_ar')
+                    ->ignore($serviceId)
+                    ->whereNull('deleted_at'),
+            ],
             'description' => 'required|string',
             'descriptionAr' => 'required|string',
             'image' => 'nullable|string',

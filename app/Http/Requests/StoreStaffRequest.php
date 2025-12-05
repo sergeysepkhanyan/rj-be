@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use App\Services\ApiResponse;
+use Illuminate\Validation\Rule;
 
 class StoreStaffRequest extends BaseFormRequest
 {
@@ -22,8 +23,17 @@ class StoreStaffRequest extends BaseFormRequest
             'role' => 'required|in:admin,master',
             'name' => 'required|string',
             'nameAr' => 'required_if:role,master|string',
-            'email' => 'required|email|unique:users,email',
-            'mobile' => 'required|string|unique:users,mobile',
+            'email' => [
+                'required',
+                'email',
+                Rule::unique('users', 'email')->whereNull('deleted_at'),
+            ],
+
+            'mobile' => [
+                'required',
+                'string',
+                Rule::unique('users', 'mobile')->whereNull('deleted_at'),
+            ],
             'subservices' => 'nullable|array',
             'subservices.*' => 'exists:sub_services,id',
             'weekends' => 'nullable|array',

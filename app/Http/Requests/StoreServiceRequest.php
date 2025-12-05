@@ -6,6 +6,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use App\Services\ApiResponse;
+use Illuminate\Validation\Rule;
 
 class StoreServiceRequest extends BaseFormRequest
 {
@@ -24,8 +25,19 @@ class StoreServiceRequest extends BaseFormRequest
     public function rules(): array
     {
         return [
-            'name' => 'required|string|max:255|unique:services,name',
-            'nameAr' => 'required|string|max:255|unique:services,name_ar',
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('services', 'name')->whereNull('deleted_at'),
+            ],
+
+            'nameAr' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('services', 'name_ar')->whereNull('deleted_at'),
+            ],
             'description' => 'required|string',
             'descriptionAr' => 'required|string',
             'image' => 'required|string',
