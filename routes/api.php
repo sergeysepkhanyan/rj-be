@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\API\Admin\ClientsController;
+use App\Http\Controllers\API\Admin\PagesController as AdminPagesController;
+use App\Http\Controllers\API\PagesController;
 use App\Http\Controllers\API\Admin\ReferralsController;
 use App\Http\Controllers\API\Admin\SubServiceItemsController;
 use App\Http\Controllers\API\PostsController;
@@ -76,6 +78,8 @@ Route::middleware(['cors.custom', 'set.locale'])->group(function () {
         Route::put('/admin/post/update/{post}', [AdminPostsController::class, 'update']);
 
         Route::get('/referrals', [ReferralsController::class, 'index']);
+
+        Route::put('/admin/pages', [AdminPagesController::class, 'update']);
     });
 
     Route::middleware(['jwt.custom', 'role:superadmin,admin'])->group(function () {
@@ -98,6 +102,7 @@ Route::middleware(['cors.custom', 'set.locale'])->group(function () {
     Route::get('/weekdays', [WeekdaysController::class, 'index']);
     Route::get('/posts', [PostsController::class, 'index']);
     Route::get('/posts/{slug}', [PostsController::class, 'getBySlug']);
+    Route::get('/pages', [PagesController::class, 'index']);
 });
 
 
