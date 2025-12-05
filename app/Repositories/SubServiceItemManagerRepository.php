@@ -43,14 +43,10 @@ class SubServiceItemManagerRepository implements SubServiceItemRepositoryInterfa
         $createdItems = new Collection();
 
         foreach ($items as $itemData) {
-            $itemOnlyData = collect($itemData)->except('variants')->toArray();
+            $itemOnlyData = collect($itemData)->toArray();
 
             /** @var SubServiceItem $subServiceItem */
             $subServiceItem = $subService->items()->create($itemOnlyData);
-
-            if ($itemData['type'] === 'Variant Based') {
-                $this->variantRepository->createManyForSubServiceItem($subServiceItem, $itemData['variants']);
-            }
 
             $createdItems->push($subServiceItem);
         }
@@ -60,32 +56,25 @@ class SubServiceItemManagerRepository implements SubServiceItemRepositoryInterfa
 
     public function syncForSubService(SubService $subService, array $items): Collection
     {
-        $existingItems = $subService->items()->pluck('id')->toArray();
-        $requestedItems = collect($items)->pluck('id')->filter()->toArray();
-        $itemsToDelete = array_diff($existingItems, $requestedItems);
-        if (!empty($itemsToDelete)) {
-            $subService->items()->whereIn('id', $itemsToDelete)->delete();
-        }
         $syncedItems = new Collection();
+
         foreach ($items as $itemData) {
-            $itemOnlyData = collect($itemData)->except('variants')->toArray();
-            if (array_key_exists('id', $itemData) && $itemData['id'] !== null) {
-                $item = $subService->items()->find($itemData['id']);
-                $item->update($itemOnlyData);
+
+            if (!empty($itemData['id'])) {
+                $item = $subService->items()->where('id', $itemData['id'])->update($itemData);
+
             } else {
-                $item = $subService->items()->create($itemOnlyData);
-            }
-            if ($itemData['type'] === 'Variant Based') {
-                $this->variantRepository->syncForSubServiceItem($item, $itemData['variants'] ?? []);
-            } elseif ($itemData['type'] === 'Simple') {
-                $item->variants()->delete();
+                $item = $subService->items()->create($itemData);
             }
 
-            $syncedItems->push($item);
+            if (isset($item)) {
+                $syncedItems->push($item);
+            }
         }
 
         return $syncedItems;
     }
+
 
     public function update(SubServiceItem $item, array $data): SubServiceItem
     {

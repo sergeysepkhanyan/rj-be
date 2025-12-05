@@ -17,7 +17,7 @@ class ServiceFilter
 
     public function apply(Builder $query): Builder
     {
-        $this->query = $query->with('subServices.items.variants');
+        $this->query = $query->with('subServices.items');
 
         if ($this->request->has('search')) {
             $this->filterBySearch();

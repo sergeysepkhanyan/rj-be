@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\API\Admin\ClientsController;
 use App\Http\Controllers\API\Admin\ReferralsController;
+use App\Http\Controllers\API\Admin\SubServiceItemsController;
 use App\Http\Controllers\API\PostsController;
 use App\Http\Controllers\API\Admin\PostsController as AdminPostsController;
 use App\Http\Controllers\API\ProductsController;
@@ -58,6 +59,8 @@ Route::middleware(['cors.custom', 'set.locale'])->group(function () {
 
         Route::post('/admin/sub-services', [AdminSubServicesController::class, 'store']);
         Route::put('/admin/sub-services/{subService}', [AdminSubServicesController::class, 'update']);
+
+        Route::delete('/admin/sub-service-items/{subServiceItem}', [SubServiceItemsController::class, 'destroy']);
 
         Route::get('/admin/staff', [AdminStaffController::class, 'index']);
         Route::post('/admin/staff/create', [AdminStaffController::class, 'store']);

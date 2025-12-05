@@ -28,7 +28,7 @@ class ServiceManagerRepository implements ServiceRepositoryInterface
     {
         $service = Service::findOrFail($id);
         $service->update($data);
-        $service->load('subServices.items.variants');
+        $service->load('subServices.items');
         return $service;
     }
 

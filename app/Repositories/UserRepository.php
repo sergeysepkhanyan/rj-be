@@ -52,7 +52,7 @@ class UserRepository implements UserRepositoryInterface
         return User::whereHas('role', function ($q) {
             $q->whereNotIn('slug', ['superadmin', 'client']);
         })
-            ->with(['role', 'subservices.items.variants'])
+            ->with(['role', 'subservices.items'])
             ->orderByDesc('created_at')
             ->paginate($perPage, ['*'], 'page', $page);
     }

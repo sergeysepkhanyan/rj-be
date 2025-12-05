@@ -19,33 +19,14 @@ class SubServiceItemResource extends BaseResource
     public function toArray($request): array
     {
         $data = parent::toArray($request);
-        $output = [
+        return [
             'id' => $data['id'] ?? null,
             'name' => $data['name'] ?? null,
-            'type' => $data['type'] ?? null,
+            'duration' => $this->duration ?? null,
+            'durationUnit' => $this->duration_unit ?? null,
+            'price' => $this->price ?? null,
+            'currency' => $this->currency ?? null,
         ];
-
-        if ($this->type === 'Simple') {
-            $output = array_merge($output, [
-                'duration' => $this->duration ?? null,
-                'durationUnit' => $this->duration_unit ?? null,
-                'price' => $this->price ?? null,
-                'currency' => $this->currency ?? null,
-            ]);
-        } else {
-            $this->variants->map(function ($variant) use (&$output) {
-
-                $output = array_merge($output, [
-                    'duration' => $variant->duration ?? null,
-                    'durationUnit' => $variant->duration_unit ?? null,
-                    'price' => $variant->price ?? null,
-                    'currency' => $variant->currency ?? null,
-                ]);
-            });
-
-        }
-
-        return $output;
     }
 }
 

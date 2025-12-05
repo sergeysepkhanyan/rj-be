@@ -72,7 +72,6 @@ class ClientsController extends Controller
                 'user' => new ClientResource($client),
             ], 'Referral added successfully');
         } catch (\Exception $e) {
-            dd($e->getMessage());
             return ApiResponse::error();
         }
     }

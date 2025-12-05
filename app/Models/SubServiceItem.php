@@ -8,6 +8,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * @property mixed $id
+ */
 class SubServiceItem extends Model
 {
     use SoftDeletes;
@@ -15,7 +18,6 @@ class SubServiceItem extends Model
         'sub_service_id',
         'name',
         'name_ar',
-        'type',
         'price',
         'currency',
         'duration',
@@ -25,10 +27,6 @@ class SubServiceItem extends Model
     public function subService(): BelongsTo
     {
         return $this->belongsTo(SubService::class);
-    }
-
-    public function variants(): HasMany{
-        return $this->hasMany(SubServiceItemVariant::class);
     }
 
     public function booking(): MorphOne

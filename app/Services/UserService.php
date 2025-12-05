@@ -57,7 +57,7 @@ class UserService
         if ($role->slug === 'admin') {
             Mail::to($user->email)->send(new AdminAccessEmail($user, $generatedPassword));
         }
-        return $user->load('role', 'subservices.items.variants');
+        return $user->load('role', 'subservices.items');
     }
 
     public function createStaffMembers(array $usersData)
@@ -141,7 +141,7 @@ class UserService
             if (!empty($weekends)) {
                 $user->weekends()->sync($weekends);
             }
-            return $this->userRepository->find($user->id)->load('role', 'subservices.items.variants');
+            return $this->userRepository->find($user->id)->load('role', 'subservices.items');
         });
     }
 

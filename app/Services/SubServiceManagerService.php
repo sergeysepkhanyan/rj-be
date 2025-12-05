@@ -46,21 +46,26 @@ class SubServiceManagerService
         return $this->subServiceRepository->delete($id);
     }
 
-    public function createSubServiceWithItems(array $subServiceData, array $itemsData)
+    public function createSubServiceWithItems(array $subServiceData, array | null $itemsData)
     {
         return DB::transaction(function () use ($subServiceData, $itemsData) {
             $subService = $this->subServiceRepository->create($subServiceData);
-            $this->subServiceItemRepository->createManyForSubService($subService, $itemsData);
+            if($subService->type === 'Variant Based'){
+                $this->subServiceItemRepository->createManyForSubService($subService, $itemsData);
+            }
             return $subService;
         });
     }
 
-    public function updateSubServiceWithItems(SubService $subService, array $subServiceData, array $itemsData)
+    public function updateSubServiceWithItems(SubService $subService, array $subServiceData, ?array $itemsData)
     {
         return DB::transaction(function () use ($subService, $subServiceData, $itemsData) {
-            $this->subServiceRepository->update($subService, $subServiceData);
-            $this->subServiceItemRepository->syncForSubService($subService, $itemsData);
 
+            $this->subServiceRepository->update($subService, $subServiceData);
+
+            if ($subService->type === 'Variant Based') {
+                $this->subServiceItemRepository->syncForSubService($subService, $itemsData ?? []);
+            }
             return $subService;
         });
     }

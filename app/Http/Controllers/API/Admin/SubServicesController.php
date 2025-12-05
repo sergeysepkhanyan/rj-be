@@ -27,14 +27,15 @@ class SubServicesController
     public function store(StoreSubServiceRequest $request): JsonResponse
     {
         try {
-
             $subService = $this->subServiceManagerService->createSubServiceWithItems(
-                $request->only(['name', 'description', 'name_ar', 'description_ar', 'service_id', 'image']),
+                $request->only([
+                    'name', 'description', 'name_ar', 'description_ar', 'service_id', 'image', 'type', 'price','currency', 'duration', 'duration_unit'
+                ]),
                 $request->input('items')
             );
 
             $service = $subService->service;
-            $service->load('subServices.items.variants');
+            $service->load('subServices.items');
 
             return ApiResponse::success([
                 'service' => new ServiceResource($service),
@@ -50,11 +51,13 @@ class SubServicesController
 
             $subService = $this->subServiceManagerService->updateSubServiceWithItems(
                 $subService,
-                $request->only(['name', 'description', 'name_ar', 'description_ar', 'service_id', 'image']),
+                $request->only([
+                    'name', 'description', 'name_ar', 'description_ar', 'image', 'type', 'price','currency', 'duration', 'duration_unit'
+                ]),
                 $request->input('items')
             );
 
-            $subService->load('service.subServices.items.variants');
+            $subService->load('service.subServices.items');
 
             return ApiResponse::success([
                 'service' => new ServiceResource($subService->service),

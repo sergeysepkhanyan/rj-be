@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\SubServiceItem;
 use App\Repositories\Interfaces\SubServiceItemRepositoryInterface;
 
 class SubServiceItemManagerService
@@ -28,7 +29,7 @@ class SubServiceItemManagerService
         return $this->subServiceItemRepository->create($data);
     }
 
-    public function updateSubServiceItem($id, array $data)
+    public function updateSubServiceItem($id, array $data): SubServiceItem
     {
         return $this->subServiceItemRepository->update($id, $data);
     }

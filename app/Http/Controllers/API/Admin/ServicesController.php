@@ -28,7 +28,7 @@ class ServicesController
             $data = $request->all();
             $data = array_intersect_key($data, array_flip((new Service)->getFillable()));
             $service = $this->serviceManagerService->createService($data);
-            $service->load('subServices.items.variants');
+            $service->load('subServices.items');
 
             return ApiResponse::success([
                 'service' => new ServiceResource($service),

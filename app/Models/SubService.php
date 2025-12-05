@@ -7,6 +7,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * @property mixed $type
+ */
 class SubService extends Model
 {
     use SoftDeletes;
@@ -16,7 +19,12 @@ class SubService extends Model
         'name_ar',
         'description',
         'description_ar',
-        'image'
+        'image',
+        'price',
+        'currency',
+        'duration',
+        'duration_unit',
+        'type'
     ];
 
     public function service(): BelongsTo
