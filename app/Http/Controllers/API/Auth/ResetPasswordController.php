@@ -26,6 +26,9 @@ class ResetPasswordController extends Controller
             ]);
 
             $response = $this->passwordService->sendResetLink($request->identifier);
+            if(!$response['success']){
+                return ApiResponse::error(['token' => [$response['message'] ?? 'Reset link failed']], 'Reset link failed', 400);
+            }
 
             return ApiResponse::success($response, 'Reset link sent successfully');
 

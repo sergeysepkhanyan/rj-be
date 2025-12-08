@@ -14,20 +14,23 @@ class AdminAccessEmail extends Mailable
 
     public User $user;
     public string $password;
+    public string $frontendUrl;
 
     public function __construct(User $user, string $password)
     {
         $this->user = $user;
         $this->password = $password;
+        $this->frontendUrl = config('app.frontend_url', env('FRONTEND_URL'));
+
     }
 
-    public function build()
+    public function build(): AdminAccessEmail
     {
         return $this->subject('Administrator Access Granted — Romeo & Juliet Beauty Lounge')
             ->markdown('emails.admin_access', [
                 'user' => $this->user,
                 'password' => $this->password,
-                'actionUrl' => 'http://localhost:3000/admin/login'
+                'actionUrl' => $this->frontendUrl . '/admin/login'
             ]);
     }
 }
