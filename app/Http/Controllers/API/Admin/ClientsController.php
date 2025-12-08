@@ -32,7 +32,7 @@ class ClientsController extends Controller
             $staff = $this->userService->getPaginatedClients($perPage, $page);
 
             return ApiResponse::success([
-                'users' => StaffResource::collection($staff),
+                'users' => ClientResource::collection($staff),
                 'meta' => [
                     'current_page' => $staff->currentPage(),
                     'last_page' => $staff->lastPage(),
