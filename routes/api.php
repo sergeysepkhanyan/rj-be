@@ -34,6 +34,8 @@ Route::middleware(['cors.custom', 'set.locale'])->group(function () {
         Route::get('/general', [PageContentController::class, 'general']);
     });
 
+    Route::get('/pages', [PagesController::class, 'index']);
+
     Route::post('signup', [AuthController::class, 'signup']);
     Route::post('login', [AuthController::class, 'login']);
 
@@ -102,7 +104,6 @@ Route::middleware(['cors.custom', 'set.locale'])->group(function () {
     Route::get('/weekdays', [WeekdaysController::class, 'index']);
     Route::get('/posts', [PostsController::class, 'index']);
     Route::get('/posts/{slug}', [PostsController::class, 'getBySlug']);
-    Route::get('/pages', [PagesController::class, 'index']);
 });
 
 

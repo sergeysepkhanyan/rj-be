@@ -77,7 +77,7 @@ class PagesSeeder extends Seeder
                 ['slug' => $slug],
                 [
                     'title'   => ucfirst($slug),
-                    'content' => json_encode($content, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT),
+                    'content' => $content,
                     'url'     => null,
                 ]
             );
