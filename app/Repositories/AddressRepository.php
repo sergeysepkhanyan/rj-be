@@ -13,6 +13,13 @@ class AddressRepository implements AddressRepositoryInterface
         return Address::all();
     }
 
+    public function allForUser(int $userId)
+    {
+        return Address::where('user_id', $userId)
+            ->whereNull('order_id')
+            ->get();
+    }
+
     public function find($id)
     {
         return Address::findOrFail($id);
@@ -29,9 +36,8 @@ class AddressRepository implements AddressRepositoryInterface
         return $address;
     }
 
-    public function delete($id)
+    public function delete(Address $address): bool
     {
-        $address = Address::findOrFail($id);
         return $address->delete();
     }
 }

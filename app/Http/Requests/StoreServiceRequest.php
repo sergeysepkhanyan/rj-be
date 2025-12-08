@@ -2,10 +2,6 @@
 
 namespace App\Http\Requests;
 
-use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Contracts\Validation\Validator;
-use Illuminate\Http\Exceptions\HttpResponseException;
-use App\Services\ApiResponse;
 use Illuminate\Validation\Rule;
 
 class StoreServiceRequest extends BaseFormRequest
@@ -42,12 +38,5 @@ class StoreServiceRequest extends BaseFormRequest
             'descriptionAr' => 'required|string',
             'image' => 'required|string',
         ];
-    }
-
-    protected function failedValidation(Validator $validator)
-    {
-        throw new HttpResponseException(
-            ApiResponse::error($validator->errors(), 'Validation failed', 422)
-        );
     }
 }

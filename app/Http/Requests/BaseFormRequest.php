@@ -2,7 +2,10 @@
 
 namespace App\Http\Requests;
 
+use App\Services\ApiResponse;
+use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Support\Str;
 
 abstract class BaseFormRequest extends FormRequest
@@ -30,5 +33,12 @@ abstract class BaseFormRequest extends FormRequest
         }
 
         return $mapped;
+    }
+
+    protected function failedValidation(Validator $validator)
+    {
+        throw new HttpResponseException(
+            ApiResponse::error($validator->errors(), 'Validation failed', 422)
+        );
     }
 }

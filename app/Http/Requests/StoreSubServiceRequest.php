@@ -2,11 +2,7 @@
 
 namespace App\Http\Requests;
 
-use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Contracts\Validation\Validator;
-use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Validation\Rule;
-use App\Services\ApiResponse;
 
 class StoreSubServiceRequest extends BaseFormRequest
 {
@@ -55,14 +51,6 @@ class StoreSubServiceRequest extends BaseFormRequest
             'items.*.currency' => 'required_if:type,Variant Based|string',
             'items.*.durationUnit' => 'required_if:type,Variant Based|string'
         ];
-    }
-
-
-    protected function failedValidation(Validator $validator)
-    {
-        throw new HttpResponseException(
-            ApiResponse::error($validator->errors(), 'Validation failed', 422)
-        );
     }
 }
 

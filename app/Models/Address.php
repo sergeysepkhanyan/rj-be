@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToUser;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,10 +10,13 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Address extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, BelongsToUser;
 
     protected $fillable = [
         'user_id',
+        'order_id',
+        'type',
+        'is_default',
         'name',
         'last_name',
         'mobile',
@@ -21,13 +25,10 @@ class Address extends Model
         'city',
         'state',
         'zip_code',
-        'is_default',
-        'is_billing',
     ];
 
     protected $casts = [
         'is_default' => 'boolean',
-        'is_billing' => 'boolean',
     ];
 
     /**
@@ -37,4 +38,12 @@ class Address extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+//    /**
+//     * Optional: If order table exists in future
+//     */
+//    public function order(): BelongsTo
+//    {
+//        return $this->belongsTo(Order::class);
+//    }
 }

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\API\Admin\ClientsController;
 use App\Http\Controllers\API\Admin\PagesController as AdminPagesController;
+use App\Http\Controllers\API\Client\AddressController;
 use App\Http\Controllers\API\PagesController;
 use App\Http\Controllers\API\Admin\ReferralsController;
 use App\Http\Controllers\API\Admin\SubServiceItemsController;
@@ -36,6 +37,13 @@ Route::middleware(['cors.custom', 'set.locale'])->group(function () {
 
     Route::get('/pages', [PagesController::class, 'index']);
 
+    Route::get('/services', [ServicesController::class, 'index']);
+
+    Route::get('/posts', [PostsController::class, 'index']);
+    Route::get('/posts/{slug}', [PostsController::class, 'getBySlug']);
+
+    Route::get('/products', [ProductsController::class, 'index']);
+
     Route::post('signup', [AuthController::class, 'signup']);
     Route::post('login', [AuthController::class, 'login']);
 
@@ -50,7 +58,11 @@ Route::middleware(['cors.custom', 'set.locale'])->group(function () {
             return auth()->user();
         });
 
-        Route::get('/products', [ProductsController::class, 'index']);
+        Route::get('/addresses', [AddressController::class, 'index']);
+        Route::post('/addresses', [AddressController::class, 'store']);
+        Route::put('/addresses/{address}', [AddressController::class, 'update']);
+        Route::delete('/addresses/{address}', [AddressController::class, 'destroy']);
+
     });
     Route::post('/password/forgot', [ResetPasswordController::class, 'forgot']);
     Route::post('/password/reset', [ResetPasswordController::class, 'reset']);
@@ -100,10 +112,7 @@ Route::middleware(['cors.custom', 'set.locale'])->group(function () {
     });
 
     Route::get('/masters', [StaffController::class, 'getMasters']);
-    Route::get('/services', [ServicesController::class, 'index']);
     Route::get('/weekdays', [WeekdaysController::class, 'index']);
-    Route::get('/posts', [PostsController::class, 'index']);
-    Route::get('/posts/{slug}', [PostsController::class, 'getBySlug']);
 });
 
 

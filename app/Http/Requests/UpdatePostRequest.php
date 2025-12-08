@@ -2,10 +2,6 @@
 
 namespace App\Http\Requests;
 
-use App\Services\ApiResponse;
-use Illuminate\Contracts\Validation\Validator;
-use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Validation\Rule;
 
 /**
@@ -50,15 +46,5 @@ class UpdatePostRequest extends BaseFormRequest
             'status'           => ['required', 'in:Draft,Published,Archived'],
             'publishDate'      => ['nullable', 'date', 'before_or_equal:today'],
         ];
-    }
-
-    /**
-     * Override failed validation to use custom API response
-     */
-    protected function failedValidation(Validator $validator)
-    {
-        throw new HttpResponseException(
-            ApiResponse::error($validator->errors(), 'Validation failed', 422)
-        );
     }
 }

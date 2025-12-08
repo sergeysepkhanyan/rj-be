@@ -2,11 +2,6 @@
 
 namespace App\Http\Requests;
 
-use App\Services\ApiResponse;
-use Illuminate\Contracts\Validation\Validator;
-use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Http\Exceptions\HttpResponseException;
-
 class StoreAppointmentRequest extends BaseFormRequest
 {
     protected array $fieldMap = [
@@ -49,15 +44,5 @@ class StoreAppointmentRequest extends BaseFormRequest
             'type' => 'nullable|string|max:50',
             'duration' => 'nullable|string|max:50',
         ];
-    }
-
-    /**
-     * Override failed validation to use custom API response
-     */
-    protected function failedValidation(Validator $validator)
-    {
-        throw new HttpResponseException(
-            ApiResponse::error($validator->errors(), 'Validation failed', 422)
-        );
     }
 }

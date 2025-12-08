@@ -2,11 +2,6 @@
 
 namespace App\Http\Requests;
 
-use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Contracts\Validation\Validator;
-use Illuminate\Http\Exceptions\HttpResponseException;
-use App\Services\ApiResponse;
-
 class StoreBreakRequest extends BaseFormRequest
 {
     protected array $fieldMap = [
@@ -28,16 +23,6 @@ class StoreBreakRequest extends BaseFormRequest
             'endTime' => 'required|date_format:H:i|after:startTime',
             'notes' => 'nullable|string',
         ];
-    }
-
-    /**
-     * Override failed validation to use custom API response
-     */
-    protected function failedValidation(Validator $validator)
-    {
-        throw new HttpResponseException(
-            ApiResponse::error($validator->errors(), 'Validation failed', 422)
-        );
     }
 }
 

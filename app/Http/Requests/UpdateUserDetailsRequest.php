@@ -2,10 +2,6 @@
 
 namespace App\Http\Requests;
 
-use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Contracts\Validation\Validator;
-use Illuminate\Http\Exceptions\HttpResponseException;
-use App\Services\ApiResponse;
 use Illuminate\Validation\Rule;
 
 class UpdateUserDetailsRequest extends BaseFormRequest
@@ -44,13 +40,6 @@ class UpdateUserDetailsRequest extends BaseFormRequest
             ],
             'dateOfBirth' => 'sometimes|required|date|date_format:Y-m-d|before_or_equal:' . now()->subYears(18)->toDateString(),
         ];
-    }
-
-    protected function failedValidation(Validator $validator)
-    {
-        throw new HttpResponseException(
-            ApiResponse::error($validator->errors(), 'Validation failed', 422)
-        );
     }
 }
 

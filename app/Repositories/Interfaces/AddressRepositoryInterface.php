@@ -9,5 +9,5 @@ interface AddressRepositoryInterface
     public function find($id);
     public function create(array $data);
     public function update(Address $address, array $data): Address;
-    public function delete($id);
+    public function delete(Address $address);
 }

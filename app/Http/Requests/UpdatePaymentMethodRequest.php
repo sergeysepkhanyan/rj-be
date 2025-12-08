@@ -4,8 +4,12 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class UploadFileRequest extends BaseFormRequest
+class UpdatePaymentMethodRequest extends BaseFormRequest
 {
+    protected array $fieldMap = [
+        'isDefault' => 'is_default'
+    ];
+
     public function authorize(): bool
     {
         return true;
@@ -14,9 +18,7 @@ class UploadFileRequest extends BaseFormRequest
     public function rules(): array
     {
         return [
-            'slug' => 'required|string',
-            'image' => 'required|image|mimes:jpeg,png,jpg,gif,svg,webp|max:2048',
+            'isDefault' => 'boolean',
         ];
     }
 }
-

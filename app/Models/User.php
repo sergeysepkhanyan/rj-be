@@ -15,6 +15,7 @@ use Illuminate\Contracts\Auth\CanResetPassword as CanResetPasswordContract;
 
 /**
  * @property mixed $role
+ * @property mixed $id
  */
 class User extends Authenticatable implements JWTSubject, CanResetPasswordContract
 {
