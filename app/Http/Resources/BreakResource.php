@@ -20,7 +20,7 @@ class BreakResource extends BaseResource
             'description' => $data['notes'] ?? null,
             'type' => $data['type'] ?? 'break',
             'date' => $data['date'] ?? null,
-            'startTime' => $data['time'] ?? null,
+            'startTime' => $data['start_time'] ?? null,
             'endTime' => $data['end_time'] ?? null,
             'duration' => $data['duration'] ?? null,
             'status' => $data['status'] ?? 'active',

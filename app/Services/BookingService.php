@@ -68,22 +68,28 @@ class BookingService
         $end = Carbon::parse("{$data['date']} {$data['end_time']}");
         $duration = $start->diffInMinutes($end);
 
-        if ($this->hasOverlap($data['master_id'], $data['date'], $start->format('H:i'), $end->format('H:i'))) {
-            return null;
+        $hasOverlap = $this->bookingRepository->hasOverlap(
+            masterId:  $data['master_id'],
+            date:      $data['date'],
+            startTime: $data['start_time'],
+            endTime:   $data['end_time'],
+        );
+
+        if ($hasOverlap) {
+            throw new HttpResponseException(
+                ApiResponse::error([], 'Master is not available in selected time range.', 422)
+            );
         }
 
         $breakData = [
             'client_id' => null,
             'master_id' => $data['master_id'],
-            'discount_type' => null,
-            'discount_amount' => null,
             'discount' => null,
             'payment_amount' => null,
             'payment_currency' => null,
-            'payment_status' => null,
             'sub_service_id' => null,
             'date' => $data['date'],
-            'time' => $start->format('H:i'),
+            'start_time' => $start->format('H:i'),
             'end_time' => $end->format('H:i'),
             'name' => 'Break',
             'email' => null,

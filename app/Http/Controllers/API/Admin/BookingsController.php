@@ -43,21 +43,6 @@ class BookingsController extends Controller
             ]);
     }
 
-    public function storeAppointment(StoreAppointmentRequest $request): JsonResponse
-    {
-        try {
-            $data = $request->all();
-            $data = array_intersect_key($data, array_flip((new Booking)->getFillable()));
-
-            $booking = $this->bookingService->createBooking($data);
-            return ApiResponse::success([
-                'booking' => new BookingResource($booking),
-            ], 'Booking created successfully');
-        } catch (\Throwable $e) {
-            return ApiResponse::error();
-        }
-    }
-
     public function storeBreak(StoreBreakRequest $request): JsonResponse
     {
         try {
