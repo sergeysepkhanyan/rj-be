@@ -226,7 +226,7 @@ class BookingService
         $paymentMode = $data['payment_mode'] ?? 'pay_later';
 
         $paymentStatus = match ($paymentMode) {
-            'pay_now'   => 'pending',
+            'pay_now'   => 'paid',
             default     => 'unpaid',
         };
 
@@ -263,7 +263,7 @@ class BookingService
                 $this->attachServiceToBooking($booking, $serviceData);
             }
 
-            return $booking->load('services.serviceable');
+            return $booking->load('services.bookable');
         });
     }
 
@@ -313,11 +313,15 @@ class BookingService
             throw new \RuntimeException("Unknown service_type: $type");
         }
 
+        $serviceable = $serviceableClass::findOrFail($serviceData['service_id']);
+
         $booking->services()->create([
-            'serviceable_type' => $serviceableClass,
-            'serviceable_id'   => $id,
-            'price'            => $serviceData['price'] ?? null,
+            'bookable_id'   => $serviceable->id,
+            'bookable_type' => $serviceableClass,
+            'price'         => $serviceData['price'],
+            'duration_minutes' => $serviceable->duration ?? 0,
         ]);
+
     }
 
     protected function calculateDuration(string $startTime, string $endTime): int

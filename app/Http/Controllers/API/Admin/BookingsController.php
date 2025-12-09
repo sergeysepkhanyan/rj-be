@@ -9,7 +9,6 @@ use App\Http\Requests\StoreBreakRequest;
 use App\Http\Resources\BookingResource;
 use App\Http\Resources\BreakResource;
 use App\Models\Booking;
-use App\Models\UserBooking;
 use App\Services\ApiResponse;
 use App\Services\BookingService;
 use Illuminate\Http\JsonResponse;
@@ -18,11 +17,11 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class BookingsController extends Controller
 {
-    protected BookingService $userBookingService;
+    protected BookingService $bookingService;
 
-    public function __construct(BookingService $userBookingService)
+    public function __construct(BookingService $bookingService)
     {
-        $this->userBookingService = $userBookingService;
+        $this->bookingService = $bookingService;
     }
 
     public function index(Request $request, BookingFilter $filter): AnonymousResourceCollection
@@ -30,7 +29,7 @@ class BookingsController extends Controller
         $perPage = $request->input('per_page', 10);
         $page = $request->input('per_page', 1);
 
-        $bookings = $this->userBookingService->getPaginatedBookings($filter, $perPage, $page);
+        $bookings = $this->bookingService->getPaginatedBookings($filter, $perPage, $page);
 
         return BookingResource::collection($bookings)
             ->additional([
@@ -50,7 +49,7 @@ class BookingsController extends Controller
             $data = $request->all();
             $data = array_intersect_key($data, array_flip((new Booking)->getFillable()));
 
-            $booking = $this->userBookingService->createBooking($data);
+            $booking = $this->bookingService->createBooking($data);
             return ApiResponse::success([
                 'booking' => new BookingResource($booking),
             ], 'Booking created successfully');
@@ -64,7 +63,7 @@ class BookingsController extends Controller
         try {
             $data = $request->only('date', 'start_time', 'end_time', 'master_id');
 
-            $break = $this->userBookingService->createBreak($data);
+            $break = $this->bookingService->createBreak($data);
 
             if (!$break) {
                 return ApiResponse::error(
