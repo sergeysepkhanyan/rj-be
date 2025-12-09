@@ -3,6 +3,7 @@
 use App\Http\Controllers\API\Admin\ClientsController;
 use App\Http\Controllers\API\Admin\PagesController as AdminPagesController;
 use App\Http\Controllers\API\Client\AddressController;
+use App\Http\Controllers\API\Client\PaymentMethodsController;
 use App\Http\Controllers\API\PagesController;
 use App\Http\Controllers\API\Admin\ReferralsController;
 use App\Http\Controllers\API\Admin\SubServiceItemsController;
@@ -63,6 +64,11 @@ Route::middleware(['cors.custom', 'set.locale'])->group(function () {
         Route::put('/addresses/{address}', [AddressController::class, 'update']);
         Route::delete('/addresses/{address}', [AddressController::class, 'destroy']);
 
+        Route::get('/payment-methods', [PaymentMethodsController::class, 'index']);
+        Route::post('/payment-methods', [PaymentMethodsController::class, 'store']);
+        Route::put('/payment-methods/{paymentMethod}', [PaymentMethodsController::class, 'update']);
+        Route::delete('/payment-methods/{paymentMethod
+        }', [PaymentMethodsController::class, 'destroy']);
     });
     Route::post('/password/forgot', [ResetPasswordController::class, 'forgot']);
     Route::post('/password/reset', [ResetPasswordController::class, 'reset']);

@@ -17,7 +17,6 @@ class PaymentMethodRepository implements PaymentMethodRepositoryInterface
     public function allForUser(int $userId)
     {
         return PaymentMethod::where('user_id', $userId)
-            ->whereNull('order_id')
             ->get();
     }
 
