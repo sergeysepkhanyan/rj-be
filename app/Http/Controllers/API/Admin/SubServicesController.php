@@ -4,7 +4,7 @@ namespace App\Http\Controllers\API\Admin;
 
 use App\Http\Requests\StoreSubServiceRequest;
 use App\Http\Requests\UpdateSubServiceRequest;
-use App\Http\Resources\ServiceResource;
+use App\Http\Resources\AdminServiceResource;
 use App\Models\Service;
 use App\Models\SubService;
 use App\Services\ApiResponse;
@@ -38,7 +38,7 @@ class SubServicesController
             $service->load('subServices.items');
 
             return ApiResponse::success([
-                'service' => new ServiceResource($service),
+                'service' => new AdminServiceResource($service),
             ], 'Subservice created successfully.');
         } catch (\Exception $e) {
             return ApiResponse::error();
@@ -60,7 +60,7 @@ class SubServicesController
             $subService->load('service.subServices.items');
 
             return ApiResponse::success([
-                'service' => new ServiceResource($subService->service),
+                'service' => new AdminServiceResource($subService->service),
             ], 'Subservice updated successfully.');
         } catch (\Exception $e) {
             return ApiResponse::error();

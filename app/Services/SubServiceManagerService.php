@@ -69,4 +69,9 @@ class SubServiceManagerService
             return $subService;
         });
     }
+
+    public function getByServiceId(int $serviceId)
+    {
+        return $this->subServiceRepository->findByService($serviceId);
+    }
 }

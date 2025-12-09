@@ -2,8 +2,10 @@
 
 use App\Http\Controllers\API\Admin\ClientsController;
 use App\Http\Controllers\API\Admin\PagesController as AdminPagesController;
+use App\Http\Controllers\API\BookingsController;
 use App\Http\Controllers\API\Client\AddressController;
 use App\Http\Controllers\API\Client\PaymentMethodsController;
+use App\Http\Controllers\API\SubServiceMastersController;
 use App\Http\Controllers\API\PagesController;
 use App\Http\Controllers\API\Admin\ReferralsController;
 use App\Http\Controllers\API\Admin\SubServiceItemsController;
@@ -19,6 +21,7 @@ use App\Http\Controllers\API\Auth\ResetPasswordController;
 use App\Http\Controllers\API\Content\PageContentController;
 use App\Http\Controllers\API\FilesController;
 use App\Http\Controllers\API\StaffController;
+use App\Http\Controllers\API\SubServicesController;
 use App\Http\Controllers\API\UsersController;
 use App\Http\Controllers\API\Admin\StaffController as AdminStaffController;
 use App\Http\Controllers\API\Admin\BookingsController as AdminBookingsController;
@@ -37,8 +40,6 @@ Route::middleware(['cors.custom', 'set.locale'])->group(function () {
     });
 
     Route::get('/pages', [PagesController::class, 'index']);
-
-    Route::get('/services', [ServicesController::class, 'index']);
 
     Route::get('/posts', [PostsController::class, 'index']);
     Route::get('/posts/{slug}', [PostsController::class, 'getBySlug']);
@@ -59,6 +60,15 @@ Route::middleware(['cors.custom', 'set.locale'])->group(function () {
             return auth()->user();
         });
 
+        Route::get('/services', [ServicesController::class, 'index']);
+        Route::get('/services/{service}/subservices', [SubServicesController::class, 'index']);
+        Route::get('/subservices/{subservice}/masters', [SubServiceMastersController::class, 'index']);
+
+        Route::get('/bookings/available-slots', [BookingsController::class, 'availableSlots']);
+        Route::post('/bookings', [BookingsController::class, 'store']);
+
+
+
         Route::get('/addresses', [AddressController::class, 'index']);
         Route::post('/addresses', [AddressController::class, 'store']);
         Route::put('/addresses/{address}', [AddressController::class, 'update']);
@@ -76,6 +86,7 @@ Route::middleware(['cors.custom', 'set.locale'])->group(function () {
 
     Route::middleware(['jwt.custom', 'role:superadmin'])->group(function () {
 
+        Route::get('/admin/services', [AdminServicesController::class, 'index']);
         Route::post('/admin/services', [AdminServicesController::class, 'store']);
         Route::put('/admin/services/{service}', [AdminServicesController::class, 'update']);
 

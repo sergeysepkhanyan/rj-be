@@ -73,5 +73,15 @@ class UserRepository implements UserRepositoryInterface
             ->orderByDesc('created_at')
             ->paginate($perPage, ['*'], 'page', $page);
     }
+
+    public function getMastersForSubservice(int $subserviceId)
+    {
+        return User::query()
+            ->masters()
+            ->whereHas('subServices', function ($q) use ($subserviceId) {
+                $q->where('sub_services.id', $subserviceId);
+            })
+            ->get();
+    }
 }
 

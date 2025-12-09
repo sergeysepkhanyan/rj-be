@@ -2,9 +2,10 @@
 
 namespace App\Http\Controllers\API\Admin;
 
+use App\Filters\ServiceFilter;
 use App\Http\Requests\StoreServiceRequest;
 use App\Http\Requests\UpdateServiceRequest;
-use App\Http\Resources\ServiceResource;
+use App\Http\Resources\AdminServiceResource;
 use App\Models\Service;
 use App\Services\ApiResponse;
 use App\Services\ServiceManagerService;
@@ -22,6 +23,34 @@ class ServicesController
         $this->serviceManagerService = $serviceManagerService;
     }
 
+    public function index(Request $request, ServiceFilter $filter): JsonResponse
+    {
+        try {
+            $perPage = $request->query('per_page', 10);
+
+            $services = $this->serviceManagerService->getPaginatedServices($filter, $perPage);
+
+            return ApiResponse::success([
+                'services' => AdminServiceResource::collection($services),
+                'meta' => [
+                    'current_page' => $services->currentPage(),
+                    'last_page' => $services->lastPage(),
+                    'per_page' => $services->perPage(),
+                    'total' => $services->total(),
+                ],
+                'links' => [
+                    'first' => $services->url(1),
+                    'last' => $services->url($services->lastPage()),
+                    'prev' => $services->previousPageUrl(),
+                    'next' => $services->nextPageUrl(),
+                ],
+                'filters' => $request->only(['search']),
+            ]);
+        } catch (\Exception $e) {
+            return ApiResponse::error();
+        }
+    }
+
     public function store(StoreServiceRequest $request): JsonResponse
     {
         try {
@@ -31,7 +60,7 @@ class ServicesController
             $service->load('subServices.items');
 
             return ApiResponse::success([
-                'service' => new ServiceResource($service),
+                'service' => new AdminServiceResource($service),
             ], 'Service created successfully.');
         } catch (\Exception $e) {
             return ApiResponse::error();
@@ -46,7 +75,7 @@ class ServicesController
             $service = $this->serviceManagerService->updateService($service->id, $data);
 
             return ApiResponse::success([
-                'service' => new ServiceResource($service),
+                'service' => new AdminServiceResource($service),
             ], 'Service updated successfully.');
         } catch (\Exception $e) {
             return ApiResponse::error();

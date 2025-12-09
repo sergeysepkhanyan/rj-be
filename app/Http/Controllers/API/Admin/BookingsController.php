@@ -8,18 +8,19 @@ use App\Http\Requests\StoreAppointmentRequest;
 use App\Http\Requests\StoreBreakRequest;
 use App\Http\Resources\BookingResource;
 use App\Http\Resources\BreakResource;
+use App\Models\Booking;
 use App\Models\UserBooking;
 use App\Services\ApiResponse;
-use App\Services\UserBookingService;
+use App\Services\BookingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class BookingsController extends Controller
 {
-    protected UserBookingService $userBookingService;
+    protected BookingService $userBookingService;
 
-    public function __construct(UserBookingService $userBookingService)
+    public function __construct(BookingService $userBookingService)
     {
         $this->userBookingService = $userBookingService;
     }
@@ -47,15 +48,9 @@ class BookingsController extends Controller
     {
         try {
             $data = $request->all();
-            $data = array_intersect_key($data, array_flip((new UserBooking)->getFillable()));
+            $data = array_intersect_key($data, array_flip((new Booking)->getFillable()));
 
             $booking = $this->userBookingService->createBooking($data);
-            if (!$booking) {
-                return ApiResponse::error(
-                    ['message' => 'Booking overlaps with existing booking or invalid time.'],
-                    'Validation failed', 422
-                );
-            }
             return ApiResponse::success([
                 'booking' => new BookingResource($booking),
             ], 'Booking created successfully');

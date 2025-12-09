@@ -205,5 +205,10 @@ class UserService
     {
         return $this->userRepository->paginateClients($perPage, $page);
     }
+
+    public function getMastersForSubservice(int $subserviceId)
+    {
+        return $this->userRepository->getMastersForSubservice($subserviceId);
+    }
 }
 

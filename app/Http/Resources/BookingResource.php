@@ -7,6 +7,15 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
  * @property mixed $master
+ * @property mixed $date
+ * @property mixed $start_time
+ * @property mixed $end_time
+ * @property mixed $type
+ * @property mixed $status
+ * @property mixed $total_price
+ * @property mixed $final_price
+ * @property mixed $notes
+ * @property mixed $services
  */
 class BookingResource extends BaseResource
 {
@@ -16,14 +25,22 @@ class BookingResource extends BaseResource
 
         return [
             'id' => $data['id'] ?? null,
-            'name' => $data['name'] ?? 'Break',
-            'description' => $data['notes'] ?? null,
-            'type' => $data['type'] ?? 'break',
-            'date' => $data['date'] ?? null,
-            'startTime' => $data['time'] ?? null,
-            'endTime' => $data['end_time'] ?? null,
-            'duration' => $data['duration'] ?? null,
-            'status' => $data['status'] ?? 'active',
+            'date'        => $this->date,
+            'start_time'  => $this->start_time,
+            'end_time'    => $this->end_time,
+            'type'        => $this->type,
+            'status'      => $this->status,
+            'total_price' => $this->final_price,
+            'notes'       => $this->notes,
+
+            'services' => $this->services->map(function ($bs) {
+                return [
+                    'id'              => $bs->id,
+                    'serviceable_type'=> class_basename($bs->serviceable_type),
+                    'serviceable_id'  => $bs->serviceable_id,
+                    'price'           => $bs->price,
+                ];
+            }),
             'master' => $this->when($this->master, new StaffResource($this->master)),
         ];
     }

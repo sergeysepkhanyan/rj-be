@@ -2,7 +2,7 @@
 
 namespace App\Policies;
 
-class AddressPolicy extends BasePolicy
+class BookingPolicy extends BasePolicy
 {
     // inherits update/delete/view automatically
 }

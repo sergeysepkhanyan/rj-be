@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -16,7 +17,10 @@ use Illuminate\Contracts\Auth\CanResetPassword as CanResetPasswordContract;
 /**
  * @property mixed $role
  * @property mixed $id
+ * @method static Builder|User masters()
+ * @method static Builder|User active()
  */
+
 class User extends Authenticatable implements JWTSubject, CanResetPasswordContract
 {
 
@@ -110,5 +114,11 @@ class User extends Authenticatable implements JWTSubject, CanResetPasswordContra
     public function referral(): BelongsTo
     {
         return $this->belongsTo(Referral::class);
+    }
+    public function scopeMasters($query)
+    {
+        return $query->whereHas('role', function ($q) {
+            $q->where('slug', 'master');
+        });
     }
 }

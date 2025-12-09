@@ -33,4 +33,10 @@ class SubServiceManagerRepository implements SubServiceRepositoryInterface
         $subService = SubService::findOrFail($id);
         return $subService->delete();
     }
+
+    public function findByService(int $serviceId)
+    {
+        return SubService::where('service_id', $serviceId)->with('items')
+            ->get();
+    }
 }

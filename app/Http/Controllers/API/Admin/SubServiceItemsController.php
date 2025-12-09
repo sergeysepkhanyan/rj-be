@@ -4,7 +4,7 @@ namespace App\Http\Controllers\API\Admin;
 
 use App\Http\Requests\StoreSubServiceRequest;
 use App\Http\Requests\UpdateSubServiceRequest;
-use App\Http\Resources\ServiceResource;
+use App\Http\Resources\AdminServiceResource;
 use App\Models\Service;
 use App\Models\SubService;
 use App\Models\SubServiceItem;
