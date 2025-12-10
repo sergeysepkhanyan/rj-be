@@ -121,4 +121,10 @@ class User extends Authenticatable implements JWTSubject, CanResetPasswordContra
             $q->where('slug', 'master');
         });
     }
+
+    public function isAdmin(): bool
+    {
+        return in_array(optional($this->role)->slug, ['admin', 'superadmin']);
+    }
+
 }
