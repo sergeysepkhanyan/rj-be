@@ -44,11 +44,6 @@ class BookingService
         return $this->bookingRepository->find($id);
     }
 
-    public function updateBooking($id, array $data): Booking
-    {
-        return $this->bookingRepository->update($id, $data);
-    }
-
     public function deleteService($id)
     {
         return $this->bookingRepository->delete($id);
@@ -214,7 +209,101 @@ class BookingService
             );
         }
 
+        $pricing = $this->buildPricingData($data);
+
+        return DB::transaction(function () use ($data, $pricing) {
+            $user = auth()->user();
+
+            $bookingData = [
+                'user_id'        => $user->id,
+                'master_id'      => $data['master_id'],
+                'type'           => 'booking',
+                'date'           => $data['date'],
+                'start_time'     => $data['start_time'],
+                'end_time'       => $data['end_time'],
+                'duration'       => $this->calculateDuration($data['start_time'], $data['end_time']),
+                'duration_unit'  => 'minutes',
+                'price'          => $pricing['total_price'],
+                'discount_type'  => $pricing['discount_type'],
+                'discount_value' => $pricing['discount_value'],
+                'discount_label' => $pricing['discount_label'],
+                'final_price'    => $pricing['final_price'],
+                'payment_mode'   => $pricing['payment_mode'],
+                'payment_status' => $pricing['payment_status'],
+                'status'         => 'pending',
+                'customer_name'  => $data['customer_name']  ?? ($user->name   ?? null),
+                'customer_phone' => $data['customer_phone'] ?? ($user->mobile ?? null),
+                'customer_email' => $data['customer_email'] ?? ($user->email  ?? null),
+                'notes'          => $data['notes'] ?? null,
+            ];
+
+            /** @var Booking $booking */
+            $booking = $this->bookingRepository->create($bookingData);
+
+            foreach ($data['services'] as $serviceData) {
+                $this->attachServiceToBooking($booking, $serviceData);
+            }
+
+            return $booking->load('services.bookable');
+        });
+    }
+
+    public function updateBooking(Booking $booking, array $data): Booking
+    {
+        $hasOverlap = $this->bookingRepository->hasOverlap(
+            masterId:         $data['master_id'],
+            date:             $data['date'],
+            startTime:        $data['start_time'],
+            endTime:          $data['end_time'],
+            excludeBookingId: $booking->id,
+        );
+
+        if ($hasOverlap) {
+            throw new HttpResponseException(
+                ApiResponse::error([], 'Master is not available in selected time range.', 422)
+            );
+        }
+
+        $pricing = $this->buildPricingData($data);
+
+        return DB::transaction(function () use ($booking, $data, $pricing) {
+
+            $booking->update([
+                'master_id'      => $data['master_id'],
+                'date'           => $data['date'],
+                'start_time'     => $data['start_time'],
+                'end_time'       => $data['end_time'],
+                'duration'       => $this->calculateDuration($data['start_time'], $data['end_time']),
+                'duration_unit'  => 'minutes',
+                'price'          => $pricing['total_price'],
+                'discount_type'  => $pricing['discount_type'],
+                'discount_value' => $pricing['discount_value'],
+                'discount_label' => $pricing['discount_label'],
+                'final_price'    => $pricing['final_price'],
+                'payment_mode'   => $pricing['payment_mode'],
+                'payment_status' => $pricing['payment_status'],
+                'customer_name'  => $data['customer_name']  ?? $booking->customer_name,
+                'customer_phone' => $data['customer_phone'] ?? $booking->customer_phone,
+                'customer_email' => $data['customer_email'] ?? $booking->customer_email,
+                'notes'          => $data['notes'] ?? $booking->notes,
+            ]);
+
+            // Simple approach: remove old services and reattach
+            $booking->services()->delete();
+
+            foreach ($data['services'] as $serviceData) {
+                $this->attachServiceToBooking($booking, $serviceData);
+            }
+
+            return $booking->load('services.bookable');
+        });
+    }
+
+
+    protected function buildPricingData(array $data): array
+    {
         $services = collect($data['services'] ?? []);
+
         $totalPrice = $services->sum(fn ($s) => $s['price'] ?? 0);
 
         $discountType  = $data['discount_type']  ?? null;
@@ -236,72 +325,41 @@ class BookingService
             default     => 'unpaid',
         };
 
-        return DB::transaction(function () use ($data, $totalPrice, $finalPrice, $discountType, $discountValue, $discountLabel, $paymentMode, $paymentStatus) {
-            $user = auth()->user();
-
-            $bookingData = [
-                'user_id'        => $user->id,
-                'master_id'      => $data['master_id'],
-                'type'           => 'booking',
-                'date'           => $data['date'],
-                'start_time'     => $data['start_time'],
-                'end_time'       => $data['end_time'],
-                'duration'       => $this->calculateDuration($data['start_time'], $data['end_time']),
-                'duration_unit'  => 'minutes',
-                'price'          => $totalPrice,
-                'discount_type'  => $discountType,
-                'discount_value' => $discountValue,
-                'discount_label' => $discountLabel,
-                'final_price'    => $finalPrice,
-                'payment_mode'   => $paymentMode,
-                'payment_status' => $paymentStatus,
-                'status'         => 'pending',
-                'customer_name'  => $data['customer_name']  ?? ($user->name   ?? null),
-                'customer_phone' => $data['customer_phone'] ?? ($user->mobile ?? null),
-                'customer_email' => $data['customer_email'] ?? ($user->email  ?? null),
-                'notes'          => $data['notes'] ?? null,
-            ];
-
-            /** @var Booking $booking */
-            $booking = $this->bookingRepository->create($bookingData);
-
-            foreach ($data['services'] as $serviceData) {
-                $this->attachServiceToBooking($booking, $serviceData);
-            }
-
-            return $booking->load('services.bookable');
-        });
+        return [
+            'services'        => $services,
+            'total_price'     => $totalPrice,
+            'discount_type'   => $discountType,
+            'discount_value'  => $discountValue,
+            'discount_label'  => $discountLabel,
+            'discount_amount' => $discountAmount,
+            'final_price'     => $finalPrice,
+            'payment_mode'    => $paymentMode,
+            'payment_status'  => $paymentStatus,
+        ];
     }
 
-    /**
-     * @param float      $totalPrice
-     * @param string|null $discountType  'percent' or 'fixed'
-     * @param float|int|null $discountValue
-     * @return float
-     */
     protected function calculateDiscountAmount(
         float $totalPrice,
         ?string $discountType,
-        float|int|null $discountValue
+        ?float $discountValue
     ): float {
-        if (!$discountType || $discountValue === null) {
+        if (! $discountType || ! $discountValue) {
             return 0.0;
         }
 
-        $discountValue = (float) $discountValue;
-        $discountAmount = 0.0;
+        return match ($discountType) {
+            'percent' => round($totalPrice * ($discountValue / 100), 2),
+            'fixed'   => min($discountValue, $totalPrice),
+            default   => 0.0,
+        };
+    }
 
-        if ($discountType === 'percent') {
-            $discountAmount = $totalPrice * ($discountValue / 100);
-        } elseif ($discountType === 'fixed') {
-            $discountAmount = $discountValue;
-        }
+    protected function calculateDuration(string $startTime, string $endTime): int
+    {
+        $start = \Carbon\Carbon::parse($startTime);
+        $end   = \Carbon\Carbon::parse($endTime);
 
-        if ($discountAmount > $totalPrice) {
-            $discountAmount = $totalPrice;
-        }
-
-        return round($discountAmount, 2);
+        return $start->diffInMinutes($end);
     }
 
     protected function attachServiceToBooking(Booking $booking, array $serviceData): void
@@ -328,16 +386,5 @@ class BookingService
             'duration_minutes' => $serviceable->duration ?? 0,
         ]);
 
-    }
-
-    protected function calculateDuration(string $startTime, string $endTime): int
-    {
-        [$sh, $sm] = explode(':', $startTime);
-        [$eh, $em] = explode(':', $endTime);
-
-        $startMinutes = ((int) $sh) * 60 + (int) $sm;
-        $endMinutes   = ((int) $eh) * 60 + (int) $em;
-
-        return max(0, $endMinutes - $startMinutes);
     }
 }

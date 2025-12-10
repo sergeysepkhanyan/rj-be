@@ -66,6 +66,7 @@ Route::middleware(['cors.custom', 'set.locale'])->group(function () {
 
         Route::get('/bookings/available-slots', [BookingsController::class, 'availableSlots']);
         Route::post('/bookings', [BookingsController::class, 'store']);
+        Route::put('/bookings/{booking}', [BookingsController::class, 'update']);
 
 
 

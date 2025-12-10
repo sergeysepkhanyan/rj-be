@@ -5,7 +5,9 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\AvailableSlotsRequest;
 use App\Http\Requests\StoreBookingRequest;
+use App\Http\Requests\UpdateBookingRequest;
 use App\Http\Resources\BookingResource;
+use App\Models\Booking;
 use App\Services\ApiResponse;
 use App\Services\BookingService;
 use Illuminate\Http\JsonResponse;
@@ -29,15 +31,32 @@ class BookingsController extends Controller
 
     public function store(StoreBookingRequest $request): JsonResponse
     {
-//        try {
+        try {
             $booking = $this->bookingService->createBooking($request->all());
             return ApiResponse::success([
                 'booking'    => new BookingResource($booking)
             ], 'Booking created successfully.');
-//        } catch (\Throwable $e) {
-//            report($e);
-//            return ApiResponse::error();
-//        }
+        } catch (\Throwable $e) {
+            report($e);
+            return ApiResponse::error();
+        }
+    }
+
+    public function update(UpdateBookingRequest $request, Booking $booking): JsonResponse
+    {
+        try {
+            $updated = $this->bookingService->updateBooking(
+                $booking,
+                $request->all()
+            );
+
+            return ApiResponse::success([
+                'booking' => new BookingResource($updated),
+            ], 'Booking updated successfully');
+        }  catch (\Throwable $e) {
+            report($e);
+            return ApiResponse::error();
+        }
     }
 }
 

@@ -2,6 +2,8 @@
 
 namespace App\Http\Resources;
 
+use App\Models\SubService;
+use App\Models\SubServiceItem;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 
@@ -16,6 +18,9 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * @property mixed $final_price
  * @property mixed $notes
  * @property mixed $services
+ * @property mixed $price
+ * @property mixed $discount_value
+ * @property mixed $discount_type
  */
 class BookingResource extends BaseResource
 {
@@ -26,21 +31,34 @@ class BookingResource extends BaseResource
         return [
             'id' => $data['id'] ?? null,
             'date'        => $this->date,
-            'start_time'  => $this->start_time,
-            'end_time'    => $this->end_time,
+            'startTime'   => $this->start_time,
+            'endTime'     => $this->end_time,
             'type'        => $this->type,
             'status'      => $this->status,
-            'total_price' => $this->final_price,
+            'price'       => $this->price,
+            'discount'    => $this->discount_value . ($this->discount_type === 'percent' ? ' %' : ''),
+            'totalPrice'  => $this->final_price,
             'notes'       => $this->notes,
 
             'services' => $this->services->map(function ($bs) {
+                $bookable = $bs->bookable;
+                $serviceType = null;
+                if ($bookable instanceof SubService) {
+                    $serviceType = 'subservice';
+                } elseif ($bookable instanceof SubServiceItem) {
+                    $serviceType = 'item';
+                }
+
                 return [
-                    'id'              => $bs->id,
-                    'serviceable_type'=> class_basename($bs->serviceable_type),
-                    'serviceable_id'  => $bs->serviceable_id,
-                    'price'           => $bs->price,
+                    'id'            => $bs->id,
+                    'serviceType'  => $serviceType,
+                    'serviceId'    => $bookable?->id,
+                    'name'          => $bookable?->name,
+                    'price'         => $bs->price,
+                    'duration'      => $bs->duration_minutes,
                 ];
             }),
+
             'master' => $this->when($this->master, new StaffResource($this->master)),
         ];
     }

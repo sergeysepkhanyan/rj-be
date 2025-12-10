@@ -24,23 +24,28 @@ class BookingsController extends Controller
         $this->bookingService = $bookingService;
     }
 
-    public function index(Request $request, BookingFilter $filter): AnonymousResourceCollection
+    public function index(Request $request, BookingFilter $filter): JsonResponse
     {
         $perPage = $request->input('per_page', 10);
         $page = $request->input('per_page', 1);
 
         $bookings = $this->bookingService->getPaginatedBookings($filter, $perPage, $page);
 
-        return BookingResource::collection($bookings)
-            ->additional([
-                'meta' => [
-                    'current_page' => $bookings->currentPage(),
-                    'last_page' => $bookings->lastPage(),
-                    'per_page' => $bookings->perPage(),
-                    'total' => $bookings->total(),
-                ],
-                'filters' => $request->only(['master_id', 'date', 'search']),
-            ]);
+        return ApiResponse::success([
+            'bookings' => BookingResource::collection($bookings),
+            'meta' => [
+                'current_page' => $bookings->currentPage(),
+                'last_page' => $bookings->lastPage(),
+                'per_page' => $bookings->perPage(),
+                'total' => $bookings->total(),
+            ],
+            'links' => [
+                'first' => $bookings->url(1),
+                'last' => $bookings->url($bookings->lastPage()),
+                'prev' => $bookings->previousPageUrl(),
+                'next' => $bookings->nextPageUrl(),
+            ],
+        ], 'Bookings retrieved successfully');
     }
 
     public function storeBreak(StoreBreakRequest $request): JsonResponse

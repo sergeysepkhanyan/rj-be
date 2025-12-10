@@ -15,6 +15,11 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * @property mixed $type
+ * @property mixed $id
+ * @property mixed $customer_name
+ * @property mixed $customer_phone
+ * @property mixed $customer_email
+ * @property mixed $notes
  */
 class Booking extends Model
 {
