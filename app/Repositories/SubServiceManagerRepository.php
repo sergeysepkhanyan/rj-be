@@ -28,9 +28,8 @@ class SubServiceManagerRepository implements SubServiceRepositoryInterface
         return $subService;
     }
 
-    public function delete($id)
+    public function delete(SubService $subService): ?bool
     {
-        $subService = SubService::findOrFail($id);
         return $subService->delete();
     }
 

@@ -26,9 +26,8 @@ class PageRepository implements PageRepositoryInterface
         return Page::create($data);
     }
 
-    public function update($id, array $data)
+    public function update(Page $page, array $data): Page
     {
-        $page = Page::findOrFail($id);
         $page->update($data);
         return $page;
     }

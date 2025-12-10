@@ -23,16 +23,14 @@ class PostRepository implements PostRepositoryInterface
         return Post::create($data);
     }
 
-    public function update($id, array $data)
+    public function update(Post $post, array $data): Post
     {
-        $post = Post::findOrFail($id);
         $post->update($data);
         return $post;
     }
 
-    public function delete($id)
+    public function delete(Post $post): ?bool
     {
-        $post = Post::findOrFail($id);
         return $post->delete();
     }
 

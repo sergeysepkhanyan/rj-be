@@ -32,9 +32,8 @@ class SubServiceItemManagerRepository implements SubServiceItemRepositoryInterfa
         return SubServiceItem::create($data);
     }
 
-    public function delete($id)
+    public function delete(SubServiceItem $subServiceItem): ?bool
     {
-        $subServiceItem = SubServiceItem::findOrFail($id);
         return $subServiceItem->delete();
     }
 
@@ -75,10 +74,9 @@ class SubServiceItemManagerRepository implements SubServiceItemRepositoryInterfa
         return $syncedItems;
     }
 
-
-    public function update(SubServiceItem $item, array $data): SubServiceItem
+    public function update(SubServiceItem $subServiceItem, array $data): SubServiceItem
     {
-        $item->update($data);
-        return $item;
+        $subServiceItem->update($data);
+        return $subServiceItem;
     }
 }

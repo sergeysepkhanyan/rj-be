@@ -11,7 +11,7 @@ interface SubServiceItemRepositoryInterface
     public function all();
     public function find($id);
     public function create(array $data);
-    public function delete($id);
+    public function delete(SubServiceItem $item);
     public function syncForSubService(SubService $subService, array $items): Collection;
-    public function update(SubServiceItem $item, array $data): SubServiceItem;
+    public function update(SubServiceItem $subServiceItem, array $data): SubServiceItem;
 }

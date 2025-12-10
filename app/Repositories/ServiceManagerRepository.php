@@ -24,17 +24,15 @@ class ServiceManagerRepository implements ServiceRepositoryInterface
         return Service::create($data);
     }
 
-    public function update($id, array $data)
+    public function update(Service $service, array $data): Service
     {
-        $service = Service::findOrFail($id);
         $service->update($data);
         $service->load('subServices.items');
         return $service;
     }
 
-    public function delete($id)
+    public function delete(Service $service): ?bool
     {
-        $service = Service::findOrFail($id);
         return $service->delete();
     }
 

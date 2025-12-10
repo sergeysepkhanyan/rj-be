@@ -22,16 +22,14 @@ class ProductDetailRepository implements ProductDetailRepositoryInterface
         return ProductDetail::create($data);
     }
 
-    public function update($id, array $data)
+    public function update(ProductDetail $productDetail, array $data): ProductDetail
     {
-        $productDetail = ProductDetail::findOrFail($id);
         $productDetail->update($data);
         return $productDetail;
     }
 
-    public function delete($id)
+    public function delete(ProductDetail $productDetail): ?bool
     {
-        $productDetail = ProductDetail::findOrFail($id);
         return $productDetail->delete();
     }
 

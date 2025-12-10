@@ -10,5 +10,5 @@ interface SubServiceRepositoryInterface
     public function find($id);
     public function create(array $data);
     public function update(SubService $subService, array $data): SubService;
-    public function delete($id);
+    public function delete(SubService $subService);
 }
