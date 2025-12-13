@@ -66,4 +66,17 @@ class SubServicesController
             return ApiResponse::error();
         }
     }
+
+    public function destroy(SubService $subService): JsonResponse
+    {
+        try {
+            $this->subServiceManagerService->deleteSubService($subService);
+            return ApiResponse::success([
+                'deleted' => true,
+                'sub_service_id' => $subService->id,
+            ], 'Subservice deleted successfully.');
+        } catch (\Throwable $e) {
+            return ApiResponse::error();
+        }
+    }
 }

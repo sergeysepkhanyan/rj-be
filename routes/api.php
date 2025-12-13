@@ -90,9 +90,13 @@ Route::middleware(['cors.custom', 'set.locale'])->group(function () {
         Route::get('/admin/services', [AdminServicesController::class, 'index']);
         Route::post('/admin/services', [AdminServicesController::class, 'store']);
         Route::put('/admin/services/{service}', [AdminServicesController::class, 'update']);
+        Route::delete('/admin/services/{service}', [AdminServicesController::class, 'destroy']);
+
 
         Route::post('/admin/sub-services', [AdminSubServicesController::class, 'store']);
         Route::put('/admin/sub-services/{subService}', [AdminSubServicesController::class, 'update']);
+        Route::delete('/admin/sub-services/{subService}', [AdminSubServicesController::class, 'destroy']);
+
 
         Route::delete('/admin/sub-service-items/{subServiceItem}', [SubServiceItemsController::class, 'destroy']);
 

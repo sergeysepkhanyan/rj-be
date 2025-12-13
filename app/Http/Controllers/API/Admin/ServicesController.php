@@ -81,4 +81,18 @@ class ServicesController
             return ApiResponse::error();
         }
     }
+
+    public function destroy(Service $service): JsonResponse
+    {
+        try {
+            $this->serviceManagerService->deleteService($service);
+
+            return ApiResponse::success([
+                'deleted' => true,
+                'service_id' => $service->id,
+            ], 'Service deleted successfully.');
+        } catch (\Throwable $e) {
+            return ApiResponse::error();
+        }
+    }
 }

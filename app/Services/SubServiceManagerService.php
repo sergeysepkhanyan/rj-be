@@ -36,14 +36,14 @@ class SubServiceManagerService
         return $this->subServiceRepository->create($data);
     }
 
-    public function updateSubService($id, array $data)
+    public function updateSubService($id, array $data): SubService
     {
         return $this->subServiceRepository->update($id, $data);
     }
 
-    public function deleteSubService($id)
+    public function deleteSubService(SubService $subService): ?bool
     {
-        return $this->subServiceRepository->delete($id);
+        return $this->subServiceRepository->delete($subService);
     }
 
     public function createSubServiceWithItems(array $subServiceData, array | null $itemsData)
