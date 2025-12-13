@@ -35,8 +35,9 @@ class AddressController extends Controller
     public function store(StoreAddressRequest $request): JsonResponse
     {
         try {
-            $data = $request->all();
-            $data = array_intersect_key($data, array_flip((new Address)->getFillable()));
+            $fillable = (new Address)->getFillable();
+            $meta = ['set_default_shipping', 'set_default_billing', 'is_default'];
+            $data = $request->only(array_merge($fillable, $meta));
             $data['user_id'] = auth()->id();
             $address = $this->addressService->createAddress($data);
             return ApiResponse::success([
@@ -52,8 +53,9 @@ class AddressController extends Controller
     {
         try {
             $this->authorize('update', $address);
-            $data = $request->all();
-            $data = array_intersect_key($data, array_flip((new Address)->getFillable()));
+            $fillable = (new Address)->getFillable();
+            $meta = ['set_default_shipping', 'set_default_billing', 'is_default'];
+            $data = $request->only(array_merge($fillable, $meta));
             $address = $this->addressService->updateAddress($address, $data);
 
             return ApiResponse::success([

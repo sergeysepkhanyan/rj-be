@@ -8,7 +8,9 @@ class StoreAddressRequest extends BaseFormRequest
         'isDefault' => 'is_default',
         'lastName' => 'last_name',
         'additionalAddress' => 'additional_address',
-        'zipCode' => 'zip_code'
+        'zipCode' => 'zip_code',
+        'setDefaultShipping' => 'set_default_shipping',
+        'setDefaultBilling'  => 'set_default_billing',
     ];
 
     public function authorize(): bool
@@ -29,6 +31,8 @@ class StoreAddressRequest extends BaseFormRequest
             'city' => 'required|string|max:100',
             'state' => 'required|string|max:100',
             'zipCode' => 'required|string|max:20',
+            'setDefaultShipping' => ['sometimes', 'boolean'],
+            'setDefaultBilling'  => ['sometimes', 'boolean'],
         ];
     }
 }
