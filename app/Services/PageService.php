@@ -30,7 +30,7 @@ class PageService
     {
         $slug = array_key_first($data);
         $page = $this->pageRepository->findBySlug($slug);
-        return $this->pageRepository->update($page->id, [
+        return $this->pageRepository->update($page, [
             'content' => $data[$slug]
         ]);
     }
