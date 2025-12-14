@@ -3,7 +3,6 @@
 namespace App\Http\Resources;
 
 use Illuminate\Http\Resources\Json\JsonResource;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * @property mixed $slug
@@ -20,10 +19,14 @@ class PageResource extends JsonResource
 
     protected function transformImages($data): array|string|null
     {
+        $base = url('/');
+
         if (is_array($data)) {
             foreach ($data as $key => $value) {
-                if ($this->isImageKey($key)) {
-                    $data[$key] = $this->resolveFileUrl($value);
+                if (in_array($key, ['image', 'src', 'backgroundImage'])) {
+                    if (!empty($value) && !str_starts_with($value, 'http')) {
+                        $data[$key] = $this->withStorage($base, $value);
+                    }
                 } else {
                     $data[$key] = $this->transformImages($value);
                 }
@@ -33,8 +36,10 @@ class PageResource extends JsonResource
 
         if (is_object($data)) {
             foreach ($data as $key => $value) {
-                if ($this->isImageKey($key)) {
-                    $data->$key = $this->resolveFileUrl($value);
+                if (in_array($key, ['image', 'src', 'backgroundImage'])) {
+                    if (!empty($value) && !str_starts_with($value, 'http')) {
+                        $data->$key = $this->withStorage($base, $value);
+                    }
                 } else {
                     $data->$key = $this->transformImages($value);
                 }
@@ -45,20 +50,14 @@ class PageResource extends JsonResource
         return $data;
     }
 
-    protected function isImageKey(string $key): bool
+    protected function withStorage(string $base, string $value): string
     {
-        return in_array($key, ['image', 'src', 'backgroundImage'], true);
-    }
+        $path = ltrim($value, '/');
 
-    protected function resolveFileUrl(?string $value): ?string
-    {
-        if (empty($value)) {
-            return $value;
+        if (str_starts_with($path, 'storage/')) {
+            return $base . '/' . $path;
         }
-        if (str_starts_with($value, 'http')) {
-            return $value;
-        }return Storage::url($value);
+
+        return $base . '/storage/' . $path;
     }
 }
-
-
