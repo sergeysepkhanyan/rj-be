@@ -22,7 +22,11 @@ class StoreSubServiceRequest extends BaseFormRequest
         $serviceId = $this->input('serviceId');
 
         return [
-            'serviceId' => 'required|integer|exists:services,id',
+            'serviceId' => [
+                'required',
+                'integer',
+                Rule::exists('services', 'id')->whereNull('deleted_at'),
+            ],
             'name' => [
                 'required', 'string', 'max:255',
                 Rule::unique('sub_services', 'name')->where(fn($query) =>

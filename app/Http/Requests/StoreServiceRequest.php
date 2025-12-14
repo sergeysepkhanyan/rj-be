@@ -37,6 +37,7 @@ class StoreServiceRequest extends BaseFormRequest
             'description' => 'required|string',
             'descriptionAr' => 'required|string',
             'image' => 'required|string',
+            'gender' => 'required|string|in:Male,Female',
         ];
     }
 }

@@ -43,6 +43,7 @@ class UpdateServiceRequest extends BaseFormRequest
             'description' => 'required|string',
             'descriptionAr' => 'required|string',
             'image' => 'nullable|string',
+            'gender' => 'required|string|in:Male,Female',
         ];
     }
 }
