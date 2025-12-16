@@ -97,7 +97,7 @@ class User extends Authenticatable implements JWTSubject, CanResetPasswordContra
 
     public function clientBookings(): HasMany
     {
-        return $this->hasMany(Booking::class, 'client_id');
+        return $this->hasMany(Booking::class, 'user_id');
     }
 
 
