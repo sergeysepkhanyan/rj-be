@@ -30,6 +30,9 @@ class BookingResource extends BaseResource
 
         return [
             'id' => $data['id'] ?? null,
+            'customerName' => $data['customer_name'] ?? null,
+            'customerEmail' => $data['customer_email'] ?? null,
+            'customerPhone' => $data['customer_phone'] ?? null,
             'date'        => $this->date,
             'startTime'   => $this->start_time,
             'endTime'     => $this->end_time,
