@@ -3,6 +3,7 @@
 namespace App\Repositories;
 
 use App\Models\File;
+use Illuminate\Support\Str;
 
 class FileRepository
 {
@@ -29,7 +30,35 @@ class FileRepository
 
     public function deleteByPaths($model, array $paths): void
     {
-        $model->files()->whereIn('path', $paths)->delete();
+        $normalizedPaths = collect($paths)
+            ->map(fn ($path) => $this->normalizePath($path))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        if (empty($normalizedPaths)) {
+            return;
+        }
+
+        $model->files()
+            ->whereIn('path', $normalizedPaths)
+            ->delete();
+    }
+
+    private function normalizePath(string $path): ?string
+    {
+        if (Str::startsWith($path, ['http://', 'https://'])) {
+            $path = parse_url($path, PHP_URL_PATH) ?? '';
+        }
+
+        $path = ltrim($path, '/');
+
+        if (Str::startsWith($path, 'storage/')) {
+            $path = Str::after($path, 'storage/');
+        }
+
+        return $path ?: null;
     }
 }
 
