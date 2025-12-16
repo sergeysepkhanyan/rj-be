@@ -21,6 +21,7 @@ class ProductResource extends BaseResource
             'name' => $data['name'] ?? null,
             'description' => $data['description'] ?? null,
             'maxQuantity' => $data['max_quantity'] ?? null,
+            'currentQuantity' => $data['max_quantity'] ?? null,
             'price' => $data['price'] ?? null,
             'currency' => $data['currency'] ?? null,
             'mainImage' => $this->main_image ? asset('storage/' . $this->main_image) : null,

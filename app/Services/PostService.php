@@ -27,9 +27,9 @@ class PostService
         return $this->postRepository->create($data);
     }
 
-    public function updatePost($id, array $data)
+    public function updatePost(Post $post, array $data)
     {
-        return $this->postRepository->update($id, $data);
+        return $this->postRepository->update($post, $data);
     }
 
     public function getPaginatedPosts($lang = 'en',int $perPage = 15, int $page = 1): LengthAwarePaginator

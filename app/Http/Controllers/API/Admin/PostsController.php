@@ -40,7 +40,7 @@ class PostsController extends Controller
         try {
             $data = $request->all();
             $data = array_intersect_key($data, array_flip((new Post)->getFillable()));
-            $post = $this->postService->updatePost($post->id, $data);
+            $post = $this->postService->updatePost($post, $data);
             return ApiResponse::success([
                 'post' => new PostResource($post),
             ], 'Post updated successfully');
