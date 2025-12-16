@@ -306,7 +306,7 @@ class BookingService
 
         $totalPrice = $services->sum(fn ($s) => $s['price'] ?? 0);
 
-        $discountType  = $data['discount_type']  ?? null;
+        $discountType  = $data['discount_type']  ?? 'none';
         $discountValue = $data['discount_value'] ?? null;
         $discountLabel = $data['discount_label'] ?? null;
 
