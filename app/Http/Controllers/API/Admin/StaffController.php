@@ -74,7 +74,7 @@ class StaffController extends Controller
     {
         try {
             $data = $request->all();
-            $user = $this->userService->updateStaffMember($user->id, $data);
+            $user = $this->userService->updateStaffMember($user, $data);
 
             return ApiResponse::success([
                 'user' => new StaffResource($user),

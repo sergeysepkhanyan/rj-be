@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Mail\AdminAccessEmail;
+use App\Models\User;
 use App\Repositories\Interfaces\UserRepositoryInterface;
 use App\Repositories\Interfaces\UserRoleRepositoryInterface;
 use Illuminate\Support\Facades\DB;
@@ -110,10 +111,9 @@ class UserService
     }
 
 
-    public function updateStaffMember(int $id, array $data)
+    public function updateStaffMember(User $user, array $data)
     {
-        return DB::transaction(function () use ($id, $data) {
-            $user = $this->userRepository->find($id);
+        return DB::transaction(function () use ($user, $data) {
             $subservices = $data['subservices'] ?? [];
             $weekends = $data['weekends'] ?? [];
             $roleName = $data['role'] ?? null;
@@ -133,7 +133,7 @@ class UserService
                 Mail::to($user->email)->send(new AdminAccessEmail($user, $generatedPassword, $accessLink));
             }
 
-            $this->updateUser($user->id, $fields);
+            $this->updateUser($user, $fields);
 
             if ($role->slug === 'master' && !empty($subservices)) {
                 $user->subservices()->sync($subservices);
@@ -146,9 +146,9 @@ class UserService
     }
 
 
-    public function updateUser($id, array $data)
+    public function updateUser(User $user, array $data): User
     {
-        return $this->userRepository->update($id, $data);
+        return $this->userRepository->update($user, $data);
     }
 
     public function deleteUser($id)
