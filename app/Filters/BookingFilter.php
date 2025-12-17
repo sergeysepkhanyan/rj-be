@@ -19,6 +19,10 @@ class BookingFilter
     {
         $this->query = $query;
 
+        if ($this->request->has('user_id')) {
+            $this->filterByUser();
+        }
+
         if ($this->request->has('master_id')) {
             $this->filterByMaster();
         }
@@ -32,6 +36,11 @@ class BookingFilter
         }
 
         return $this->query;
+    }
+
+    protected function filterByUser(): void
+    {
+        $this->query->where('user_id', $this->request->user_id);
     }
 
     protected function filterByMaster(): void

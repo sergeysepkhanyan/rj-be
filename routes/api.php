@@ -62,9 +62,6 @@ Route::middleware(['cors.custom', 'set.locale'])->group(function () {
             $user = auth()->user()->load([
                 'role',
                 'referral',
-                'subservices',
-                'weekends',
-                 'masterBookings',
                  'clientBookings',
             ]);
             return ApiResponse::success([
@@ -76,6 +73,7 @@ Route::middleware(['cors.custom', 'set.locale'])->group(function () {
         Route::get('/services/{service}/subservices', [SubServicesController::class, 'index']);
         Route::get('/subservices/{subservice}/masters', [SubServiceMastersController::class, 'index']);
 
+        Route::get('/bookings', [BookingsController::class, 'index']);
         Route::get('/bookings/available-slots', [BookingsController::class, 'availableSlots']);
         Route::post('/bookings', [BookingsController::class, 'store']);
         Route::put('/bookings/{booking}', [BookingsController::class, 'update']);
