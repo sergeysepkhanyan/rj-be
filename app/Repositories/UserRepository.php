@@ -4,6 +4,7 @@ namespace App\Repositories;
 
 use App\Models\User;
 use App\Repositories\Interfaces\UserRepositoryInterface;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class UserRepository implements UserRepositoryInterface
 {
@@ -45,9 +46,10 @@ class UserRepository implements UserRepositoryInterface
         })->get();
     }
 
-    public function paginateStaff(int $perPage = 10, int $page = 1)
+    public function paginateStaff(int $perPage = 10, int $page = 1): LengthAwarePaginator
     {
-        return User::whereHas('role', function ($q) {
+        return User::withTrashed()
+        ->whereHas('role', function ($q) {
             $q->whereNotIn('slug', ['superadmin', 'client']);
         })
             ->with(['role', 'subservices.items'])
@@ -81,5 +83,16 @@ class UserRepository implements UserRepositoryInterface
             })
             ->get();
     }
+
+    public function restore(int $id): User
+    {
+        /** @var User $user */
+        $user = User::withTrashed()->findOrFail($id);
+        $user->restore();
+        $user->load(['role', 'subservices.items']);
+
+        return $user;
+    }
+
 }
 

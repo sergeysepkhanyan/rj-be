@@ -193,4 +193,17 @@ class StaffController extends Controller
             return ApiResponse::error();
         }
     }
+
+    public function restore(int $id): JsonResponse
+    {
+        try {
+            $user = $this->userService->restoreUser($id);
+            return ApiResponse::success([
+                'user' => new StaffResource($user),
+            ], 'User activated successfully');
+        } catch (\Exception $e) {
+            return ApiResponse::error();
+        }
+    }
+
 }

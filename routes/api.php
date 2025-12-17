@@ -116,6 +116,7 @@ Route::middleware(['cors.custom', 'set.locale'])->group(function () {
         Route::delete('/admin/staff/delete/{user}', [AdminStaffController::class, 'destroy']);;
         Route::post('/admin/staff/create-many', [AdminStaffController::class, 'createMany']);
         Route::post('/admin/staff/update-many', [AdminStaffController::class, 'updateMany']);
+        Route::patch('/admin/staff/{id}/restore', [AdminStaffController::class, 'restore']);
 
         Route::post('/admin/product/create', [AdminProductsController::class, 'store']);
         Route::put('/admin/product/update/{product}', [AdminProductsController::class, 'update']);

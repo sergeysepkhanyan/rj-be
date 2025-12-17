@@ -15,6 +15,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * @property mixed $masterBookings
  * @property mixed $referral
  * @property mixed $image
+ * @property mixed $deleted_at
  * @method relationLoaded(string $string)
  */
 class StaffResource extends BaseResource
@@ -41,6 +42,8 @@ class StaffResource extends BaseResource
                 $this->relationLoaded('weekends') || $this->weekends,
                 WeekdayResource::collection($this->weekends)
             ),
+            'isActive' => is_null($this->deleted_at),
+            'deactivatedDate' => $this->deleted_at ?? null,
         ];
     }
 }

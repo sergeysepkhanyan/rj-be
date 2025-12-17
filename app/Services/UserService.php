@@ -6,6 +6,7 @@ use App\Mail\AdminAccessEmail;
 use App\Models\User;
 use App\Repositories\Interfaces\UserRepositoryInterface;
 use App\Repositories\Interfaces\UserRoleRepositoryInterface;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
@@ -191,7 +192,7 @@ class UserService
         return ($existingAdminsCount + $newAdminsCount) <= 2;
     }
 
-    public function getPaginatedStaff(int $perPage = 10, int $page = 1)
+    public function getPaginatedStaff(int $perPage = 10, int $page = 1): LengthAwarePaginator
     {
         return $this->userRepository->paginateStaff($perPage, $page);
     }
@@ -210,5 +211,11 @@ class UserService
     {
         return $this->userRepository->getMastersForSubservice($subserviceId);
     }
+
+    public function restoreUser(int $id): User
+    {
+        return $this->userRepository->restore($id);
+    }
+
 }
 
