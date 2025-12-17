@@ -1,6 +1,5 @@
 <?php
 
-// app/Mail/AdminWelcomeMail.php
 namespace App\Mail;
 
 use App\Models\User;
@@ -12,26 +11,31 @@ class AdminAccessEmail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public User $user;
-    public string $password;
-    public string $frontendUrl;
+    public function __construct(
+        public User $user,
+        public string $password,
+    ) {}
 
-    public function __construct(User $user, string $password)
+    public function build(): static
     {
-        $this->user = $user;
-        $this->password = $password;
-        $this->frontendUrl = config('app.frontend_url', env('FRONTEND_URL'));
+        $frontendUrl = config('app.frontend_url', env('FRONTEND_URL'));
+        $actionUrl   = rtrim($frontendUrl, '/');
 
-    }
-
-    public function build(): AdminAccessEmail
-    {
-        return $this->subject('Administrator Access Granted — Romeo & Juliet Beauty Lounge')
+        return $this
+            ->from(config('mail.from.address'), config('mail.from.name'))
+            ->replyTo('admin@rjbeautylounge.com', 'Romeo & Juliet Beauty Lounge')
+            ->subject('Admin access for Romeo & Juliet Beauty Lounge')
+            ->withSymfonyMessage(function ($message) {
+                $headers = $message->getHeaders();
+                $headers->addIdHeader('Message-ID', uniqid('', true) . '@rjbeautylounge.com');
+                $headers->addTextHeader('List-Unsubscribe', '<mailto:admin@rjbeautylounge.com>');
+            })
             ->markdown('emails.admin_access', [
-                'user' => $this->user,
-                'password' => $this->password,
-                'actionUrl' => $this->frontendUrl . '/admin/login'
+                'user'      => $this->user,
+                'password'  => $this->password,
+                'actionUrl' => $actionUrl,
             ]);
     }
 }
+
 
