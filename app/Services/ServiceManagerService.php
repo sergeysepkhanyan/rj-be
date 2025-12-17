@@ -31,9 +31,9 @@ class ServiceManagerService
         return $this->serviceRepository->create($data);
     }
 
-    public function updateService($id, array $data): Service
+    public function updateService(Service $service, array $data): Service
     {
-        return $this->serviceRepository->update($id, $data);
+        return $this->serviceRepository->update($service, $data);
     }
 
     public function deleteService(Service $service): ?bool

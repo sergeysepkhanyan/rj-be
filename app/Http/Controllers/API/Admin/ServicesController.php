@@ -72,7 +72,7 @@ class ServicesController
         try {
             $data = $request->validated();
 
-            $service = $this->serviceManagerService->updateService($service->id, $data);
+            $service = $this->serviceManagerService->updateService($service, $data);
 
             return ApiResponse::success([
                 'service' => new AdminServiceResource($service),
