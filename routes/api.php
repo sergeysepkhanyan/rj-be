@@ -26,6 +26,8 @@ use App\Http\Controllers\API\UsersController;
 use App\Http\Controllers\API\Admin\StaffController as AdminStaffController;
 use App\Http\Controllers\API\Admin\BookingsController as AdminBookingsController;
 use App\Http\Controllers\API\WeekdaysController;
+use App\Http\Resources\UserResource;
+use App\Services\ApiResponse;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['cors.custom', 'set.locale'])->group(function () {
@@ -56,8 +58,18 @@ Route::middleware(['cors.custom', 'set.locale'])->group(function () {
 
         Route::patch('/user/details', [UsersController::class, 'updateDetails']);
         Route::patch('/user/change-password', [UsersController::class, 'changePassword']);
-        Route::get('me', function () {
-            return auth()->user();
+        Route::middleware('auth:api')->get('me', function () {
+            $user = auth()->user()->load([
+                'role',
+                'referral',
+                'subservices',
+                'weekends',
+                 'masterBookings',
+                 'clientBookings',
+            ]);
+            return ApiResponse::success([
+                'user' => new UserResource($user)
+            ]);
         });
 
         Route::get('/services', [ServicesController::class, 'index']);

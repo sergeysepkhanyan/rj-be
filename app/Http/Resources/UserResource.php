@@ -12,6 +12,9 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * @property mixed $id
  * @property mixed $subservices
  * @property mixed $image
+ * @property mixed $clientBookings
+ * @property mixed $referral
+ * @property mixed $masterBookings
  * @method relationLoaded(string $string)
  */
 class UserResource extends BaseResource
@@ -28,6 +31,9 @@ class UserResource extends BaseResource
             'dateOfBirth' => $data['date_of_birth'] ?? null,
             'role' => $this->role->name ?? null,
             'image' => $this->image ? asset('storage/' . $this->image) : null,
+            'bookingsCount' => $this->clientBookings->count(),
+            'ordersCount' => 0,
+            'referral' => $this->referral ? new ReferralResource($this->referral) : null
         ];
     }
 }
