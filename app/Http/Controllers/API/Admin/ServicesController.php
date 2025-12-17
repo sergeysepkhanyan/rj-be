@@ -70,10 +70,9 @@ class ServicesController
     public function update(UpdateServiceRequest $request, Service $service): JsonResponse
     {
         try {
-            $data = $request->validated();
-
+            $data = $request->all();
+            $data = array_intersect_key($data, array_flip((new Service)->getFillable()));
             $service = $this->serviceManagerService->updateService($service, $data);
-
             return ApiResponse::success([
                 'service' => new AdminServiceResource($service),
             ], 'Service updated successfully.');
