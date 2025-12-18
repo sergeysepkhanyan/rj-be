@@ -6,8 +6,6 @@ use App\Filters\BookingFilter;
 use App\Models\Booking;
 use App\Models\SubService;
 use App\Models\SubServiceItem;
-use App\Models\UserBooking;
-use App\Repositories\Interfaces\ServiceRepositoryInterface;
 use App\Repositories\Interfaces\BookingRepositoryInterface;
 use App\Repositories\Interfaces\SubServiceItemRepositoryInterface;
 use App\Repositories\Interfaces\SubServiceRepositoryInterface;
@@ -160,14 +158,14 @@ class BookingService
     ): array
     {
         $slots = [];
+        $dayStart = Carbon::createFromFormat('Y-m-d H:i', trim($date) . ' ' . trim($workStart));
+        $dayEnd   = Carbon::createFromFormat('Y-m-d H:i', trim($date) . ' ' . trim($workEnd));
+        $busyIntervals = $busy->map(function ($row) {
+            $rowDate = is_string($row->date) ? trim(substr($row->date, 0, 10)) : Carbon::parse($row->date)->toDateString();
 
-        $dayStart = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$workStart}");
-        $dayEnd   = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$workEnd}");
-
-        $busyIntervals = $busy->map(function ($row) use ($date) {
             return [
-                'start' => Carbon::createFromFormat('Y-m-d H:i', $row->date . ' ' . $row->start_time),
-                'end'   => Carbon::createFromFormat('Y-m-d H:i', $row->date . ' ' . $row->end_time),
+                'start' => Carbon::createFromFormat('Y-m-d H:i:s', $rowDate . ' ' . trim($row->start_time)),
+                'end'   => Carbon::createFromFormat('Y-m-d H:i:s', $rowDate . ' ' . trim($row->end_time)),
             ];
         });
 
