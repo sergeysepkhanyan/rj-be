@@ -11,6 +11,7 @@ use App\Http\Resources\BookingResource;
 use App\Models\Booking;
 use App\Services\ApiResponse;
 use App\Services\BookingService;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -57,6 +58,9 @@ class BookingsController extends Controller
         ]);
     }
 
+    /**
+     * @throws ValidationException
+     */
     public function store(StoreBookingRequest $request): JsonResponse
     {
         try {
@@ -64,12 +68,17 @@ class BookingsController extends Controller
             return ApiResponse::success([
                 'booking'    => new BookingResource($booking)
             ], 'Booking created successfully.');
+        } catch (HttpResponseException|ValidationException $e) {
+            throw $e;
         } catch (\Throwable $e) {
             report($e);
             return ApiResponse::error();
         }
     }
 
+    /**
+     * @throws ValidationException
+     */
     public function update(UpdateBookingRequest $request, Booking $booking): JsonResponse
     {
         try {
@@ -81,7 +90,9 @@ class BookingsController extends Controller
             return ApiResponse::success([
                 'booking' => new BookingResource($updated),
             ], 'Booking updated successfully');
-        }  catch (\Throwable $e) {
+        } catch (HttpResponseException|ValidationException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
             report($e);
             return ApiResponse::error();
         }

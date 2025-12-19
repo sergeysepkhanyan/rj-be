@@ -233,7 +233,9 @@ class BookingService
 
         if ($hasOverlap) {
             throw new HttpResponseException(
-                ApiResponse::error([], 'Master is not available in selected time range.', 422)
+                ApiResponse::error([
+                    'masterId' => 'Master is not available in selected time range.',
+                ], 'Master is not available in selected time range.', 422)
             );
         }
 
@@ -431,14 +433,18 @@ class BookingService
 
         if ($end->lte($start)) {
             throw new HttpResponseException(
-                ApiResponse::error([], 'End time must be after start time.', 422)
+                ApiResponse::error([
+                    'endTime' => 'End time must be after start time.'
+                ],'Validation failed')
             );
         }
 
         $now = Carbon::now();
         if ($start->lte($now)) {
             throw new HttpResponseException(
-                ApiResponse::error([], 'Start time must be in the future.', 422)
+                ApiResponse::error([
+                    'startTime' => 'Start time must be in the future.'
+                ],'Validation failed')
             );
         }
 
@@ -447,7 +453,9 @@ class BookingService
 
         if ($start->lt($dayStart) || $end->gt($dayEnd)) {
             throw new HttpResponseException(
-                ApiResponse::error([], "Booking must be within working hours ({$workStart}–{$workEnd}).", 422)
+                ApiResponse::error([
+                    'workingHours' => "Booking must be within working hours ({$workStart}–{$workEnd})."
+                ],'Validation failed')
             );
         }
 
@@ -457,13 +465,17 @@ class BookingService
 
         if ($expectedMinutes <= 0) {
             throw new HttpResponseException(
-                ApiResponse::error([], 'Invalid services duration.', 422)
+                ApiResponse::error([
+                    'duration' => 'Invalid services duration.'
+                ],'Validation failed')
             );
         }
 
-        if ($actualMinutes !== $expectedMinutes) {
+        if ($actualMinutes != $expectedMinutes) {
             throw new HttpResponseException(
-                ApiResponse::error([], "Selected services require {$expectedMinutes} minutes, but provided range is {$actualMinutes} minutes.", 422)
+                ApiResponse::error([
+                    'serviceDuration' => "Selected services require {$expectedMinutes} minutes, but provided range is {$actualMinutes} minutes."
+                ],'Validation failed')
             );
         }
 
@@ -471,7 +483,9 @@ class BookingService
 
         if (($start->minute % $grid) !== 0 || ($end->minute % $grid) !== 0) {
             throw new HttpResponseException(
-                ApiResponse::error([], "Time must be in {$grid}-minute increments.", 422)
+                ApiResponse::error([
+                    'duration' => "Time must be in {$grid}-minute increments.",
+                ],'Validation failed')
             );
         }
     }
