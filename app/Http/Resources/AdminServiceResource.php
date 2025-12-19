@@ -19,7 +19,7 @@ class AdminServiceResource extends BaseResource
         return [
             'id' => $data['id'] ?? null,
             'name' => $data['name'] ?? null,
-            'description' => $data['description'] ?? null,
+            'gender' => $data['gender'] ?? null,
             'image' => $this->image ? asset('storage/' . $this->image) : null,
             'subservices' => SubServiceResource::collection($this->subServices),
         ];
