@@ -158,10 +158,20 @@ class BookingService
     ): array
     {
         $slots = [];
+
         $dayStart = Carbon::createFromFormat('Y-m-d H:i', trim($date) . ' ' . trim($workStart));
         $dayEnd   = Carbon::createFromFormat('Y-m-d H:i', trim($date) . ' ' . trim($workEnd));
+
+        $now = Carbon::now();
+
+        if ($dayEnd->lt($now->copy()->startOfDay())) {
+            return [];
+        }
+
         $busyIntervals = $busy->map(function ($row) {
-            $rowDate = is_string($row->date) ? trim(substr($row->date, 0, 10)) : Carbon::parse($row->date)->toDateString();
+            $rowDate = is_string($row->date)
+                ? trim(substr($row->date, 0, 10))
+                : Carbon::parse($row->date)->toDateString();
 
             return [
                 'start' => Carbon::createFromFormat('Y-m-d H:i:s', $rowDate . ' ' . trim($row->start_time)),
@@ -171,9 +181,28 @@ class BookingService
 
         $cursor = $dayStart->copy();
 
+        if ($dayStart->isSameDay($now)) {
+            $roundedNow = $now->copy();
+            $roundedNow->setSecond(0);
+
+            $mod = $roundedNow->minute % 5;
+            if ($mod !== 0) {
+                $roundedNow->addMinutes(5 - $mod);
+            }
+
+            if ($roundedNow->gt($cursor)) {
+                $cursor = $roundedNow;
+            }
+        }
+
         while ($cursor->copy()->addMinutes($durationMinutes) <= $dayEnd) {
             $slotStart = $cursor->copy();
             $slotEnd   = $cursor->copy()->addMinutes($durationMinutes);
+
+            if ($dayStart->isSameDay($now) && $slotStart->lte($now)) {
+                $cursor->addMinutes($durationMinutes);
+                continue;
+            }
 
             $overlaps = $busyIntervals->contains(function ($interval) use ($slotStart, $slotEnd) {
                 return $slotStart < $interval['end'] && $slotEnd > $interval['start'];
@@ -194,6 +223,7 @@ class BookingService
 
     public function createBooking(array $data): Booking
     {
+        $this->validateBookingTimeAndDuration($data);
         $hasOverlap = $this->bookingRepository->hasOverlap(
             masterId:  $data['master_id'],
             date:      $data['date'],
@@ -248,6 +278,7 @@ class BookingService
 
     public function updateBooking(Booking $booking, array $data): Booking
     {
+        $this->validateBookingTimeAndDuration($data);
         $hasOverlap = $this->bookingRepository->hasOverlap(
             masterId:         $data['master_id'],
             date:             $data['date'],
@@ -286,7 +317,6 @@ class BookingService
                 'notes'          => $data['notes'] ?? $booking->notes,
             ]);
 
-            // Simple approach: remove old services and reattach
             $booking->services()->delete();
 
             foreach ($data['services'] as $serviceData) {
@@ -385,4 +415,99 @@ class BookingService
         ]);
 
     }
+
+    protected function validateBookingTimeAndDuration(array $data): void
+    {
+        $date = trim($data['date']);
+        $startTime = trim($data['start_time']);
+        $endTime = trim($data['end_time']);
+
+        $workStart = '10:00';
+        $workEnd   = '19:00';
+
+        $start = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$startTime}");
+        $end   = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$endTime}");
+
+
+        if ($end->lte($start)) {
+            throw new HttpResponseException(
+                ApiResponse::error([], 'End time must be after start time.', 422)
+            );
+        }
+
+        $now = Carbon::now();
+        if ($start->lte($now)) {
+            throw new HttpResponseException(
+                ApiResponse::error([], 'Start time must be in the future.', 422)
+            );
+        }
+
+        $dayStart = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$workStart}");
+        $dayEnd   = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$workEnd}");
+
+        if ($start->lt($dayStart) || $end->gt($dayEnd)) {
+            throw new HttpResponseException(
+                ApiResponse::error([], "Booking must be within working hours ({$workStart}–{$workEnd}).", 422)
+            );
+        }
+
+        $expectedMinutes = $this->resolveTotalDurationMinutes($data['services'] ?? []);
+
+        $actualMinutes = $start->diffInMinutes($end);
+
+        if ($expectedMinutes <= 0) {
+            throw new HttpResponseException(
+                ApiResponse::error([], 'Invalid services duration.', 422)
+            );
+        }
+
+        if ($actualMinutes !== $expectedMinutes) {
+            throw new HttpResponseException(
+                ApiResponse::error([], "Selected services require {$expectedMinutes} minutes, but provided range is {$actualMinutes} minutes.", 422)
+            );
+        }
+
+        $grid = 5;
+
+        if (($start->minute % $grid) !== 0 || ($end->minute % $grid) !== 0) {
+            throw new HttpResponseException(
+                ApiResponse::error([], "Time must be in {$grid}-minute increments.", 422)
+            );
+        }
+    }
+
+
+    protected function resolveTotalDurationMinutes(array $services): int
+    {
+        $total = 0;
+
+        foreach ($services as $serviceData) {
+            $type = $serviceData['service_type'] ?? null;
+            $id   = $serviceData['service_id'] ?? null;
+
+            if (! $type || ! $id) {
+                continue;
+            }
+
+            $serviceableClass = match ($type) {
+                'subservice' => SubService::class,
+                'item'       => SubServiceItem::class,
+                default      => null,
+            };
+
+            if (! $serviceableClass) {
+                continue;
+            }
+
+            $serviceable = $serviceableClass::find($id);
+            if (! $serviceable) {
+                continue;
+            }
+
+            $total += (int) ($serviceable->duration ?? 0);
+        }
+
+        return $total;
+    }
+
 }
