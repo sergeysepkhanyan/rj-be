@@ -7,6 +7,18 @@ use Illuminate\Foundation\Configuration\Middleware;
 
 use App\Http\Middleware\RoleMiddleware;
 
+use Illuminate\Http\Request;
+use Throwable;
+
+use Illuminate\Validation\ValidationException;
+use Illuminate\Auth\AuthenticationException;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
+
+use App\Services\ApiResponse;
+
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__ . '/../routes/web.php',
@@ -23,12 +35,78 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        $exceptions->render(function (\Throwable $e, $request) {
-//            return \App\Services\ApiResponse::error(
-//                ['general' => ['Something went wrong.']],
-//                'Server error',
-//                500
-//            );
+
+        $exceptions->shouldRenderJsonWhen(function (Request $request, Throwable $e) {
+            return $request->is('api/*') || $request->expectsJson();
+        });
+
+        $exceptions->render(function (ValidationException $e, Request $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                return ApiResponse::error(
+                    $e->errors(),
+                    'Validation failed.',
+                    422
+                );
+            }
+            return null;
+        });
+
+        $exceptions->render(function (AuthenticationException $e, Request $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                return ApiResponse::error(
+                    null,
+                    'Unauthenticated.',
+                    401
+                );
+            }
+            return null;
+        });
+
+        $exceptions->render(function (AuthorizationException $e, Request $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                return ApiResponse::error(
+                    null,
+                    $e->getMessage() ?: 'Forbidden.',
+                    403
+                );
+            }
+            return null;
+        });
+
+        $exceptions->render(function (ModelNotFoundException $e, Request $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                return ApiResponse::error(
+                    null,
+                    'Resource not found.',
+                    404
+                );
+            }
+            return null;
+        });
+
+        $exceptions->render(function (NotFoundHttpException $e, Request $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                return ApiResponse::error(
+                    null,
+                    'Endpoint not found.',
+                    404
+                );
+            }
+            return null;
+        });
+
+        $exceptions->render(function (Throwable $e, Request $request) {
+            if (!($request->is('api/*') || $request->expectsJson())) {
+                return null;
+            }
+            $status = $e instanceof HttpExceptionInterface ? $e->getStatusCode() : 500;
+
+            $message = app()->isProduction()
+                ? 'Something went wrong. Please try again later.'
+                : ($e->getMessage() ?: 'Server error.');
+
+            return ApiResponse::error(null, $message, $status);
         });
     })
     ->create();
+
