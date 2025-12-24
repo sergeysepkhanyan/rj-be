@@ -59,43 +59,27 @@ class BookingsController extends Controller
     }
 
     /**
-     * @throws ValidationException
      */
     public function store(StoreBookingRequest $request): JsonResponse
     {
-        try {
-            $booking = $this->bookingService->createBooking($request->all());
-            return ApiResponse::success([
-                'booking'    => new BookingResource($booking)
-            ], 'Booking created successfully.');
-        } catch (HttpResponseException|ValidationException $e) {
-            throw $e;
-        } catch (\Throwable $e) {
-            report($e);
-            return ApiResponse::error();
-        }
+        $booking = $this->bookingService->createBooking($request->all());
+        return ApiResponse::success([
+            'booking'    => new BookingResource($booking)
+        ], 'Booking created successfully.');
     }
 
     /**
-     * @throws ValidationException
      */
     public function update(UpdateBookingRequest $request, Booking $booking): JsonResponse
     {
-        try {
-            $updated = $this->bookingService->updateBooking(
-                $booking,
-                $request->all()
-            );
+        $updated = $this->bookingService->updateBooking(
+            $booking,
+            $request->all()
+        );
 
-            return ApiResponse::success([
-                'booking' => new BookingResource($updated),
-            ], 'Booking updated successfully');
-        } catch (HttpResponseException|ValidationException $e) {
-            throw $e;
-        } catch (\Throwable $e) {
-            report($e);
-            return ApiResponse::error();
-        }
+        return ApiResponse::success([
+            'booking' => new BookingResource($updated),
+        ], 'Booking updated successfully');
     }
 }
 

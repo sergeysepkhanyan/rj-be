@@ -20,14 +20,8 @@ class PagesController extends Controller
 
     public function update(Request $request): JsonResponse
     {
-        try {
-            $data = $request->all();
-            $page = $this->pageService->update($data);
-            return ApiResponse::success(new PageResource($page), 'Page updated successfully.');
-
-        } catch (\Throwable $e) {
-
-            return ApiResponse::error();
-        }
+        $data = $request->all();
+        $page = $this->pageService->update($data);
+        return ApiResponse::success(new PageResource($page), 'Page updated successfully.');
     }
 }

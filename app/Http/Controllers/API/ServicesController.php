@@ -22,15 +22,10 @@ class ServicesController
 
     public function index(Request $request): JsonResponse
     {
-        try {
+        $services = $this->serviceManagerService->getAllServices();
 
-            $services = $this->serviceManagerService->getAllServices();
-
-            return ApiResponse::success([
-                'services' => ServiceResource::collection($services),
-            ]);
-        } catch (\Exception $e) {
-            return ApiResponse::error();
-        }
+        return ApiResponse::success([
+            'services' => ServiceResource::collection($services),
+        ]);
     }
 }

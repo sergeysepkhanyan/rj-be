@@ -19,12 +19,8 @@ class StaffController extends Controller
 
     public function getMasters(): JsonResponse
     {
-        try {
-            return ApiResponse::success([
-                'masters' => StaffResource::collection($this->userService->getMasters()),
-            ], 'Staff members added successfully');
-        } catch (\Exception $e) {
-            return ApiResponse::error();
-        }
+        return ApiResponse::success([
+            'masters' => StaffResource::collection($this->userService->getMasters()),
+        ], 'Staff members added successfully');
     }
 }

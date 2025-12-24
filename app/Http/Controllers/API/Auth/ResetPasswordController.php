@@ -20,24 +20,16 @@ class ResetPasswordController extends Controller
 
     public function forgot(Request $request): JsonResponse
     {
-        try {
-            $request->validate([
-                'identifier' => 'required|string',
-            ]);
+        $request->validate([
+            'identifier' => 'required|string',
+        ]);
 
-            $response = $this->passwordService->sendResetLink($request->identifier);
-            if(!$response['success']){
-                return ApiResponse::error(['token' => [$response['message'] ?? 'Reset link failed']], 'Reset link failed', 400);
-            }
-
-            return ApiResponse::success($response, 'Reset link sent successfully');
-
-        } catch (ValidationException $e) {
-            return ApiResponse::error($e->errors(), 'Validation failed', 422);
-
-        } catch (\Throwable $e) {
-            return ApiResponse::error();
+        $response = $this->passwordService->sendResetLink($request->identifier);
+        if(!$response['success']){
+            return ApiResponse::error(['token' => [$response['message'] ?? 'Reset link failed']], 'Reset link failed', 400);
         }
+
+        return ApiResponse::success($response, 'Reset link sent successfully');
     }
 
     public function reset(Request $request): JsonResponse

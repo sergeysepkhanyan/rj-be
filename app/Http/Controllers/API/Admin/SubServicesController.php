@@ -26,57 +26,44 @@ class SubServicesController
 
     public function store(StoreSubServiceRequest $request): JsonResponse
     {
-        try {
-            $subService = $this->subServiceManagerService->createSubServiceWithItems(
-                $request->only([
-                    'name', 'description', 'name_ar', 'description_ar', 'service_id', 'image', 'type', 'price','currency', 'duration', 'duration_unit'
-                ]),
-                $request->input('items')
-            );
+        $subService = $this->subServiceManagerService->createSubServiceWithItems(
+            $request->only([
+                'name', 'description', 'name_ar', 'description_ar', 'service_id', 'image', 'type', 'price','currency', 'duration', 'duration_unit'
+            ]),
+            $request->input('items')
+        );
 
-            $service = $subService->service;
-            $service->load('subServices.items');
+        $service = $subService->service;
+        $service->load('subServices.items');
 
-            return ApiResponse::success([
-                'service' => new AdminServiceResource($service),
-            ], 'Subservice created successfully.');
-        } catch (\Exception $e) {
-            return ApiResponse::error();
-        }
+        return ApiResponse::success([
+            'service' => new AdminServiceResource($service),
+        ], 'Subservice created successfully.');
     }
 
     public function update(UpdateSubServiceRequest $request, SubService $subService): JsonResponse
     {
-        try {
+        $subService = $this->subServiceManagerService->updateSubServiceWithItems(
+            $subService,
+            $request->only([
+                'name', 'description', 'name_ar', 'description_ar', 'image', 'type', 'price','currency', 'duration', 'duration_unit'
+            ]),
+            $request->input('items')
+        );
 
-            $subService = $this->subServiceManagerService->updateSubServiceWithItems(
-                $subService,
-                $request->only([
-                    'name', 'description', 'name_ar', 'description_ar', 'image', 'type', 'price','currency', 'duration', 'duration_unit'
-                ]),
-                $request->input('items')
-            );
+        $subService->load('service.subServices.items');
 
-            $subService->load('service.subServices.items');
-
-            return ApiResponse::success([
-                'service' => new AdminServiceResource($subService->service),
-            ], 'Subservice updated successfully.');
-        } catch (\Exception $e) {
-            return ApiResponse::error();
-        }
+        return ApiResponse::success([
+            'service' => new AdminServiceResource($subService->service),
+        ], 'Subservice updated successfully.');
     }
 
     public function destroy(SubService $subService): JsonResponse
     {
-        try {
-            $this->subServiceManagerService->deleteSubService($subService);
-            return ApiResponse::success([
-                'deleted' => true,
-                'sub_service_id' => $subService->id,
-            ], 'Subservice deleted successfully.');
-        } catch (\Throwable $e) {
-            return ApiResponse::error();
-        }
+        $this->subServiceManagerService->deleteSubService($subService);
+        return ApiResponse::success([
+            'deleted' => true,
+            'sub_service_id' => $subService->id,
+        ], 'Subservice deleted successfully.');
     }
 }

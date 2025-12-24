@@ -25,73 +25,57 @@ class ServicesController
 
     public function index(Request $request, ServiceFilter $filter): JsonResponse
     {
-        try {
-            $perPage = $request->query('per_page', 10);
+        $perPage = $request->query('per_page', 10);
 
-            $services = $this->serviceManagerService->getPaginatedServices($filter, $perPage);
+        $services = $this->serviceManagerService->getPaginatedServices($filter, $perPage);
 
-            return ApiResponse::success([
-                'services' => AdminServiceResource::collection($services),
-                'meta' => [
-                    'current_page' => $services->currentPage(),
-                    'last_page' => $services->lastPage(),
-                    'per_page' => $services->perPage(),
-                    'total' => $services->total(),
-                ],
-                'links' => [
-                    'first' => $services->url(1),
-                    'last' => $services->url($services->lastPage()),
-                    'prev' => $services->previousPageUrl(),
-                    'next' => $services->nextPageUrl(),
-                ],
-                'filters' => $request->only(['search']),
-            ]);
-        } catch (\Exception $e) {
-            return ApiResponse::error();
-        }
+        return ApiResponse::success([
+            'services' => AdminServiceResource::collection($services),
+            'meta' => [
+                'current_page' => $services->currentPage(),
+                'last_page' => $services->lastPage(),
+                'per_page' => $services->perPage(),
+                'total' => $services->total(),
+            ],
+            'links' => [
+                'first' => $services->url(1),
+                'last' => $services->url($services->lastPage()),
+                'prev' => $services->previousPageUrl(),
+                'next' => $services->nextPageUrl(),
+            ],
+            'filters' => $request->only(['search']),
+        ]);
     }
 
     public function store(StoreServiceRequest $request): JsonResponse
     {
-        try {
-            $data = $request->all();
-            $data = array_intersect_key($data, array_flip((new Service)->getFillable()));
-            $service = $this->serviceManagerService->createService($data);
-            $service->load('subServices.items');
+        $data = $request->all();
+        $data = array_intersect_key($data, array_flip((new Service)->getFillable()));
+        $service = $this->serviceManagerService->createService($data);
+        $service->load('subServices.items');
 
-            return ApiResponse::success([
-                'service' => new AdminServiceResource($service),
-            ], 'Service created successfully.');
-        } catch (\Exception $e) {
-            return ApiResponse::error();
-        }
+        return ApiResponse::success([
+            'service' => new AdminServiceResource($service),
+        ], 'Service created successfully.');
     }
 
     public function update(UpdateServiceRequest $request, Service $service): JsonResponse
     {
-        try {
-            $data = $request->all();
-            $data = array_intersect_key($data, array_flip((new Service)->getFillable()));
-            $service = $this->serviceManagerService->updateService($service, $data);
-            return ApiResponse::success([
-                'service' => new AdminServiceResource($service),
-            ], 'Service updated successfully.');
-        } catch (\Exception $e) {
-            return ApiResponse::error();
-        }
+        $data = $request->all();
+        $data = array_intersect_key($data, array_flip((new Service)->getFillable()));
+        $service = $this->serviceManagerService->updateService($service, $data);
+        return ApiResponse::success([
+            'service' => new AdminServiceResource($service),
+        ], 'Service updated successfully.');
     }
 
     public function destroy(Service $service): JsonResponse
     {
-        try {
-            $this->serviceManagerService->deleteService($service);
+        $this->serviceManagerService->deleteService($service);
 
-            return ApiResponse::success([
-                'deleted' => true,
-                'service_id' => $service->id,
-            ], 'Service deleted successfully.');
-        } catch (\Throwable $e) {
-            return ApiResponse::error();
-        }
+        return ApiResponse::success([
+            'deleted' => true,
+            'service_id' => $service->id,
+        ], 'Service deleted successfully.');
     }
 }

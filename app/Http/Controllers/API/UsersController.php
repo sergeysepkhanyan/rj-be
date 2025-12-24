@@ -23,23 +23,19 @@ class UsersController extends Controller
 
     public function updateDetails(UpdateUserDetailsRequest $request): JsonResponse
     {
-        try {
-            $user = auth()->user();
+        $user = auth()->user();
 
-            if (!$user) {
-                return ApiResponse::error(['message' => 'Unauthorized'], 'Unauthorized');
-            }
-
-            $data = $request->all();
-            $data = array_intersect_key($data, array_flip((new User)->getFillable()));
-            $user = $this->userService->updateUser($user->id, $data);
-
-            return ApiResponse::success([
-                'user' => new UserResource($user),
-            ], 'User updated successfully.');
-        } catch (\Exception $e) {
-            return ApiResponse::error();
+        if (!$user) {
+            return ApiResponse::error(['message' => 'Unauthorized'], 'Unauthorized');
         }
+
+        $data = $request->all();
+        $data = array_intersect_key($data, array_flip((new User)->getFillable()));
+        $user = $this->userService->updateUser($user->id, $data);
+
+        return ApiResponse::success([
+            'user' => new UserResource($user),
+        ], 'User updated successfully.');
     }
 
     public function changePassword(ChangeUserPasswordRequest $request): JsonResponse

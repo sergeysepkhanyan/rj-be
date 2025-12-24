@@ -19,25 +19,17 @@ class FilesController extends Controller
     }
     public function upload(UploadFileRequest $request): JsonResponse
     {
-        try {
-            $slug = $request->get('slug');
-            $imagePath = $this->fileService->upload($request->file('image'), $slug);
+        $slug = $request->get('slug');
+        $imagePath = $this->fileService->upload($request->file('image'), $slug);
 
-            return ApiResponse::success(['image' => $imagePath], 'Image uploaded successfully');
-        } catch (\Exception $e) {
-            return ApiResponse::error();
-        }
+        return ApiResponse::success(['image' => $imagePath], 'Image uploaded successfully');
     }
 
     public function uploadMultiple(UploadMultipleFilesRequest $request): JsonResponse
     {
-        try {
-            $slug = $request->get('slug');
-            $paths = $this->fileService->uploadMultiple($request->file('images'), $slug);
+        $slug = $request->get('slug');
+        $paths = $this->fileService->uploadMultiple($request->file('images'), $slug);
 
-            return ApiResponse::success(['images' => $paths], 'Images uploaded successfully');
-        } catch (\Exception $e) {
-            return ApiResponse::error();
-        }
+        return ApiResponse::success(['images' => $paths], 'Images uploaded successfully');
     }
 }

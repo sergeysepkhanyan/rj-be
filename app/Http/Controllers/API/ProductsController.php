@@ -21,33 +21,29 @@ class ProductsController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        try {
-            $perPage = $request->get('per_page', 15);
-            $page = $request->get('page', 1);
+        $perPage = $request->get('per_page', 15);
+        $page = $request->get('page', 1);
 
-            $products = $this->productService->getPaginatedProducts($perPage, $page);
+        $products = $this->productService->getPaginatedProducts($perPage, $page);
 
-            return ApiResponse::success(
-               [
-                   'products' => ProductResource::collection($products),
-                   'meta' => [
-                       'current_page' => $products->currentPage(),
-                       'last_page' => $products->lastPage(),
-                       'per_page' => $products->perPage(),
-                       'total' => $products->total(),
-                   ],
-                   'links' => [
-                       'first' => $products->url(1),
-                       'last' => $products->url($products->lastPage()),
-                       'prev' => $products->previousPageUrl(),
-                       'next' => $products->nextPageUrl(),
-                   ],
-               ],
-                'Products retrieved successfully'
-            );
-        } catch (\Exception $e) {
-            return ApiResponse::error();
-        }
+        return ApiResponse::success(
+            [
+                'products' => ProductResource::collection($products),
+                'meta' => [
+                    'current_page' => $products->currentPage(),
+                    'last_page' => $products->lastPage(),
+                    'per_page' => $products->perPage(),
+                    'total' => $products->total(),
+                ],
+                'links' => [
+                    'first' => $products->url(1),
+                    'last' => $products->url($products->lastPage()),
+                    'prev' => $products->previousPageUrl(),
+                    'next' => $products->nextPageUrl(),
+                ],
+            ],
+            'Products retrieved successfully'
+        );
     }
 
 }

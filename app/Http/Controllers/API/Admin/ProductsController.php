@@ -24,71 +24,61 @@ class ProductsController extends Controller
 
     public function store(StoreProductRequest $request): JsonResponse
     {
-        try {
-            $productData = $request->only([
-                'name', 'name_ar',
-                'description', 'description_ar',
-                'max_quantity',
-                'price',
-                'currency',
-                'main_image',
-                'referral_id',
-                'discount',
-                'discount_type',
-                'discount_amount',
-                'status',
-            ]);
+        $productData = $request->only([
+            'name', 'name_ar',
+            'description', 'description_ar',
+            'max_quantity',
+            'price',
+            'currency',
+            'main_image',
+            'referral_id',
+            'discount',
+            'discount_type',
+            'discount_amount',
+            'status',
+        ]);
 
-            $productFilePaths = $request->input('images', []);
-            $detailsData = $request->input('details', []);
+        $productFilePaths = $request->input('images', []);
+        $detailsData = $request->input('details', []);
 
-            $productData['main_image'] = $productFilePaths[0] ?? null;
+        $productData['main_image'] = $productFilePaths[0] ?? null;
 
-            $product = $this->productService->createProduct($productData, $detailsData, $productFilePaths);
+        $product = $this->productService->createProduct($productData, $detailsData, $productFilePaths);
 
-            return ApiResponse::success([
-                'product' => new ProductResource($product),
-            ], 'Product created successfully');
-        } catch (\Exception $e) {
-            return ApiResponse::error();
-        }
+        return ApiResponse::success([
+            'product' => new ProductResource($product),
+        ], 'Product created successfully');
     }
     public function update(UpdateProductRequest $request, Product $product): JsonResponse
     {
-        try {
+        $productData = $request->only([
+            'name', 'name_ar',
+            'description', 'description_ar',
+            'max_quantity',
+            'price',
+            'currency',
+            'main_image',
+            'referral_id',
+            'discount',
+            'discount_type',
+            'discount_amount',
+            'status',
+        ]);
 
-            $productData = $request->only([
-                'name', 'name_ar',
-                'description', 'description_ar',
-                'max_quantity',
-                'price',
-                'currency',
-                'main_image',
-                'referral_id',
-                'discount',
-                'discount_type',
-                'discount_amount',
-                'status',
-            ]);
+        $removedFiles = $request->input('removed_files', []);
+        $newFiles = $request->input('new_files', []);
+        $detailsData = $request->input('details', []);
 
-            $removedFiles = $request->input('removed_files', []);
-            $newFiles = $request->input('new_files', []);
-            $detailsData = $request->input('details', []);
+        $updated = $this->productService->updateProduct(
+            $product->id,
+            $productData,
+            $detailsData,
+            $newFiles,
+            $removedFiles
+        );
 
-            $updated = $this->productService->updateProduct(
-                $product->id,
-                $productData,
-                $detailsData,
-                $newFiles,
-                $removedFiles
-            );
-
-            return ApiResponse::success([
-                'product' => new ProductResource($updated),
-            ], 'Product updated successfully');
-
-        } catch (\Exception $e) {
-            return ApiResponse::error();
-        }
+        return ApiResponse::success([
+            'product' => new ProductResource($updated),
+        ], 'Product updated successfully');
     }
 }

@@ -28,14 +28,8 @@ class SubServiceItemsController
 
     public function destroy(SubServiceItem $subServiceItem): JsonResponse
     {
-        try {
+        $this->subServiceItemManagerService->deleteSubServiceItem($subServiceItem->id);
 
-            $this->subServiceItemManagerService->deleteSubServiceItem($subServiceItem->id);
-
-            return ApiResponse::success([], 'Subservice item deleted successfully');
-
-        } catch (\Exception $e) {
-            return ApiResponse::error();
-        }
+        return ApiResponse::success([], 'Subservice item deleted successfully');
     }
 }

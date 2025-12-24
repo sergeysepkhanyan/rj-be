@@ -50,24 +50,17 @@ class BookingsController extends Controller
 
     public function storeBreak(StoreBreakRequest $request): JsonResponse
     {
-        try {
-            $data = $request->only('date', 'start_time', 'end_time', 'master_id');
-
-            $break = $this->bookingService->createBreak($data);
-
-            if (!$break) {
-                return ApiResponse::error(
-                    ['message' => 'Break overlaps with existing booking or invalid time.'],
-                    'Validation failed', 422
-                );
-            }
-            return ApiResponse::success([
-                'break' => new BreakResource($break),
-            ], 'Break created successfully');
-        } catch (\Exception $e) {
-            return ApiResponse::error();
+        $data = $request->only('date', 'start_time', 'end_time', 'master_id');
+        $break = $this->bookingService->createBreak($data);
+        if (!$break) {
+            return ApiResponse::error(
+                ['message' => 'Break overlaps with existing booking or invalid time.'],
+                'Validation failed', 422
+            );
         }
-
+        return ApiResponse::success([
+            'break' => new BreakResource($break),
+        ], 'Break created successfully');
     }
 
 }

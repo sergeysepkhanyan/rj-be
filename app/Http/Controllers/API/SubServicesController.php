@@ -23,14 +23,9 @@ class SubServicesController
 
     public function index(int $serviceId): JsonResponse
     {
-        try {
-
-            $subservices = $this->subServiceManagerService->getByServiceId($serviceId);
-            return ApiResponse::success([
-                'subservices' => SubServiceResource::collection($subservices),
-            ]);
-        } catch (\Exception $e) {
-            return ApiResponse::error();
-        }
+        $subservices = $this->subServiceManagerService->getByServiceId($serviceId);
+        return ApiResponse::success([
+            'subservices' => SubServiceResource::collection($subservices),
+        ]);
     }
 }

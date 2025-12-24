@@ -23,29 +23,21 @@ class PostsController extends Controller
 
     public function store(CreatePostRequest $request): JsonResponse
     {
-        try {
-            $data = $request->all();
-            $data = array_intersect_key($data, array_flip((new Post)->getFillable()));
-            $post = $this->postService->createPost($data);
-            return ApiResponse::success([
-                'post' => new PostResource($post),
-            ], 'Post created successfully');
-        } catch (\Throwable $e) {
-            return ApiResponse::error();
-        }
+        $data = $request->all();
+        $data = array_intersect_key($data, array_flip((new Post)->getFillable()));
+        $post = $this->postService->createPost($data);
+        return ApiResponse::success([
+            'post' => new PostResource($post),
+        ], 'Post created successfully');
     }
 
     public function update(UpdatePostRequest $request, Post $post): JsonResponse
     {
-        try {
-            $data = $request->all();
-            $data = array_intersect_key($data, array_flip((new Post)->getFillable()));
-            $post = $this->postService->updatePost($post, $data);
-            return ApiResponse::success([
-                'post' => new PostResource($post),
-            ], 'Post updated successfully');
-        } catch (\Throwable $e) {
-            return ApiResponse::error();
-        }
+        $data = $request->all();
+        $data = array_intersect_key($data, array_flip((new Post)->getFillable()));
+        $post = $this->postService->updatePost($post, $data);
+        return ApiResponse::success([
+            'post' => new PostResource($post),
+        ], 'Post updated successfully');
     }
 }

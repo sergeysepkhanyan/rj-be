@@ -25,54 +25,45 @@ class ClientsController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        try {
-            $perPage = $request->get('per_page', 10);
-            $page = $request->get('page', 1);
+        $perPage = $request->get('per_page', 10);
+        $page = $request->get('page', 1);
 
-            $staff = $this->userService->getPaginatedClients($perPage, $page);
+        $staff = $this->userService->getPaginatedClients($perPage, $page);
 
-            return ApiResponse::success([
-                'users' => ClientResource::collection($staff),
-                'meta' => [
-                    'current_page' => $staff->currentPage(),
-                    'last_page' => $staff->lastPage(),
-                    'per_page' => $staff->perPage(),
-                    'total' => $staff->total(),
-                ],
-                'links' => [
-                    'first' => $staff->url(1),
-                    'last' => $staff->url($staff->lastPage()),
-                    'prev' => $staff->previousPageUrl(),
-                    'next' => $staff->nextPageUrl(),
-                ],
-            ], 'Clients retrieved successfully');
-        } catch (\Exception $e) {
-            return ApiResponse::error();
-        }
+        return ApiResponse::success([
+            'users' => ClientResource::collection($staff),
+            'meta' => [
+                'current_page' => $staff->currentPage(),
+                'last_page' => $staff->lastPage(),
+                'per_page' => $staff->perPage(),
+                'total' => $staff->total(),
+            ],
+            'links' => [
+                'first' => $staff->url(1),
+                'last' => $staff->url($staff->lastPage()),
+                'prev' => $staff->previousPageUrl(),
+                'next' => $staff->nextPageUrl(),
+            ],
+        ], 'Clients retrieved successfully');
     }
 
     public function addReferral(Request $request, User $user): JsonResponse
     {
 
-        try {
+        $data = $request->all();
 
-            $data = $request->all();
+        $validator = Validator::make($data, [
+            'referral_id' => 'nullable|exists:referrals,id',
+        ]);
 
-            $validator = Validator::make($data, [
-                'referral_id' => 'nullable|exists:referrals,id',
-            ]);
-
-            if ($validator->fails()) {
-                return ApiResponse::error($validator->errors(), 'Validation failed', 422);
-            }
-
-            $client = $this->userService->updateUser($user->id, $data);
-
-            return ApiResponse::success([
-                'user' => new ClientResource($client),
-            ], 'Referral added successfully');
-        } catch (\Exception $e) {
-            return ApiResponse::error();
+        if ($validator->fails()) {
+            return ApiResponse::error($validator->errors(), 'Validation failed', 422);
         }
+
+        $client = $this->userService->updateUser($user->id, $data);
+
+        return ApiResponse::success([
+            'user' => new ClientResource($client),
+        ], 'Referral added successfully');
     }
 }
