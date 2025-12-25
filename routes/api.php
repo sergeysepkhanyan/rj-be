@@ -5,6 +5,7 @@ use App\Http\Controllers\API\Admin\PagesController as AdminPagesController;
 use App\Http\Controllers\API\BookingsController;
 use App\Http\Controllers\API\Client\AddressController;
 use App\Http\Controllers\API\Client\PaymentMethodsController;
+use App\Http\Controllers\API\ContactController;
 use App\Http\Controllers\API\SubServiceMastersController;
 use App\Http\Controllers\API\PagesController;
 use App\Http\Controllers\API\Admin\ReferralsController;
@@ -31,7 +32,8 @@ use App\Services\ApiResponse;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['cors.custom', 'set.locale'])->group(function () {
-
+    Route::post('/contact', [ContactController::class, 'store'])
+        ->middleware('throttle:contact');
     Route::prefix('content')->group(function () {
         Route::get('/home', [PageContentController::class, 'home']);
         Route::get('/about', [PageContentController::class, 'about']);

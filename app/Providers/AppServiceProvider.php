@@ -3,7 +3,9 @@
 namespace App\Providers;
 
 use App\Repositories\AddressRepository;
+use App\Repositories\ContactMessageRepository;
 use App\Repositories\Interfaces\AddressRepositoryInterface;
+use App\Repositories\Interfaces\ContactMessageRepositoryInterface;
 use App\Repositories\Interfaces\PageRepositoryInterface;
 use App\Repositories\Interfaces\PaymentMethodRepositoryInterface;
 use App\Repositories\Interfaces\PostRepositoryInterface;
@@ -32,6 +34,9 @@ use App\Repositories\SubServiceManagerRepository;
 use App\Repositories\UserRepository;
 use App\Repositories\UserRoleRepository;
 use App\Repositories\WeekdayRepository;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -56,6 +61,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(AddressRepositoryInterface::class, AddressRepository::class);
         $this->app->bind(PaymentMethodRepositoryInterface::class, PaymentMethodRepository::class);
         $this->app->bind(PageRepositoryInterface::class, PageRepository::class);
+        $this->app->bind(ContactMessageRepositoryInterface::class, ContactMessageRepository::class);
     }
 
     /**
@@ -63,6 +69,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        RateLimiter::for('contact', function (Request $request) {
+            return Limit::perMinute(5)->by($request->ip());
+        });
     }
 }
