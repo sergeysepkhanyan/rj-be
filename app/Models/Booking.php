@@ -45,6 +45,7 @@ class Booking extends Model
         'payment_status',
         'status',
         'notes',
+        'timezone',
     ];
 
     protected $casts = [

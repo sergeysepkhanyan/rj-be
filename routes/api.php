@@ -69,12 +69,7 @@ Route::middleware(['cors.custom', 'set.locale'])->group(function () {
             ]);
         });
 
-        Route::get('/services', [ServicesController::class, 'index']);
-        Route::get('/services/{service}/subservices', [SubServicesController::class, 'index']);
-        Route::get('/subservices/{subservice}/masters', [SubServiceMastersController::class, 'index']);
-
         Route::get('/bookings', [BookingsController::class, 'index']);
-        Route::get('/bookings/available-slots', [BookingsController::class, 'availableSlots']);
         Route::post('/bookings', [BookingsController::class, 'store']);
         Route::put('/bookings/{booking}', [BookingsController::class, 'update']);
 
@@ -91,6 +86,11 @@ Route::middleware(['cors.custom', 'set.locale'])->group(function () {
         Route::delete('/payment-methods/{paymentMethod
         }', [PaymentMethodsController::class, 'destroy']);
     });
+
+    Route::get('/bookings/available-slots', [BookingsController::class, 'availableSlots']);
+    Route::get('/services', [ServicesController::class, 'index']);
+    Route::get('/services/{service}/subservices', [SubServicesController::class, 'index']);
+    Route::get('/subservices/{subservice}/masters', [SubServiceMastersController::class, 'index']);
     Route::post('/password/forgot', [ResetPasswordController::class, 'forgot']);
     Route::post('/password/reset', [ResetPasswordController::class, 'reset']);
 

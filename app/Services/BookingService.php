@@ -108,6 +108,7 @@ class BookingService
 
     public function getAvailableSlots(array $data): array
     {
+        $tz = $data['timezone'] ?? 'UTC';
         $masterId         = $data['master_id'];
         $date             = $data['date'];
         $subserviceId     = $data['sub_service_id'] ?? null;
@@ -121,7 +122,7 @@ class BookingService
 
         $busy = $this->bookingRepository->getBusyForMasterOnDate($masterId, $date);
 
-        return $this->buildSlots($date, $workStart, $workEnd, $busy, $durationMinutes);
+        return $this->buildSlots($date, $workStart, $workEnd, $busy, $durationMinutes, $tz);
     }
 
     protected function resolveDurationMinutes(?int $subserviceId, ?int $subserviceItemId): int
@@ -154,30 +155,36 @@ class BookingService
         string $workStart,
         string $workEnd,
         Collection $busy,
-        int $durationMinutes
+        int $durationMinutes,
+        string $tz
     ): array
     {
         $slots = [];
 
-        $dayStart = Carbon::createFromFormat('Y-m-d H:i', trim($date) . ' ' . trim($workStart));
-        $dayEnd   = Carbon::createFromFormat('Y-m-d H:i', trim($date) . ' ' . trim($workEnd));
-
-        $now = Carbon::now();
+        $dayStart = Carbon::createFromFormat('Y-m-d H:i', "$date $workStart", $tz);
+        $dayEnd   = Carbon::createFromFormat('Y-m-d H:i', "$date $workEnd", $tz);
+        $now      = Carbon::now($tz);
 
         if ($dayEnd->lt($now->copy()->startOfDay())) {
             return [];
         }
 
-        $busyIntervals = $busy->map(function ($row) {
+        $busyIntervals = $busy->map(function ($row) use ($tz) {
+            $rowTz = $row->timezone ?? 'UTC';
+
             $rowDate = is_string($row->date)
                 ? trim(substr($row->date, 0, 10))
-                : Carbon::parse($row->date)->toDateString();
+                : Carbon::parse($row->date, $rowTz)->toDateString();
+
+            $startLocal = Carbon::createFromFormat('Y-m-d H:i:s', $rowDate.' '.trim($row->start_time), $rowTz);
+            $endLocal   = Carbon::createFromFormat('Y-m-d H:i:s', $rowDate.' '.trim($row->end_time), $rowTz);
 
             return [
-                'start' => Carbon::createFromFormat('Y-m-d H:i:s', $rowDate . ' ' . trim($row->start_time)),
-                'end'   => Carbon::createFromFormat('Y-m-d H:i:s', $rowDate . ' ' . trim($row->end_time)),
+                'start' => $startLocal->copy()->setTimezone($tz),
+                'end'   => $endLocal->copy()->setTimezone($tz),
             ];
         });
+
 
         $cursor = $dayStart->copy();
 
@@ -243,12 +250,13 @@ class BookingService
 
         return DB::transaction(function () use ($data, $pricing) {
             $user = auth()->user();
-
+            $tz = $data['timezone'] ?? 'UTC';
             $bookingData = [
                 'user_id'        => $user->id,
                 'master_id'      => $data['master_id'],
                 'type'           => 'booking',
                 'date'           => $data['date'],
+                'timezone'       => $tz,
                 'start_time'     => $data['start_time'],
                 'end_time'       => $data['end_time'],
                 'duration'       => $this->calculateDuration($data['start_time'], $data['end_time']),
@@ -420,6 +428,7 @@ class BookingService
 
     protected function validateBookingTimeAndDuration(array $data): void
     {
+        $tz = $data['timezone'] ?? 'UTC';
         $date = trim($data['date']);
         $startTime = trim($data['start_time']);
         $endTime = trim($data['end_time']);
@@ -427,8 +436,8 @@ class BookingService
         $workStart = '10:00';
         $workEnd   = '19:00';
 
-        $start = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$startTime}");
-        $end   = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$endTime}");
+        $start = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$startTime}", $tz);
+        $end   = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$endTime}", $tz);
 
 
         if ($end->lte($start)) {
@@ -439,7 +448,7 @@ class BookingService
             );
         }
 
-        $now = Carbon::now();
+        $now = Carbon::now($tz);
         if ($start->lte($now)) {
             throw new HttpResponseException(
                 ApiResponse::error([
@@ -448,8 +457,8 @@ class BookingService
             );
         }
 
-        $dayStart = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$workStart}");
-        $dayEnd   = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$workEnd}");
+        $dayStart = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$workStart}", $tz);
+        $dayEnd   = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$workEnd}", $tz);
 
         if ($start->lt($dayStart) || $end->gt($dayEnd)) {
             throw new HttpResponseException(

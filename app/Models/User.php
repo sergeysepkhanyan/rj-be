@@ -44,6 +44,7 @@ class User extends Authenticatable implements JWTSubject, CanResetPasswordContra
         'description',
         'description_ar',
         'image',
+        'timezone'
     ];
 
     protected $hidden = [

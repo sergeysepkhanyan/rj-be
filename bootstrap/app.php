@@ -8,7 +8,6 @@ use Illuminate\Foundation\Configuration\Middleware;
 use App\Http\Middleware\RoleMiddleware;
 
 use Illuminate\Http\Request;
-use Throwable;
 
 use Illuminate\Validation\ValidationException;
 use Illuminate\Auth\AuthenticationException;
