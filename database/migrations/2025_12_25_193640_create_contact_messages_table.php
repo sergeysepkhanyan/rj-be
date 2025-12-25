@@ -20,6 +20,8 @@ return new class extends Migration
             $table->string('ip')->nullable();
             $table->string('user_agent')->nullable();
             $table->timestamp('emailed_at')->nullable();
+            $table->timestamp('read_at')->nullable()->index();
+            $table->timestamp('replied_at')->nullable()->index();
             $table->timestamps();
             $table->index(['email', 'created_at']);
         });

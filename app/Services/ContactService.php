@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Mail\ContactMessageReceived;
 use App\Models\ContactMessage;
 use App\Repositories\Interfaces\ContactMessageRepositoryInterface;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Mail;
 
 class ContactService
@@ -27,6 +28,12 @@ class ContactService
         Mail::to(env('MAIL_FROM_ADDRESS'))->send(new ContactMessageReceived($message));
 
         return $this->repo->markEmailed($message);
+    }
+
+    public function list(array $filters, int $perPage): LengthAwarePaginator
+    {
+        $perPage = max(1, min($perPage, 100));
+        return $this->repo->paginate($filters, $perPage);
     }
 }
 

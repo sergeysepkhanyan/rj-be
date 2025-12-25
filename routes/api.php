@@ -26,6 +26,7 @@ use App\Http\Controllers\API\SubServicesController;
 use App\Http\Controllers\API\UsersController;
 use App\Http\Controllers\API\Admin\StaffController as AdminStaffController;
 use App\Http\Controllers\API\Admin\BookingsController as AdminBookingsController;
+use App\Http\Controllers\API\Admin\ContactMessageController as AdminContactMessageController;
 use App\Http\Controllers\API\WeekdaysController;
 use App\Http\Resources\UserResource;
 use App\Services\ApiResponse;
@@ -98,6 +99,7 @@ Route::middleware(['cors.custom', 'set.locale'])->group(function () {
 
 
     Route::middleware(['jwt.custom', 'role:superadmin'])->group(function () {
+        Route::get('/admin/contact-messages', [AdminContactMessageController::class, 'index']);
 
         Route::get('/admin/services', [AdminServicesController::class, 'index']);
         Route::post('/admin/services', [AdminServicesController::class, 'store']);
