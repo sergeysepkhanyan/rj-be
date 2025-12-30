@@ -6,6 +6,7 @@ use App\Http\Controllers\API\BookingsController;
 use App\Http\Controllers\API\Client\AddressController;
 use App\Http\Controllers\API\Client\PaymentMethodsController;
 use App\Http\Controllers\API\ContactController;
+use App\Http\Controllers\API\EmailVerificationController;
 use App\Http\Controllers\API\SubServiceMastersController;
 use App\Http\Controllers\API\PagesController;
 use App\Http\Controllers\API\Admin\ReferralsController;
@@ -58,17 +59,8 @@ Route::middleware(['cors.custom', 'set.locale'])->group(function () {
         Route::post('signup', [AuthController::class, 'signup']);
         Route::post('login', [AuthController::class, 'login']);
 
-        Route::get('email/verify/{id}/{hash}', function (Request $request, $id, $hash) {
-            $user = User::findOrFail($id);
-            if (! hash_equals((string) $hash, sha1($user->getEmailForVerification()))) {
-                abort(403, 'Invalid verification hash.');
-            }
-            if (! $user->hasVerifiedEmail()) {
-                $user->markEmailAsVerified();
-                event(new Verified($user));
-            }
-            return APIResponse::success(['success' => true], 'Email verified successfully.');
-        })->middleware(['signed', 'throttle:6,1'])
+        Route::get('email/verify/{id}/{hash}', [EmailVerificationController::class, 'verify'])
+            ->middleware(['signed', 'throttle:6,1'])
             ->name('verification.verify');
 
         Route::middleware(['auth:api'])->group(function () {

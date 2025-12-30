@@ -15,7 +15,7 @@ class VerifyEmailNotification extends Notification
 
     public function toMail($notifiable): MailMessage
     {
-        $url = URL::temporarySignedRoute(
+        $backendUrl = URL::temporarySignedRoute(
             'verification.verify',
             now()->addMinutes(60),
             [
@@ -24,13 +24,17 @@ class VerifyEmailNotification extends Notification
             ]
         );
 
+        $frontendUrl = rtrim(config('app.frontend_url'), '/')
+            . '/verify-email?url=' . urlencode($backendUrl);
+
         return (new MailMessage)
             ->subject('Verify your email for HHT')
             ->greeting('Hi ' . ($notifiable->name ?? 'there') . ' 👋')
             ->line('Thanks for registering. Please verify your email to continue.')
-            ->action('Verify Email', $url)
+            ->action('Verify Email', $frontendUrl)
             ->line('This link expires in 60 minutes.')
             ->salutation('— RJ Team');
     }
+
 }
 
