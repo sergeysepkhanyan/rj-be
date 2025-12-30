@@ -11,20 +11,11 @@ use Illuminate\Support\Facades\DB;
 
 class ProductService
 {
-    protected ProductRepositoryInterface $productRepository;
-    protected ProductDetailRepositoryInterface $productDetailRepository;
-    protected FileRepository $fileRepository;
-
     public function __construct(
-        ProductRepositoryInterface       $productRepository,
-        ProductDetailRepositoryInterface $productDetailRepository,
-        FileRepository                   $fileRepository
-    )
-    {
-        $this->productRepository = $productRepository;
-        $this->productDetailRepository = $productDetailRepository;
-        $this->fileRepository = $fileRepository;
-    }
+      protected ProductRepositoryInterface       $productRepository,
+      protected ProductDetailRepositoryInterface $productDetailRepository,
+      protected FileRepository                   $fileRepository
+    ){}
 
     public function createProduct(array $productData, array $detailsData = [], array $productFilePaths = [])
     {

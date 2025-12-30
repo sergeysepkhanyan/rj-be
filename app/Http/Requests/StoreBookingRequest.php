@@ -58,6 +58,7 @@ class StoreBookingRequest extends BaseFormRequest
         ];
     }
 
+
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator) {

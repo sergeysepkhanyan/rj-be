@@ -39,7 +39,7 @@ return new class extends Migration
                 ->default('pay_later');
             $table->enum('payment_status', ['unpaid', 'paid', 'refunded'])
                 ->default('unpaid');
-            $table->enum('status', ['pending', 'confirmed', 'completed', 'cancelled'])
+            $table->enum('status', ['pending_payment','pending', 'confirmed', 'completed', 'cancelled'])
                 ->default('confirmed');
             $table->text('notes')->nullable();
             $table->softDeletes();

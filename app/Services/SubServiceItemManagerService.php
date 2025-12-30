@@ -7,12 +7,8 @@ use App\Repositories\Interfaces\SubServiceItemRepositoryInterface;
 
 class SubServiceItemManagerService
 {
-    protected SubServiceItemRepositoryInterface $subServiceItemRepository;
 
-    public function __construct(SubServiceItemRepositoryInterface $subServiceItemRepository)
-    {
-        $this->subServiceItemRepository = $subServiceItemRepository;
-    }
+    public function __construct(protected SubServiceItemRepositoryInterface $subServiceItemRepository){}
 
     public function getAllSubServiceItems()
     {

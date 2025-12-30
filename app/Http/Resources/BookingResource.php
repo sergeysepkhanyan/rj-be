@@ -26,6 +26,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * @property mixed $cancelled_at
  * @property mixed $cancel_reason
  * @method relationLoaded(string $string)
+ * @property mixed $order
  */
 class BookingResource extends BaseResource
 {
@@ -73,6 +74,9 @@ class BookingResource extends BaseResource
                 'vatTotal'             => round($vatTotal, 2),
                 'finalTotalFromLines'  => round($finalTotalFromLines, 2),
             ],
+            'order' => $this->whenLoaded('order', function () {
+                return new OrderResource($this->order->loadMissing('latestPayment'));
+            }),
             'notes' => $this->notes,
             'services' => $services->map(function ($bs) use ($isAdmin) {
                 $bookable = $bs->bookable;

@@ -9,17 +9,10 @@ use Illuminate\Support\Facades\DB;
 
 class SubServiceManagerService
 {
-    protected SubServiceRepositoryInterface $subServiceRepository;
-    protected SubServiceItemRepositoryInterface $subServiceItemRepository;
-
     public function __construct(
-        SubServiceRepositoryInterface $subServiceRepository,
-        SubServiceItemRepositoryInterface $subServiceItemRepository
-    )
-    {
-        $this->subServiceRepository = $subServiceRepository;
-        $this->subServiceItemRepository = $subServiceItemRepository;
-    }
+       protected SubServiceRepositoryInterface $subServiceRepository,
+       protected SubServiceItemRepositoryInterface $subServiceItemRepository
+    ){}
 
     public function getAllSubServices()
     {

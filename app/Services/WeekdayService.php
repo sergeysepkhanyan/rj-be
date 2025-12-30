@@ -7,14 +7,9 @@ use App\Repositories\Interfaces\WeekdayRepositoryInterface;
 
 class WeekdayService
 {
-    protected WeekdayRepositoryInterface $weekdayRepository;
-
     public function __construct(
-        WeekdayRepositoryInterface $weekdayRepository,
-    )
-    {
-        $this->weekdayRepository = $weekdayRepository;
-    }
+      protected  WeekdayRepositoryInterface $weekdayRepository,
+    ){}
 
     public function getAllDays()
     {

@@ -9,12 +9,16 @@ use App\Repositories\BookingSelectionRepository;
 use App\Repositories\Interfaces\AddressRepositoryInterface;
 use App\Repositories\Interfaces\CategoryRepositoryInterface;
 use App\Repositories\Interfaces\ContactMessageRepositoryInterface;
+use App\Repositories\Interfaces\OrderRepositoryInterface;
 use App\Repositories\Interfaces\PageRepositoryInterface;
 use App\Repositories\Interfaces\PaymentMethodRepositoryInterface;
+use App\Repositories\Interfaces\PaymentRepositoryInterface;
 use App\Repositories\Interfaces\PostRepositoryInterface;
 use App\Repositories\Interfaces\WorkingHourRepositoryInterface;
+use App\Repositories\OrderRepository;
 use App\Repositories\PageRepository;
 use App\Repositories\PaymentMethodRepository;
+use App\Repositories\PaymentRepository;
 use App\Repositories\PostRepository;
 use App\Repositories\BookingRepository;
 use App\Repositories\Interfaces\BookingRepositoryInterface;
@@ -70,7 +74,6 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(PaymentMethodRepositoryInterface::class, PaymentMethodRepository::class);
         $this->app->bind(PageRepositoryInterface::class, PageRepository::class);
         $this->app->bind(ContactMessageRepositoryInterface::class, ContactMessageRepository::class);
-        $this->app->bind(WorkingHourRepositoryInterface::class, WorkingHourRepository::class);
     }
 
     /**
