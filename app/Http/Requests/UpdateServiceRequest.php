@@ -9,6 +9,7 @@ class UpdateServiceRequest extends BaseFormRequest
     protected array $fieldMap = [
         'name' => 'name',
         'nameAr' => 'name_ar',
+        'descriptionAr' => 'description_ar',
         'image' => 'image',
     ];
     public function authorize(): bool
@@ -38,8 +39,10 @@ class UpdateServiceRequest extends BaseFormRequest
                     ->ignore($serviceId)
                     ->whereNull('deleted_at'),
             ],
+            'description' => 'required|string',
+            'descriptionAr' => 'required|string',
             'image' => 'nullable|string',
-            'gender' => 'required|string|in:Male,Female',
+            'gender' => 'required|string|in:Male,Female,Kids',
         ];
     }
 }
