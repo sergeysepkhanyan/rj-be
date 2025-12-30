@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -21,7 +22,7 @@ use Illuminate\Contracts\Auth\CanResetPassword as CanResetPasswordContract;
  * @method static Builder|User active()
  */
 
-class User extends Authenticatable implements JWTSubject, CanResetPasswordContract
+class User extends Authenticatable implements JWTSubject, CanResetPasswordContract, MustVerifyEmail
 {
 
     use HasFactory, Notifiable, SoftDeletes, CanResetPassword;
@@ -44,13 +45,23 @@ class User extends Authenticatable implements JWTSubject, CanResetPasswordContra
         'description',
         'description_ar',
         'image',
-        'timezone'
+        'timezone',
+        'email_verified_at'
+    ];
+
+    protected $casts = [
+        'email_verified_at' => 'datetime',
     ];
 
     protected $hidden = [
         'password',
         'remember_token',
     ];
+
+    public function sendEmailVerificationNotification(): void
+    {
+        $this->notify(new \App\Notifications\VerifyEmailNotification());
+    }
 
 
     /**

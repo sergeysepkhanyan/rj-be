@@ -7,7 +7,9 @@ use App\Http\Requests\Auth\SignupRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Models\UserRole;
+use App\Repositories\UserRepository;
 use App\Services\ApiResponse;
+use App\Services\UserService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -27,35 +29,56 @@ class AuthController extends Controller
             'password' => Hash::make($data['password']),
         ]);
 
-        $token = auth()->login($user);
-        return ApiResponse::success([[
-            'user' => new UserResource($user),
-            'token' => $token,
-        ]], 'Successfully registered');
+        $user->sendEmailVerificationNotification();
+        return ApiResponse::success([
+            'success' => true,
+        ], 'Registration successful. Please verify your email.');
     }
 
 
     public function login(LoginRequest $request): JsonResponse
     {
-        $data = $request->validated();
+        $credentials = $request->only(['email', 'password']);
 
-        $credentials = ['email' => $data['email'], 'password' => $data['password']];
+        $user = User::query()->where('email', $credentials['email'])->first();
 
-        if (! $token = auth()->attempt($credentials)) {
-            return ApiResponse::error(
-                ['credentials' => ['Invalid email or password']],
-                'Authentication failed',
-                401
-            );
+        if (!$user || $user->status !== 'active') {
+            return ApiResponse::error([
+                'success' => false,
+            ], 'Invalid credentials', 401);
         }
 
-        $user = auth()->user();
+        if (!$user->hasVerifiedEmail()) {
+            return ApiResponse::error([
+                'success' => false,
+            ], 'Please verify your email first.', 403);
+        }
 
+        if (!$token = auth()->attempt($credentials)) {
+            return ApiResponse::error([
+                'success' => false,
+            ], 'Invalid credentials', 401);
+        }
+
+        $user = auth()->user()->load('role');
         return ApiResponse::success([
             [
                 'user' => new UserResource($user),
                 'token' => $token,
             ]
         ], 'Successfully logged in');
+    }
+
+    public function logout(): JsonResponse
+    {
+        auth()->logout();
+        return ApiResponse::success([
+            'success' => true,
+        ], 'Logged out successfully.');
+    }
+
+    public function refresh(): JsonResponse
+    {
+        return ApiResponse::success(['token' => auth()->refresh()], 'Successfully logged in.');
     }
 }

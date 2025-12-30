@@ -29,7 +29,10 @@ use App\Http\Controllers\API\Admin\BookingsController as AdminBookingsController
 use App\Http\Controllers\API\Admin\ContactMessageController as AdminContactMessageController;
 use App\Http\Controllers\API\WeekdaysController;
 use App\Http\Resources\UserResource;
+use App\Models\User;
 use App\Services\ApiResponse;
+use Illuminate\Auth\Events\Verified;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['cors.custom', 'set.locale'])->group(function () {
@@ -51,10 +54,31 @@ Route::middleware(['cors.custom', 'set.locale'])->group(function () {
 
     Route::get('/products', [ProductsController::class, 'index']);
 
-    Route::post('signup', [AuthController::class, 'signup']);
-    Route::post('login', [AuthController::class, 'login']);
+    Route::prefix('auth')->group(function () {
+        Route::post('signup', [AuthController::class, 'signup']);
+        Route::post('login', [AuthController::class, 'login']);
 
-    Route::middleware('jwt.custom')->group(function () {
+        Route::get('email/verify/{id}/{hash}', function (Request $request, $id, $hash) {
+            $user = User::findOrFail($id);
+            if (! hash_equals((string) $hash, sha1($user->getEmailForVerification()))) {
+                abort(403, 'Invalid verification hash.');
+            }
+            if (! $user->hasVerifiedEmail()) {
+                $user->markEmailAsVerified();
+                event(new Verified($user));
+            }
+            return APIResponse::success(['success' => true], 'Email verified successfully.');
+        })->middleware(['signed', 'throttle:6,1'])
+            ->name('verification.verify');
+
+        Route::middleware(['auth:api'])->group(function () {
+            Route::get('me', [AuthController::class, 'me']);
+            Route::post('logout', [AuthController::class, 'logout']);
+            Route::post('refresh', [AuthController::class, 'refresh']);
+        });
+    });
+
+    Route::middleware(['jwt.custom', 'verified'])->group(function () {
 
         Route::post('image/upload', [FilesController::class, 'upload']);
         Route::post('image/upload-multiple', [FilesController::class, 'uploadMultiple']);
@@ -98,7 +122,7 @@ Route::middleware(['cors.custom', 'set.locale'])->group(function () {
     Route::post('/password/reset', [ResetPasswordController::class, 'reset']);
 
 
-    Route::middleware(['jwt.custom', 'role:superadmin'])->group(function () {
+    Route::middleware(['jwt.custom', 'verified','role:superadmin'])->group(function () {
         Route::get('/admin/contact-messages', [AdminContactMessageController::class, 'index']);
 
         Route::get('/admin/services', [AdminServicesController::class, 'index']);
@@ -133,7 +157,7 @@ Route::middleware(['cors.custom', 'set.locale'])->group(function () {
         Route::put('/admin/pages', [AdminPagesController::class, 'update']);
     });
 
-    Route::middleware(['jwt.custom', 'role:superadmin,admin'])->group(function () {
+    Route::middleware(['jwt.custom', 'verified', 'role:superadmin,admin'])->group(function () {
 
         Route::patch('/admin/clients/{user}/add-referral', [ClientsController::class, 'addReferral']);
         Route::get('/admin/clients', [ClientsController::class, 'index']);
