@@ -9,7 +9,7 @@ class StoreSubServiceRequest extends BaseFormRequest
     protected array $fieldMap = [
         'serviceId' => 'service_id',
         'nameAr' => 'name_ar',
-        'descriptionAr' => 'description_ar',
+//        'descriptionAr' => 'description_ar',
         'durationUnit' => 'duration_unit',
     ];
     public function authorize(): bool
@@ -39,10 +39,10 @@ class StoreSubServiceRequest extends BaseFormRequest
                 $query->where('service_id', $serviceId)
                 ),
             ],
-            'description' => 'required|string',
-            'descriptionAr' => 'required|string',
+//            'description' => 'required|string',
+//            'descriptionAr' => 'required|string',
             'type' => 'required|string|in:Simple,Variant Based',
-            'image' => 'required|string',
+//            'image' => 'required|string',
             'price' => 'required_if:type,Simple|numeric',
             'duration' => 'required_if:type,Simple|numeric',
             'currency' => 'required_if:type,Simple|string',

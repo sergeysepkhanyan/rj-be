@@ -4,6 +4,9 @@ namespace App\Http\Requests;
 
 use Illuminate\Validation\Rule;
 
+/**
+ * @property mixed $gender
+ */
 class StoreServiceRequest extends BaseFormRequest
 {
     protected array $fieldMap = [
@@ -24,14 +27,18 @@ class StoreServiceRequest extends BaseFormRequest
                 'required',
                 'string',
                 'max:255',
-                Rule::unique('services', 'name')->whereNull('deleted_at'),
+                Rule::unique('services', 'name')
+                    ->where('gender', $this->gender)
+                    ->whereNull('deleted_at'),
             ],
 
             'nameAr' => [
                 'required',
                 'string',
                 'max:255',
-                Rule::unique('services', 'name_ar')->whereNull('deleted_at'),
+                Rule::unique('services', 'name_ar')
+                    ->where('gender', $this->gender)
+                    ->whereNull('deleted_at'),
             ],
             'description' => 'required|string',
             'descriptionAr' => 'required|string',

@@ -8,7 +8,7 @@ class UpdateSubServiceRequest extends BaseFormRequest
 {
     protected array $fieldMap = [
         'nameAr' => 'name_ar',
-        'descriptionAr' => 'description_ar',
+//        'descriptionAr' => 'description_ar',
         'durationUnit' => 'duration_unit',
     ];
     public function authorize(): bool
@@ -33,9 +33,9 @@ class UpdateSubServiceRequest extends BaseFormRequest
                     ->ignore($subServiceId)
                     ->where(fn($query) => $query->where('service_id', $this->route('subService')->service_id))
             ],
-            'description' => 'required|string',
-            'descriptionAr' => 'required|string',
-            'image' => 'nullable|string',
+//            'description' => 'required|string',
+//            'descriptionAr' => 'required|string',
+//            'image' => 'nullable|string',
             'price' => 'required_if:type,Simple|numeric',
             'duration' => 'required_if:type,Simple|numeric',
             'currency' => 'required_if:type,Simple|string',

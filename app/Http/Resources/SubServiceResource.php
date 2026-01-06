@@ -19,8 +19,8 @@ class SubServiceResource extends BaseResource
         return array_filter([
             'id' => $data['id'] ?? null,
             'name' => $data['name'] ?? null,
-            'description' => $data['description'] ?? null,
-            'image' => $this->image ? asset('storage/' . $this->image) : null,
+//            'description' => $data['description'] ?? null,
+//            'image' => $this->image ? asset('storage/' . $this->image) : null,
 
             $this->mergeWhen(($data['type'] ?? null) === 'Variant Based', [
                 'items' => SubServiceItemResource::collection($this->items),
