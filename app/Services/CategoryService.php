@@ -41,4 +41,9 @@ class CategoryService
         return $this->categoryRepository->paginateWithFilter($filter, $perPage);
     }
 
+    public function getByGender(string $gender = 'Female'): \Illuminate\Database\Eloquent\Collection
+    {
+        return $this->categoryRepository->getByGender($gender);
+    }
+
 }

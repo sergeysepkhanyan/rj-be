@@ -45,4 +45,11 @@ class CategoryRepository implements CategoryRepositoryInterface
         return $query->paginate($perPage);
     }
 
+    public function getByGender(string $gender = 'Female'): \Illuminate\Database\Eloquent\Collection
+    {
+        $query = Category::query()->where('gender', $gender);
+
+        return $query->get();
+    }
+
 }

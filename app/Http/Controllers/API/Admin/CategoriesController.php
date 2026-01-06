@@ -25,27 +25,12 @@ class CategoriesController
         $this->categoryService = $categoryService;
     }
 
-    public function index(Request $request,  $filter): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $perPage = $request->query('per_page', 10);
-
-        $categories = $this->categoryService->getPaginatedCategories($filter, $perPage);
+        $categories = $this->categoryService->getByGender($request->get('gender') ?? null);
 
         return ApiResponse::success([
             'categories' => AdminServiceResource::collection($categories),
-            'meta' => [
-                'current_page' => $categories->currentPage(),
-                'last_page' => $categories->lastPage(),
-                'per_page' => $categories->perPage(),
-                'total' => $categories->total(),
-            ],
-            'links' => [
-                'first' => $categories->url(1),
-                'last' => $categories->url($categories->lastPage()),
-                'prev' => $categories->previousPageUrl(),
-                'next' => $categories->nextPageUrl(),
-            ],
-            'filters' => $request->only(['search']),
         ]);
     }
 
