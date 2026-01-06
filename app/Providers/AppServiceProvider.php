@@ -3,8 +3,10 @@
 namespace App\Providers;
 
 use App\Repositories\AddressRepository;
+use App\Repositories\CategoryRepository;
 use App\Repositories\ContactMessageRepository;
 use App\Repositories\Interfaces\AddressRepositoryInterface;
+use App\Repositories\Interfaces\CategoryRepositoryInterface;
 use App\Repositories\Interfaces\ContactMessageRepositoryInterface;
 use App\Repositories\Interfaces\PageRepositoryInterface;
 use App\Repositories\Interfaces\PaymentMethodRepositoryInterface;
@@ -50,6 +52,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(WeekdayRepositoryInterface::class, WeekdayRepository::class);
         $this->app->bind(UserRoleRepositoryInterface::class, UserRoleRepository::class);
         $this->app->bind(UserRepositoryInterface::class, UserRepository::class);
+        $this->app->bind(CategoryRepositoryInterface::class, CategoryRepository::class);
         $this->app->bind(ServiceRepositoryInterface::class, ServiceManagerRepository::class);
         $this->app->bind(SubServiceRepositoryInterface::class, SubServiceManagerRepository::class);
         $this->app->bind(SubServiceItemRepositoryInterface::class, SubServiceItemManagerRepository::class);

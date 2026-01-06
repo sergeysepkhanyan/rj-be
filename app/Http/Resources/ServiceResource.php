@@ -18,7 +18,10 @@ class ServiceResource extends BaseResource
         $data = parent::toArray($request);
         return [
             'id' => $data['id'] ?? null,
-            'name' => $data['name'] ?? null
+            'name' => $data['name'] ?? null,
+            'description' => $data['description'] ?? null,
+            'image' => $this->image ? asset('storage/' . $this->image) : null,
+
         ];
     }
 }

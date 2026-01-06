@@ -16,8 +16,10 @@ use App\Http\Controllers\API\Admin\PostsController as AdminPostsController;
 use App\Http\Controllers\API\ProductsController;
 use App\Http\Controllers\API\Admin\ProductsController as AdminProductsController;
 use App\Http\Controllers\API\Admin\ServicesController as AdminServicesController;
+use App\Http\Controllers\API\Admin\CategoriesController as AdminCategoriesController;
 use App\Http\Controllers\API\Admin\SubServicesController as AdminSubServicesController;
 use App\Http\Controllers\API\ServicesController as ServicesController;
+use App\Http\Controllers\API\CategoriesController as CategoriesController;
 use App\Http\Controllers\API\Auth\AuthController;
 use App\Http\Controllers\API\Auth\ResetPasswordController;
 use App\Http\Controllers\API\Content\PageContentController;
@@ -107,6 +109,7 @@ Route::middleware(['cors.custom', 'set.locale'])->group(function () {
     });
 
     Route::get('/bookings/available-slots', [BookingsController::class, 'availableSlots']);
+    Route::get('/categories', [CategoriesController::class, 'index']);
     Route::get('/services', [ServicesController::class, 'index']);
     Route::get('/services/{service}/subservices', [SubServicesController::class, 'index']);
     Route::get('/subservices/{subservice}/masters', [SubServiceMastersController::class, 'index']);
@@ -116,6 +119,10 @@ Route::middleware(['cors.custom', 'set.locale'])->group(function () {
 
     Route::middleware(['jwt.custom', 'verified','role:superadmin'])->group(function () {
         Route::get('/admin/contact-messages', [AdminContactMessageController::class, 'index']);
+
+        Route::get('/admin/categories', [AdminCategoriesController::class, 'index']);
+        Route::post('/admin/categories', [AdminCategoriesController::class, 'store']);
+        Route::put('/admin/categories/{category}', [AdminCategoriesController::class, 'update']);
 
         Route::get('/admin/services', [AdminServicesController::class, 'index']);
         Route::post('/admin/services', [AdminServicesController::class, 'store']);

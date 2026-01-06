@@ -11,7 +11,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * @property mixed $subServices
  * @property mixed $id
  */
-class AdminServiceResource extends BaseResource
+class CategoryResource extends BaseResource
 {
     public function toArray($request): array
     {
@@ -19,11 +19,8 @@ class AdminServiceResource extends BaseResource
         return [
             'id' => $data['id'] ?? null,
             'name' => $data['name'] ?? null,
-            'description' => $data['description'] ?? null,
-//            'gender' => $data['gender'] ?? null,
+            'gender' => $data['gender'] ?? null,
             'image' => $this->image ? asset('storage/' . $this->image) : null,
-            'subservices' => SubServiceResource::collection($this->subServices),
-            'category' => new AdminCategoryResource($this->whenLoaded('category')),
         ];
     }
 }

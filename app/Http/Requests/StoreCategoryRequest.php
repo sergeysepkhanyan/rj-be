@@ -7,12 +7,11 @@ use Illuminate\Validation\Rule;
 /**
  * @property mixed $gender
  */
-class UpdateServiceRequest extends BaseFormRequest
+class StoreCategoryRequest extends BaseFormRequest
 {
     protected array $fieldMap = [
         'name' => 'name',
         'nameAr' => 'name_ar',
-        'descriptionAr' => 'description_ar',
         'image' => 'image',
     ];
     public function authorize(): bool
@@ -22,25 +21,26 @@ class UpdateServiceRequest extends BaseFormRequest
 
     public function rules(): array
     {
-        $serviceId = $this->route('service')->id ?? null;
-
         return [
             'name' => [
                 'required',
                 'string',
-                'max:255'
+                'max:255',
+                Rule::unique('categories', 'name')
+                    ->where('gender', $this->gender),
             ],
 
             'nameAr' => [
                 'required',
                 'string',
-                'max:255'
+                'max:255',
+                Rule::unique('categories', 'name_ar')
+                    ->where('gender', $this->gender)
             ],
-            'description' => 'required|string',
-            'descriptionAr' => 'required|string',
-            'image' => 'nullable|string',
-//            'gender' => 'required|string|in:Male,Female,Kids',
+//            'description' => 'required|string',
+//            'descriptionAr' => 'required|string',
+            'image' => 'required|string',
+            'gender' => 'required|string|in:Male,Female,Kids',
         ];
     }
 }
-

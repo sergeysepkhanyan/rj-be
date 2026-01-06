@@ -52,7 +52,7 @@ class ServicesController
         $data = $request->all();
         $data = array_intersect_key($data, array_flip((new Service)->getFillable()));
         $service = $this->serviceManagerService->createService($data);
-        $service->load('subServices.items');
+        $service->load('subServices.items', 'category');
 
         return ApiResponse::success([
             'service' => new AdminServiceResource($service),

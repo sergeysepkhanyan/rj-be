@@ -13,6 +13,7 @@ class StoreServiceRequest extends BaseFormRequest
         'name' => 'name',
         'nameAr' => 'name_ar',
         'descriptionAr' => 'description_ar',
+        'categoryId' => 'category_id',
         'image' => 'image',
     ];
     public function authorize(): bool
@@ -26,24 +27,19 @@ class StoreServiceRequest extends BaseFormRequest
             'name' => [
                 'required',
                 'string',
-                'max:255',
-                Rule::unique('services', 'name')
-                    ->where('gender', $this->gender)
-                    ->whereNull('deleted_at'),
+                'max:255'
             ],
 
             'nameAr' => [
                 'required',
                 'string',
-                'max:255',
-                Rule::unique('services', 'name_ar')
-                    ->where('gender', $this->gender)
-                    ->whereNull('deleted_at'),
+                'max:255'
             ],
             'description' => 'required|string',
             'descriptionAr' => 'required|string',
             'image' => 'required|string',
-            'gender' => 'required|string|in:Male,Female,Kids',
+            'categoryId' => 'required|integer|exists:categories,id',
+//            'gender' => 'required|string|in:Male,Female,Kids',
         ];
     }
 }

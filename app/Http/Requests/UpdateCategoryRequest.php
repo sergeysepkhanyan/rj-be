@@ -7,12 +7,11 @@ use Illuminate\Validation\Rule;
 /**
  * @property mixed $gender
  */
-class UpdateServiceRequest extends BaseFormRequest
+class UpdateCategoryRequest extends BaseFormRequest
 {
     protected array $fieldMap = [
         'name' => 'name',
         'nameAr' => 'name_ar',
-        'descriptionAr' => 'description_ar',
         'image' => 'image',
     ];
     public function authorize(): bool
@@ -22,8 +21,6 @@ class UpdateServiceRequest extends BaseFormRequest
 
     public function rules(): array
     {
-        $serviceId = $this->route('service')->id ?? null;
-
         return [
             'name' => [
                 'required',
@@ -36,10 +33,8 @@ class UpdateServiceRequest extends BaseFormRequest
                 'string',
                 'max:255'
             ],
-            'description' => 'required|string',
-            'descriptionAr' => 'required|string',
             'image' => 'nullable|string',
-//            'gender' => 'required|string|in:Male,Female,Kids',
+            'gender' => 'required|string|in:Male,Female,Kids',
         ];
     }
 }

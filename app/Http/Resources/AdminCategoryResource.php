@@ -8,10 +8,10 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * @property mixed $name
  * @property mixed $description
  * @property mixed $image
- * @property mixed $subServices
+ * @property mixed $services
  * @property mixed $id
  */
-class AdminServiceResource extends BaseResource
+class AdminCategoryResource extends BaseResource
 {
     public function toArray($request): array
     {
@@ -19,11 +19,9 @@ class AdminServiceResource extends BaseResource
         return [
             'id' => $data['id'] ?? null,
             'name' => $data['name'] ?? null,
-            'description' => $data['description'] ?? null,
-//            'gender' => $data['gender'] ?? null,
+            'gender' => $data['gender'] ?? null,
             'image' => $this->image ? asset('storage/' . $this->image) : null,
-            'subservices' => SubServiceResource::collection($this->subServices),
-            'category' => new AdminCategoryResource($this->whenLoaded('category')),
+            'services' => AdminServiceResource::collection($this->services),
         ];
     }
 }
