@@ -30,7 +30,7 @@ class CategoriesController
         $categories = $this->categoryService->getByGender($request->get('gender') ?? '');
 
         return ApiResponse::success([
-            'categories' => AdminServiceResource::collection($categories),
+            'categories' => AdminCategoryResource::collection($categories),
         ]);
     }
 
