@@ -27,7 +27,7 @@ class CategoriesController
 
     public function index(Request $request): JsonResponse
     {
-        $categories = $this->categoryService->getByGender($request->get('gender') ?? null);
+        $categories = $this->categoryService->getByGender($request->get('gender') ?? '');
 
         return ApiResponse::success([
             'categories' => AdminServiceResource::collection($categories),
