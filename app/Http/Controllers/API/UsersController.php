@@ -28,10 +28,10 @@ class UsersController extends Controller
         if (!$user) {
             return ApiResponse::error(['message' => 'Unauthorized'], 'Unauthorized');
         }
-
+        $user = $this->userService->getUserById($user->id);
         $data = $request->all();
         $data = array_intersect_key($data, array_flip((new User)->getFillable()));
-        $user = $this->userService->updateUser($user->id, $data);
+        $user = $this->userService->updateUser($user, $data);
 
         return ApiResponse::success([
             'user' => new UserResource($user),
