@@ -9,9 +9,11 @@ use Illuminate\Pagination\LengthAwarePaginator;
 
 class ServiceManagerRepository implements ServiceRepositoryInterface
 {
-    public function all()
+    public function all(array $filters = []): \Illuminate\Database\Eloquent\Collection
     {
-        return Service::all();
+        return Service::query()->when(!empty($filters['category_id']), function ($query) use ($filters) {
+            $query->where('category_id', (int) $filters['category_id']);
+        })->get();
     }
 
     public function find($id)

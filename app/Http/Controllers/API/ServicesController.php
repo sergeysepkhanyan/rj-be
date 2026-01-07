@@ -22,7 +22,12 @@ class ServicesController
 
     public function index(Request $request): JsonResponse
     {
-        $services = $this->serviceManagerService->getAllServices();
+        $filters = [
+            'category_id' => $request->query('category_id'),
+            'name'        => $request->query('name'),
+        ];
+
+        $services = $this->serviceManagerService->getAllServices($filters);
 
         return ApiResponse::success([
             'services' => ServiceResource::collection($services),

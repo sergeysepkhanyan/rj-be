@@ -16,9 +16,9 @@ class ServiceManagerService
         $this->serviceRepository = $serviceRepository;
     }
 
-    public function getAllServices()
+    public function getAllServices( array $filters = [] )
     {
-        return $this->serviceRepository->all();
+        return $this->serviceRepository->all($filters);
     }
 
     public function getServiceById($id)
