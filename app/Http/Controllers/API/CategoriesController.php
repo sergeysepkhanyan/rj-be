@@ -21,10 +21,24 @@ class CategoriesController
 
     public function index(Request $request): JsonResponse
     {
-        $categories = $this->categoryService->getAllCategories();
+        $filters = [
+            'id'   => $request->query('id'),
+            'name' => $request->query('name'),
+        ];
+
+        $categories = $this->categoryService->getAllCategories($filters);
 
         return ApiResponse::success([
             'categories' => CategoryResource::collection($categories),
+        ]);
+    }
+
+    public function show(int $id): JsonResponse
+    {
+        $category = $this->categoryService->getCategoryById($id);
+
+        return ApiResponse::success([
+            'category' => new CategoryResource($category),
         ]);
     }
 }

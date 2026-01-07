@@ -8,12 +8,20 @@ use Illuminate\Pagination\LengthAwarePaginator;
 
 class CategoryRepository implements CategoryRepositoryInterface
 {
-    public function all(): \Illuminate\Database\Eloquent\Collection
+    public function all(array $filters = []): \Illuminate\Database\Eloquent\Collection
     {
 
         $query = Category::query()->with('services.subServices.items');
 
-        return $query->get();    }
+        return $query->when(!empty($filters['id']), function ($query) use ($filters) {
+            $query->where('id', (int) $filters['id']);
+        })
+            ->when(!empty($filters['name']), function ($query) use ($filters) {
+                $name = trim((string) $filters['name']);
+                if ($name !== '') {
+                    $query->where('name', 'LIKE', "%{$name}%");
+                }
+            })->get();    }
 
     public function find($id)
     {
