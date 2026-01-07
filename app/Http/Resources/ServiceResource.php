@@ -21,6 +21,7 @@ class ServiceResource extends BaseResource
             'name' => $data['name'] ?? null,
             'description' => $data['description'] ?? null,
             'image' => $this->image ? asset('storage/' . $this->image) : null,
+            'subservices' => SubServiceResource::collection($this->subServices)
 
         ];
     }

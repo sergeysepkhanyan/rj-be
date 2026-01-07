@@ -46,4 +46,9 @@ class ServiceManagerService
         return $this->serviceRepository->paginateWithFilter($filter, $perPage);
     }
 
+    public function getByIds(array $services): \Illuminate\Database\Eloquent\Collection
+    {
+        return $this->serviceRepository->getByIds($services);
+    }
+
 }

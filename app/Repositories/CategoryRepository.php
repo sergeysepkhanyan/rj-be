@@ -8,10 +8,12 @@ use Illuminate\Pagination\LengthAwarePaginator;
 
 class CategoryRepository implements CategoryRepositoryInterface
 {
-    public function all()
+    public function all(): \Illuminate\Database\Eloquent\Collection
     {
-        return Category::all();
-    }
+
+        $query = Category::query()->with('services.subServices.items');
+
+        return $query->get();    }
 
     public function find($id)
     {
@@ -47,7 +49,7 @@ class CategoryRepository implements CategoryRepositoryInterface
 
     public function getByGender(string $gender = 'Female'): \Illuminate\Database\Eloquent\Collection
     {
-        $query = Category::query()->where('gender', $gender);
+        $query = Category::query()->where('gender', $gender)->with('services.subServices.items');
 
         return $query->get();
     }

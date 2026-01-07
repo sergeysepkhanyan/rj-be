@@ -10,6 +10,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * @property mixed $image
  * @property mixed $subServices
  * @property mixed $id
+ * @property mixed $services
  */
 class CategoryResource extends BaseResource
 {
@@ -21,6 +22,7 @@ class CategoryResource extends BaseResource
             'name' => $data['name'] ?? null,
             'gender' => $data['gender'] ?? null,
             'image' => $this->image ? asset('storage/' . $this->image) : null,
+            'services' => AdminServiceResource::collection($this->services),
         ];
     }
 }

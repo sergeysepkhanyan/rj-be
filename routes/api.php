@@ -111,6 +111,7 @@ Route::middleware(['cors.custom', 'set.locale'])->group(function () {
     Route::get('/bookings/available-slots', [BookingsController::class, 'availableSlots']);
     Route::get('/categories', [CategoriesController::class, 'index']);
     Route::get('/services', [ServicesController::class, 'index']);
+    Route::get('/services-by-ids/', [ServicesController::class, 'getByIds']);
     Route::get('/services/{service}/subservices', [SubServicesController::class, 'index']);
     Route::get('/subservices/{subservice}/masters', [SubServiceMastersController::class, 'index']);
     Route::post('/password/forgot', [ResetPasswordController::class, 'forgot']);

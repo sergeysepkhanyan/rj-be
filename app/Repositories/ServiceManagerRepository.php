@@ -47,4 +47,11 @@ class ServiceManagerRepository implements ServiceRepositoryInterface
         return $query->paginate($perPage);
     }
 
+    public function getByIds(array $services): \Illuminate\Database\Eloquent\Collection
+    {
+        $query = Service::query()->whereIn('id', $services)->with('subServices.items', 'category');
+
+        return $query->get();
+    }
+
 }

@@ -28,4 +28,14 @@ class ServicesController
             'services' => ServiceResource::collection($services),
         ]);
     }
+
+    public function getByIds(Request $request): JsonResponse
+    {
+        $ids = $request->get('ids', []);
+        $services = $this->serviceManagerService->getByIds($ids);
+
+        return ApiResponse::success([
+            'services' => ServiceResource::collection($services),
+        ]);
+    }
 }
