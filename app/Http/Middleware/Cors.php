@@ -47,26 +47,22 @@ class Cors
 
     private function applyHeaders(Response $response, ?string $origin, bool $isLocal): void
     {
+        if (!$isLocal && !$origin) {
+            return;
+        }
+
         if ($isLocal) {
             $response->headers->set('Access-Control-Allow-Origin', '*');
-        } elseif ($origin) {
+        } else {
             $response->headers->set('Access-Control-Allow-Origin', $origin);
+            $response->headers->set('Access-Control-Allow-Credentials', 'true');
         }
 
         $response->headers->set('Vary', 'Origin');
-        $response->headers->set(
-            'Access-Control-Allow-Methods',
-            'GET, POST, PUT, PATCH, DELETE, OPTIONS'
-        );
-        $response->headers->set(
-            'Access-Control-Allow-Headers',
-            'Content-Type, Authorization, X-Requested-With'
-        );
-
-        if (!$isLocal) {
-            $response->headers->set('Access-Control-Allow-Credentials', 'true');
-        }
+        $response->headers->set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+        $response->headers->set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
     }
+
 }
 
 
