@@ -11,6 +11,7 @@ use App\Repositories\Interfaces\ContactMessageRepositoryInterface;
 use App\Repositories\Interfaces\PageRepositoryInterface;
 use App\Repositories\Interfaces\PaymentMethodRepositoryInterface;
 use App\Repositories\Interfaces\PostRepositoryInterface;
+use App\Repositories\Interfaces\WorkingHourRepositoryInterface;
 use App\Repositories\PageRepository;
 use App\Repositories\PaymentMethodRepository;
 use App\Repositories\PostRepository;
@@ -36,6 +37,7 @@ use App\Repositories\SubServiceManagerRepository;
 use App\Repositories\UserRepository;
 use App\Repositories\UserRoleRepository;
 use App\Repositories\WeekdayRepository;
+use App\Repositories\WorkingHourRepository;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -65,6 +67,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(PaymentMethodRepositoryInterface::class, PaymentMethodRepository::class);
         $this->app->bind(PageRepositoryInterface::class, PageRepository::class);
         $this->app->bind(ContactMessageRepositoryInterface::class, ContactMessageRepository::class);
+        $this->app->bind(WorkingHourRepositoryInterface::class, WorkingHourRepository::class);
     }
 
     /**

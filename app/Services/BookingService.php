@@ -4,12 +4,14 @@ namespace App\Services;
 
 use App\Filters\BookingFilter;
 use App\Models\Booking;
-use App\Models\BusinessHour;
 use App\Models\SubService;
 use App\Models\SubServiceItem;
+use App\Models\Weekday;
 use App\Repositories\Interfaces\BookingRepositoryInterface;
 use App\Repositories\Interfaces\SubServiceItemRepositoryInterface;
 use App\Repositories\Interfaces\SubServiceRepositoryInterface;
+use App\Repositories\Interfaces\WorkingHourRepositoryInterface;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -22,7 +24,8 @@ class BookingService
     public function __construct(
         protected BookingRepositoryInterface $bookingRepository,
         protected SubServiceRepositoryInterface $subServiceRepository,
-        protected SubServiceItemRepositoryInterface $subServiceItemRepository
+        protected SubServiceItemRepositoryInterface $subServiceItemRepository,
+        protected WorkingHourRepositoryInterface $workingHourRepository
     ) {}
 
     public function getAllBooking()
@@ -126,7 +129,12 @@ class BookingService
 
         $durationMinutes = $this->resolveDurationMinutes($subserviceId, $subserviceItemId);
 
-        $hours = $this->getBusinessHours();
+        $hours = $this->getWorkingHours($date, $tz);
+
+        if ($hours['is_closed']) {
+            return [];
+        }
+
         $workStart = $hours['start'];
         $workEnd   = $hours['end'];
 
@@ -449,14 +457,20 @@ class BookingService
 
     protected function validateSegments(array $segments, string $tz, ?int $excludeBookingId = null): void
     {
-        $hours = $this->getBusinessHours();
-        $workStart = $hours['start'];
-        $workEnd   = $hours['end'];
-
         $now = Carbon::now($tz);
 
         foreach ($segments as $seg) {
             $date = $seg['date'];
+
+            $hours = $this->getWorkingHours($date, $tz);
+            if ($hours['is_closed']) {
+                throw new HttpResponseException(
+                    ApiResponse::error(['workingHours' => 'Business is closed on selected day.'], 'Validation failed', 422)
+                );
+            }
+
+            $workStart = $hours['start'];
+            $workEnd   = $hours['end'];
 
             $start = $this->parseTimeToCarbon($date, $seg['start_time'], $tz);
             $end   = $this->parseTimeToCarbon($date, $seg['end_time'], $tz);
@@ -476,6 +490,19 @@ class BookingService
                         'workingHours' => "Booking must be within working hours ({$workStart}–{$workEnd})."
                     ], 'Validation failed', 422)
                 );
+            }
+
+            if ($hours['break_start'] && $hours['break_end']) {
+                $breakStart = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$hours['break_start']}", $tz);
+                $breakEnd   = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$hours['break_end']}", $tz);
+
+                if ($start->lt($breakEnd) && $end->gt($breakStart)) {
+                    throw new HttpResponseException(
+                        ApiResponse::error([
+                            'breakTime' => "Booking overlaps break time ({$hours['break_start']}–{$hours['break_end']})."
+                        ], 'Validation failed', 422)
+                    );
+                }
             }
 
             if (($start->minute % 5) !== 0 || ($end->minute % 5) !== 0) {
@@ -499,6 +526,7 @@ class BookingService
             }
         }
     }
+
 
     /**
      * Optional: if root startTime/endTime exist, ensure they match segments min/max.
@@ -627,19 +655,32 @@ class BookingService
         return $start->diffInMinutes($end);
     }
 
-    protected function getBusinessHours(): array
+    protected function getWorkingHours(string $bookingDate, string $timezone): array
     {
-        $row = BusinessHour::query()->first();
+        $day = CarbonImmutable::createFromFormat('Y-m-d', $bookingDate, $timezone);
+        $isoDay = $day->dayOfWeekIso;
 
-        if (! $row) {
-            return ['start' => '01:00', 'end' => '23:59'];
+        $weekday = Weekday::query()->where('day', $isoDay)->first();
+
+        if (! $weekday) {
+            return ['is_closed' => true];
+        }
+
+        $row = $this->workingHourRepository->findByWeekdayId($weekday->id);
+
+        if (! $row || $row->is_closed) {
+            return ['is_closed' => true];
         }
 
         return [
+            'is_closed' => false,
             'start' => substr((string) $row->start_time, 0, 5),
             'end'   => substr((string) $row->end_time, 0, 5),
+            'break_start' => $row->break_start_time ? substr((string) $row->break_start_time, 0, 5) : null,
+            'break_end'   => $row->break_end_time   ? substr((string) $row->break_end_time, 0, 5) : null,
         ];
     }
+
 
     protected function parseTimeToCarbon(string $date, string $time, string $tz): Carbon
     {
