@@ -3,13 +3,15 @@
 namespace App\Http\Controllers\API\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\WorkingHoursBulkUpdateRequest;
+use App\Http\Requests\WorkingHoursUpdateDayRequest;
 use App\Services\ApiResponse;
 use App\Services\WorkingHourService;
 use Illuminate\Http\JsonResponse;
 
 class WorkingHoursController extends Controller
 {
-    public function __construct(private WorkingHourService $service) {}
+    public function __construct(private readonly WorkingHourService $service) {}
 
     public function bulkUpdate(WorkingHoursBulkUpdateRequest $request): JsonResponse
     {
