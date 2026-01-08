@@ -32,6 +32,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'cors.custom' => \App\Http\Middleware\Cors::class,
             'set.locale' => \App\Http\Middleware\SetLocale::class,
         ]);
+        $middleware->remove(\Illuminate\Http\Middleware\HandleCors::class);
         $middleware->append(\App\Http\Middleware\Cors::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
