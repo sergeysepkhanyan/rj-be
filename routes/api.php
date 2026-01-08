@@ -31,6 +31,8 @@ use App\Http\Controllers\API\Admin\StaffController as AdminStaffController;
 use App\Http\Controllers\API\Admin\BookingsController as AdminBookingsController;
 use App\Http\Controllers\API\Admin\ContactMessageController as AdminContactMessageController;
 use App\Http\Controllers\API\WeekdaysController;
+use App\Http\Controllers\API\WorkingHoursController;
+use App\Http\Controllers\API\Admin\WorkingHoursController as AdminWorkingHoursController;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Services\ApiResponse;
@@ -161,6 +163,9 @@ Route::middleware(['set.locale'])->group(function () {
 
     Route::middleware(['jwt.custom', 'verified', 'role:superadmin,admin'])->group(function () {
 
+        Route::put('/admin/working-hours', [AdminWorkingHoursController::class, 'bulkUpdate']);
+        Route::put('/admin/working-hours/{day}', [AdminWorkingHoursController::class, 'updateDay']);
+
         Route::patch('/admin/clients/{user}/add-referral', [ClientsController::class, 'addReferral']);
         Route::get('/admin/clients', [ClientsController::class, 'index']);
 
@@ -176,6 +181,7 @@ Route::middleware(['set.locale'])->group(function () {
 
     Route::get('/masters', [StaffController::class, 'getMasters']);
     Route::get('/weekdays', [WeekdaysController::class, 'index']);
+    Route::get('working-hours', [WorkingHoursController::class, 'index']);
 });
 
 
