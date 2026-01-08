@@ -28,7 +28,7 @@ class VerifyEmailNotification extends Notification
             . '/verify-email?url=' . urlencode($backendUrl);
 
         return (new MailMessage)
-            ->subject('Verify your email for HHT')
+            ->subject('Verify your email for RJ')
             ->greeting('Hi ' . ($notifiable->name ?? 'there') . ' 👋')
             ->line('Thanks for registering. Please verify your email to continue.')
             ->action('Verify Email', $frontendUrl)

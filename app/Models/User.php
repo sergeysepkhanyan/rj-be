@@ -75,7 +75,7 @@ class User extends Authenticatable implements JWTSubject, CanResetPasswordContra
     /**
      * Return an array with custom claims to be added to the JWT token.
      */
-    public function getJWTCustomClaims()
+    public function getJWTCustomClaims(): array
     {
         return [];
     }
