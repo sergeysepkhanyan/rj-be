@@ -125,6 +125,8 @@ return [
 
     'frontend_url' => env('FRONTEND_URL', 'http://localhost'),
 
-    'frontend_urls' => array_filter(array_map('trim', explode(',', env('FRONTEND_URLS', '')))),
+    'frontend_urls' => array_filter(
+        array_map('trim', explode(',', env('FRONTEND_URLS', '')))
+    ),
 
 ];
