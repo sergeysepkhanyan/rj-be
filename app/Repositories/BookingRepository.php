@@ -7,6 +7,7 @@ use App\Models\Booking;
 use App\Repositories\Interfaces\BookingRepositoryInterface;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class BookingRepository implements BookingRepositoryInterface
 {
@@ -50,12 +51,37 @@ class BookingRepository implements BookingRepositoryInterface
 
     public function getBusyForMasterOnDate(int $masterId, string $date): Collection
     {
-        return Booking::query()
+        $breaks = Booking::query()
             ->where('master_id', $masterId)
             ->whereDate('date', $date)
             ->where('status', '!=', 'cancelled')
-            ->whereIn('type', ['booking', 'break'])
-            ->get(['date', 'start_time', 'end_time', 'type']);
+            ->where('type', 'break')
+            ->get([
+                'date',
+                'start_time',
+                'end_time',
+                'type',
+                'timezone',
+            ]);
+
+
+        $segments = DB::table('booking_services as bs')
+            ->join('bookings as b', 'b.id', '=', 'bs.booking_id')
+            ->where('bs.master_id', $masterId)
+            ->whereDate('bs.date', $date)
+            ->where('b.status', '!=', 'cancelled')
+            ->where('b.type', 'booking')
+            ->get([
+                DB::raw('bs.date as date'),
+                DB::raw('bs.start_time as start_time'),
+                DB::raw('bs.end_time as end_time'),
+                DB::raw("'booking' as type"),
+                DB::raw('COALESCE(bs.timezone, b.timezone) as timezone'),
+            ]);
+
+        return collect()
+            ->merge($breaks)
+            ->merge($segments);
     }
 
     public function hasOverlap(
@@ -65,16 +91,33 @@ class BookingRepository implements BookingRepositoryInterface
         string $endTime,
         ?int $excludeBookingId = null
     ): bool {
-        return Booking::query()
+        $breakOverlap = Booking::query()
             ->where('master_id', $masterId)
             ->whereDate('date', $date)
             ->where('status', '!=', 'cancelled')
-            ->when($excludeBookingId, function ($q) use ($excludeBookingId) {
-                $q->where('id', '!=', $excludeBookingId);
-            })
+            ->where('type', 'break')
             ->where(function ($q) use ($startTime, $endTime) {
                 $q->where('start_time', '<', $endTime)
                     ->where('end_time',   '>', $startTime);
+            })
+            ->exists();
+
+        if ($breakOverlap) {
+            return true;
+        }
+
+        return DB::table('booking_services as bs')
+            ->join('bookings as b', 'b.id', '=', 'bs.booking_id')
+            ->where('bs.master_id', $masterId)
+            ->whereDate('bs.date', $date)
+            ->where('b.status', '!=', 'cancelled')
+            ->where('b.type', 'booking')
+            ->when($excludeBookingId, function ($q) use ($excludeBookingId) {
+                $q->where('b.id', '!=', $excludeBookingId);
+            })
+            ->where(function ($q) use ($startTime, $endTime) {
+                $q->where('bs.start_time', '<', $endTime)
+                    ->where('bs.end_time',   '>', $startTime);
             })
             ->exists();
     }

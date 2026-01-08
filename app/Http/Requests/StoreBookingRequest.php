@@ -12,7 +12,6 @@ use Illuminate\Validation\Validator;
 class StoreBookingRequest extends BaseFormRequest
 {
     protected array $fieldMap = [
-        'masterId' => 'master_id',
         'discountValue' => 'discount_value',
         'discountType' => 'discount_type',
         'discountLabel' => 'discount_label',
@@ -35,57 +34,97 @@ class StoreBookingRequest extends BaseFormRequest
     public function rules(): array
     {
         return [
-            'masterId'   => ['required', 'integer', 'exists:users,id'],
-            'customerName'  => 'nullable|string|max:255',
-            'customerPhone' => 'nullable|string|max:50',
-            'customerEmail' => 'nullable|email',
-            'paymentMode'   => 'required|string|in:pay_now,pay_later',
-            'date'       => 'required|date_format:Y-m-d',
-            'startTime' => 'required|date_format:H:i',
-            'endTime'   => 'required|date_format:H:i|after:start_time',
-            'services'                      => 'required|array|min:1',
-            'services.*.serviceType'       => ['required', Rule::in(['subservice', 'item'])],
-            'services.*.serviceId'         => ['required', 'integer'],
-            'services.*.price'              => 'required|numeric|min:0',
-            'discountType'  => 'nullable|in:percent,amount',
-            'discountValue' => 'nullable|numeric|min:0',
+            'date'       => ['required', 'date_format:Y-m-d'],
+            'startTime'  => ['required', 'date_format:H:i'],
+            'timezone'   => ['nullable', 'string', 'max:64'],
+            'customerName'  => ['nullable','string','max:255'],
+            'customerPhone' => ['nullable','string','max:50'],
+            'customerEmail' => ['required','email'],
+            'paymentMode' => ['required', 'string', 'in:pay_now,pay_later'],
+            'services' => ['required', 'array', 'min:1'],
+            'services.*.serviceType' => ['required', Rule::in(['subservice', 'item'])],
+            'services.*.serviceId'   => ['required', 'integer'],
+            'services.*.masterId'    => ['required', 'integer', 'exists:users,id'],
+            'services.*.price'       => ['required', 'numeric', 'min:0'],
+            'discountType'  => ['nullable', 'in:percent,fixed,none'],
+            'discountValue' => ['nullable', 'numeric', 'min:0'],
             'discountLabel' => ['nullable', 'string', 'max:255'],
-            'notes' => 'nullable|string|max:1000',
+            'notes' => ['nullable', 'string', 'max:1000'],
         ];
     }
 
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator) {
+
             $services = $this->input('services', []);
-            foreach ($services as $index => $service) {
-                if (!isset($service['service_type'], $service['service_id'])) {
-                    continue;
-                }
-
-                $type = $service['service_type'];
-                $id   = $service['service_id'];
-
-                $exists = false;
-
-                if ($type === 'subservice') {
-                    $exists = SubService::where('id', $id)->exists();
-                } elseif ($type === 'item') {
-                    $exists = SubServiceItem::where('id', $id)->exists();
-                }
-
-                if (! $exists) {
-                    $validator->errors()->add(
-                        "services.$index.service_id",
-                        'The selected service is invalid for its type.'
-                    );
-                }
+            if (!is_array($services) || count($services) === 0) {
+                $validator->errors()->add('services', 'At least one service is required.');
+                return;
             }
 
-            $master = User::find($this->input('master_id'));
+            $minStart = null;
+            $maxEnd = null;
 
-            if ($master && $master->role && $master->role->name !== 'master') {
-                $validator->errors()->add('master_id', 'The selected user is not a master.');
+            foreach ($services as $index => $service) {
+                $type = $service['serviceType'] ?? null;
+                $id   = $service['serviceId']  ??  null;
+                $masterId = $service['masterId'] ?? null;
+
+                $startTime = $service['startTime'] ?? null;
+                $endTime   = $service['endTime']   ?? null;
+
+                if (!$type || !$id) {
+                    $validator->errors()->add("services.$index.serviceId", 'serviceType and serviceId are required.');
+                } else {
+                    $exists = match ($type) {
+                        'subservice' => SubService::where('id', $id)->exists(),
+                        'item'       => SubServiceItem::where('id', $id)->exists(),
+                        default      => false,
+                    };
+
+                    if (!$exists) {
+                        $validator->errors()->add(
+                            "services.$index.serviceId",
+                            'The selected service is invalid for its type.'
+                        );
+                    }
+                }
+
+                if (!$masterId) {
+                    $validator->errors()->add("services.$index.masterId", 'masterId is required.');
+                } else {
+                    $master = User::with('role')->find($masterId);
+                    if (!$master) {
+                        $validator->errors()->add("services.$index.masterId", 'The selected master does not exist.');
+                    } elseif (!$master->role || $master->role->slug !== 'master') {
+                        $validator->errors()->add("services.$index.masterId", 'The selected user is not a master.');
+                    }
+                }
+
+                if (!$startTime) {
+                    $validator->errors()->add("services.$index.startTime", 'startTime is required.');
+                }
+                if (!$endTime) {
+                    $validator->errors()->add("services.$index.endTime", 'endTime is required.');
+                }
+
+                if ($startTime) {
+                    $minStart = $minStart === null ? $startTime : min($minStart, $startTime);
+                }
+                if ($endTime) {
+                    $maxEnd = $maxEnd === null ? $endTime : max($maxEnd, $endTime);
+                }
+            }
+            $rootStart = $this->input('start_time') ?? $this->input('startTime');
+            $rootEnd   = $this->input('end_time')   ?? $this->input('endTime');
+
+            if ($rootStart && $minStart && $rootStart !== $minStart) {
+                $validator->errors()->add('startTime', "startTime must match first service start ({$minStart}).");
+            }
+
+            if ($rootEnd && $maxEnd && $rootEnd !== $maxEnd) {
+                $validator->errors()->add('endTime', "endTime must match last service end ({$maxEnd}).");
             }
         });
     }

@@ -72,6 +72,8 @@ Route::middleware(['set.locale'])->group(function () {
         });
     });
 
+    Route::post('/bookings', [BookingsController::class, 'store']);
+
     Route::middleware(['jwt.custom', 'verified'])->group(function () {
 
         Route::post('image/upload', [FilesController::class, 'upload']);
@@ -91,7 +93,6 @@ Route::middleware(['set.locale'])->group(function () {
         });
 
         Route::get('/bookings', [BookingsController::class, 'index']);
-        Route::post('/bookings', [BookingsController::class, 'store']);
         Route::put('/bookings/{booking}', [BookingsController::class, 'update']);
 
 

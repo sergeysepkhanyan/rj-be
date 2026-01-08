@@ -10,11 +10,16 @@ class BookingService extends Model
 {
     protected $fillable = [
         'booking_id',
+        'master_id',
         'bookable_id',
         'bookable_type',
         'duration_minutes',
         'price',
         'sort_order',
+        'date',
+        'timezone',
+        'start_time',
+        'end_time',
     ];
 
     public function booking(): BelongsTo
@@ -25,6 +30,11 @@ class BookingService extends Model
     public function bookable(): MorphTo
     {
         return $this->morphTo();
+    }
+
+    public function master(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'master_id');
     }
 }
 
