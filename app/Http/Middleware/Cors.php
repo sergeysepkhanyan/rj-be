@@ -47,6 +47,12 @@ class Cors
             }
         }
 
+        $response->headers->set('X-Cors-Middleware', 'custom');
+        $response->headers->set('X-Cors-IsLocal', $isLocal ? '1' : '0');
+        $response->headers->set('X-Cors-Origin', $origin ?? 'null');
+        $response->headers->set('X-Cors-Allowed', $isAllowed ? '1' : '0');
+
+
         return $response;
     }
 
