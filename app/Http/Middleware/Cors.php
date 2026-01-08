@@ -10,38 +10,68 @@ class Cors
 {
     public function handle(Request $request, Closure $next): Response
     {
+        $origin = $request->headers->get('Origin');
+
         $isLocal = app()->environment('local');
 
-        $allowedOrigin = $isLocal
-            ? '*'
-            : config('app.frontend_url');
+        $allowedOrigins = $isLocal
+            ? ['*']
+            : config('app.frontend_urls', []);
 
-        $allowCredentials = !$isLocal;
+        $isAllowed = $isLocal || in_array($origin, $allowedOrigins, true);
 
-        if ($request->getMethod() === 'OPTIONS') {
-            $resp = response('', 204)
-                ->header('Access-Control-Allow-Origin', $allowedOrigin)
-                ->header('Vary', 'Origin')
-                ->header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
-                ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-
-            if ($allowCredentials) {
-                $resp->header('Access-Control-Allow-Credentials', 'true');
-            }
-
-            return $resp;
+        if ($request->isMethod('OPTIONS')) {
+            return $this->preflightResponse($isAllowed, $origin, !$isLocal);
         }
 
         /** @var Response $response */
         $response = $next($request);
 
-        $response->headers->set('Access-Control-Allow-Origin', $allowedOrigin);
-        $response->headers->set('Vary', 'Origin');
-        $response->headers->set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-        $response->headers->set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+        if ($isAllowed) {
+            $response->headers->set(
+                'Access-Control-Allow-Origin',
+                $isLocal ? '*' : $origin
+            );
+            $response->headers->set('Vary', 'Origin');
+            $response->headers->set(
+                'Access-Control-Allow-Methods',
+                'GET, POST, PUT, PATCH, DELETE, OPTIONS'
+            );
+            $response->headers->set(
+                'Access-Control-Allow-Headers',
+                'Content-Type, Authorization, X-Requested-With'
+            );
 
-        if ($allowCredentials) {
-            $response->headers->set('Access-Control-Allow-Credentials', 'true');
+            if (!$isLocal) {
+                $response->headers->set('Access-Control-Allow-Credentials', 'true');
+            }
+        }
+
+        return $response;
+    }
+
+    private function preflightResponse(bool $isAllowed, ?string $origin, bool $withCredentials): Response
+    {
+        $response = response('', 204);
+
+        if ($isAllowed) {
+            $response->headers->set(
+                'Access-Control-Allow-Origin',
+                $withCredentials ? $origin : '*'
+            );
+            $response->headers->set('Vary', 'Origin');
+            $response->headers->set(
+                'Access-Control-Allow-Methods',
+                'GET, POST, PUT, PATCH, DELETE, OPTIONS'
+            );
+            $response->headers->set(
+                'Access-Control-Allow-Headers',
+                'Content-Type, Authorization, X-Requested-With'
+            );
+
+            if ($withCredentials) {
+                $response->headers->set('Access-Control-Allow-Credentials', 'true');
+            }
         }
 
         return $response;
