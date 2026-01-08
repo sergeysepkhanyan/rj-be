@@ -11,7 +11,6 @@ class Cors
     public function handle(Request $request, Closure $next): Response
     {
         $origin = $request->headers->get('Origin');
-
         $isLocal = app()->environment('local');
 
         $allowedOrigins = $isLocal
@@ -62,7 +61,6 @@ class Cors
         $response->headers->set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
         $response->headers->set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
     }
-
 }
 
 
