@@ -117,8 +117,8 @@ class BookingService
 
 //        $workStart = $data['work_start'] ?? '09:00';
 //        $workEnd   = $data['work_end'] ?? '18:00';
-        $workStart = '10:00';
-        $workEnd   = '19:00';
+        $workStart = '01:00';
+        $workEnd   = '23:59';
 
         $busy = $this->bookingRepository->getBusyForMasterOnDate($masterId, $date);
 
