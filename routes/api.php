@@ -38,7 +38,7 @@ use Illuminate\Auth\Events\Verified;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['cors.custom', 'set.locale'])->group(function () {
+Route::middleware(['set.locale'])->group(function () {
     Route::post('/contact', [ContactController::class, 'store'])
         ->middleware('throttle:contact');
     Route::prefix('content')->group(function () {
