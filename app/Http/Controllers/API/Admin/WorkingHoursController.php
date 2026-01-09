@@ -15,14 +15,14 @@ class WorkingHoursController extends Controller
 
     public function bulkUpdate(WorkingHoursBulkUpdateRequest $request): JsonResponse
     {
-        $this->service->bulkUpdate($request->validated()['days']);
+        $this->service->bulkUpdate($request->only('days')['days']);
 
         return ApiResponse::success(['success' => true], 'Working hours updated.');
     }
 
     public function updateDay(int $day, WorkingHoursUpdateDayRequest $request): JsonResponse
     {
-        $this->service->updateDay($day, $request->validated());
+        $this->service->updateDay($day, $request->all());
 
         return ApiResponse::success(['success' => true], 'Working hours updated.');
     }

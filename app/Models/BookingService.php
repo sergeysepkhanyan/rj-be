@@ -11,6 +11,7 @@ class BookingService extends Model
     protected $fillable = [
         'booking_id',
         'master_id',
+        'is_any_master',
         'bookable_id',
         'bookable_type',
         'duration_minutes',

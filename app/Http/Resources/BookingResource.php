@@ -26,12 +26,15 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * @property mixed $cancelledBy
  * @property mixed $cancelled_at
  * @property mixed $cancel_reason
+ * @method relationLoaded(string $string)
  */
 class BookingResource extends BaseResource
 {
     public function toArray($request): array
     {
         $data = parent::toArray($request);
+        $user = $request->user();
+        $isAdmin = $user?->isAdmin() ?? false;
 
         $services = $this->services ?? collect();
         $overallStart = $this->start_time;
@@ -56,14 +59,14 @@ class BookingResource extends BaseResource
             'status'        => $this->status,
             'cancelledBy'   => $this->when($this->cancelledBy, new UserResource($this->cancelledBy)),
             'cancelledAt'   => $this->cancelled_at,
-            "cancelReason"  => $this->cancel_reason,
+            'cancelReason'  => $this->cancel_reason,
             'price'         => $this->price,
             'discountType'  => $this->discount_type,
             'discountValue' => $this->discount_value,
             'discountLabel' => $this->discount_label,
             'totalPrice'    => $this->final_price,
             'notes'         => $this->notes,
-            'services' => $services->map(function ($bs) {
+            'services' => $services->map(function ($bs) use ($isAdmin) {
                 $bookable = $bs->bookable;
 
                 $serviceType = match (true) {
@@ -72,26 +75,31 @@ class BookingResource extends BaseResource
                     default => null,
                 };
 
+                $isAny = (bool) ($bs->is_any_master ?? false);
+                $canSeeMaster = $isAdmin || !$isAny;
+
                 return [
                     'id'          => $bs->id,
-
                     'serviceType' => $serviceType,
                     'serviceId'   => $bookable?->id,
                     'name'        => $bookable?->name,
-
                     'price'       => $bs->price,
                     'duration'    => $bs->duration_minutes,
                     'date'        => $bs->date ?? $this->date,
                     'timezone'    => $bs->timezone ?? $this->timezone,
                     'startTime'   => $bs->start_time ? substr((string) $bs->start_time, 0, 5) : null,
                     'endTime'     => $bs->end_time ? substr((string) $bs->end_time, 0, 5) : null,
-                    'master' => ($bs->relationLoaded('master') && $bs->master)
-                        ? new StaffResource($bs->master)
-                        : null,
-
+                    'isAnyMaster' => $isAny,
+                    'master' => $this->when(
+                        $canSeeMaster && $bs->relationLoaded('master') && $bs->master,
+                        new StaffResource($bs->master)
+                    ),
                 ];
             })->values(),
-            'master' => $this->when($this->master, new StaffResource($this->master)),
+            'master' => $this->when(
+                $isAdmin && $this->relationLoaded('master') && $this->master,
+                new StaffResource($this->master)
+            ),
         ];
     }
 }

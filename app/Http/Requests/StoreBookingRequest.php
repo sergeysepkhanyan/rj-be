@@ -44,7 +44,19 @@ class StoreBookingRequest extends BaseFormRequest
             'services' => ['required', 'array', 'min:1'],
             'services.*.serviceType' => ['required', Rule::in(['subservice', 'item'])],
             'services.*.serviceId'   => ['required', 'integer'],
-            'services.*.masterId'    => ['required', 'integer', 'exists:users,id'],
+            'services.*.masterId' => [
+                'nullable',
+                'integer',
+                'exists:users,id',
+                function ($attr, $value, $fail) {
+                    $index = explode('.', $attr)[1] ?? null;
+                    $any = (bool) data_get($this->all(), "services.$index.anyMaster", false);
+                    if (! $any && empty($value)) {
+                        $fail('masterId is required when anyMaster is false.');
+                    }
+                },
+            ],
+            'services.*.anyMaster' => ['sometimes', 'boolean'],
             'services.*.price'       => ['required', 'numeric', 'min:0'],
             'discountType'  => ['nullable', 'in:percent,fixed,none'],
             'discountValue' => ['nullable', 'numeric', 'min:0'],
@@ -69,6 +81,7 @@ class StoreBookingRequest extends BaseFormRequest
             foreach ($services as $index => $service) {
                 $type = $service['serviceType'] ?? null;
                 $id   = $service['serviceId']  ??  null;
+                $anyMaster = (bool)($service['anyMaster'] ?? false);
                 $masterId = $service['masterId'] ?? null;
 
                 $startTime = $service['startTime'] ?? null;
@@ -91,14 +104,20 @@ class StoreBookingRequest extends BaseFormRequest
                     }
                 }
 
-                if (!$masterId) {
-                    $validator->errors()->add("services.$index.masterId", 'masterId is required.');
+                if ($anyMaster) {
+                    if (!empty($masterId)) {
+                        $validator->errors()->add("services.$index.masterId", 'masterId must not be provided when anyMaster is true.');
+                    }
                 } else {
-                    $master = User::with('role')->find($masterId);
-                    if (!$master) {
-                        $validator->errors()->add("services.$index.masterId", 'The selected master does not exist.');
-                    } elseif (!$master->role || $master->role->slug !== 'master') {
-                        $validator->errors()->add("services.$index.masterId", 'The selected user is not a master.');
+                    if (empty($masterId)) {
+                        $validator->errors()->add("services.$index.masterId", 'masterId is required when anyMaster is false.');
+                    } else {
+                        $master = User::with('role')->find($masterId);
+                        if (!$master) {
+                            $validator->errors()->add("services.$index.masterId", 'The selected master does not exist.');
+                        } elseif (!$master->role || $master->role->slug !== 'master') {
+                            $validator->errors()->add("services.$index.masterId", 'The selected user is not a master.');
+                        }
                     }
                 }
 

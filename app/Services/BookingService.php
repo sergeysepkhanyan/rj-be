@@ -25,7 +25,8 @@ class BookingService
         protected BookingRepositoryInterface $bookingRepository,
         protected SubServiceRepositoryInterface $subServiceRepository,
         protected SubServiceItemRepositoryInterface $subServiceItemRepository,
-        protected WorkingHourRepositoryInterface $workingHourRepository
+        protected WorkingHourRepositoryInterface $workingHourRepository,
+        protected MasterAssignmentService $masterAssignmentService,
     ) {}
 
     public function getAllBooking()
@@ -317,9 +318,15 @@ class BookingService
             );
         }
 
+        $rawServices = $this->masterAssignmentService->assignAndValidateMasters(
+            date: $date,
+            tz: $tz,
+            services: $rawServices
+        );
+
         $segments = $this->buildServiceSegmentsFromRequest($date, $rawServices, $tz);
 
-        $this->validateSegments($segments, $tz);
+        $this->validateSegmentsBasic($segments, $tz);
         $this->validateRootTimeMatchesSegments($data, $segments);
 
         $pricing = $this->buildPricingData([
@@ -331,6 +338,7 @@ class BookingService
 
             $bookingStart = substr($segments[0]['start_time'], 0, 5);
             $bookingEnd   = substr($segments[count($segments) - 1]['end_time'], 0, 5);
+            $uniqueMasters = collect($segments)->pluck('master_id')->unique()->values();
 
             $bookingData = [
                 'user_id'        => $user?->id,
@@ -355,7 +363,8 @@ class BookingService
                 'customer_phone' => $data['customer_phone'] ?? $data['customerPhone'] ?? ($user->mobile ?? null),
                 'customer_email' => $data['customer_email'] ?? $data['customerEmail'] ?? ($user->email ?? null),
                 'notes'          => $data['notes'] ?? null,
-                'master_id'      => $segments[0]['master_id'] ?? null,
+
+                'master_id'      => $uniqueMasters->count() === 1 ? (int)$uniqueMasters->first() : null,
             ];
 
             /** @var Booking $booking */
@@ -369,9 +378,6 @@ class BookingService
         });
     }
 
-    /**
-     * UPDATE BOOKING (same as create, but excludes current booking id from overlap).
-     */
     public function updateBooking(Booking $booking, array $data): Booking
     {
         $tz   = $data['timezone'] ?? $booking->timezone ?? 'UTC';
@@ -384,9 +390,16 @@ class BookingService
             );
         }
 
+        $rawServices = $this->masterAssignmentService->assignAndValidateMasters(
+            date: $date,
+            tz: $tz,
+            services: $rawServices,
+            excludeBookingId: $booking->id
+        );
+
         $segments = $this->buildServiceSegmentsFromRequest($date, $rawServices, $tz);
 
-        $this->validateSegments($segments, $tz, excludeBookingId: $booking->id);
+        $this->validateSegmentsBasic($segments, $tz);
         $this->validateRootTimeMatchesSegments($data, $segments);
 
         $pricing = $this->buildPricingData([
@@ -395,9 +408,10 @@ class BookingService
         ]);
 
         return DB::transaction(function () use ($booking, $data, $tz, $date, $segments, $pricing) {
-
             $bookingStart = substr($segments[0]['start_time'], 0, 5);
             $bookingEnd   = substr($segments[count($segments) - 1]['end_time'], 0, 5);
+
+            $uniqueMasters = collect($segments)->pluck('master_id')->unique()->values();
 
             $booking->update([
                 'date'           => $date,
@@ -420,7 +434,7 @@ class BookingService
                 'customer_email' => $data['customer_email'] ?? $data['customerEmail'] ?? $booking->customer_email,
                 'notes'          => $data['notes'] ?? $booking->notes,
 
-                'master_id'      => $segments[0]['master_id'] ?? null,
+                'master_id'      => $uniqueMasters->count() === 1 ? (int)$uniqueMasters->first() : null,
             ]);
 
             $booking->services()->delete();
@@ -429,13 +443,10 @@ class BookingService
                 $this->attachServiceToBookingWithSegment($booking, $seg, $i + 1);
             }
 
-            return $booking->load(['services.bookable', 'services.master', 'master']);
+            return $booking->load(['services.bookable', 'services.master']);
         });
     }
 
-    /**
-     * Build segments from REQUEST times (services[].startTime/endTime) and validate duration matches DB.
-     */
     protected function buildServiceSegmentsFromRequest(string $date, array $rawServices, string $tz): array
     {
         $segments = [];
@@ -447,12 +458,18 @@ class BookingService
 
             $startTime   = $s['start_time']   ?? $s['startTime']   ?? null;
             $endTime     = $s['end_time']     ?? $s['endTime']     ?? null;
-
-            if (!$serviceType || !$serviceId || !$masterId) {
+            if (!$serviceType || !$serviceId) {
                 throw new HttpResponseException(
-                    ApiResponse::error(['services' => "services[$index] must include serviceType/serviceId/masterId."], 'Validation failed', 422)
+                    ApiResponse::error(['services' => "services[$index] must include serviceType/serviceId."], 'Validation failed', 422)
                 );
             }
+
+            if (!$masterId) {
+                throw new HttpResponseException(
+                    ApiResponse::error(['services' => "services[$index] must include masterId (master assignment failed)."], 'Validation failed', 422)
+                );
+            }
+
 
             if (!$startTime || !$endTime) {
                 throw new HttpResponseException(
@@ -494,9 +511,10 @@ class BookingService
                     ], 'Validation failed', 422)
                 );
             }
-
+            $isAnyMaster = (bool)($s['any_master'] ?? $s['anyMaster'] ?? false);
             $segments[] = [
                 'master_id'        => (int) $masterId,
+                'is_any_master'    => $isAnyMaster,
                 'bookable_type'    => get_class($serviceable),
                 'bookable_id'      => $serviceable->id,
                 'duration_minutes' => $expectedMinutes,
@@ -514,82 +532,6 @@ class BookingService
         return $segments;
     }
 
-    protected function validateSegments(array $segments, string $tz, ?int $excludeBookingId = null): void
-    {
-        $now = Carbon::now($tz);
-
-        foreach ($segments as $seg) {
-            $date = $seg['date'];
-
-            $hours = $this->getWorkingHours($date, $tz);
-            if ($hours['is_closed']) {
-                throw new HttpResponseException(
-                    ApiResponse::error(['workingHours' => 'Business is closed on selected day.'], 'Validation failed', 422)
-                );
-            }
-
-            $workStart = $hours['start'];
-            $workEnd   = $hours['end'];
-
-            $start = $this->parseTimeToCarbon($date, $seg['start_time'], $tz);
-            $end   = $this->parseTimeToCarbon($date, $seg['end_time'], $tz);
-
-            if ($start->lte($now)) {
-                throw new HttpResponseException(
-                    ApiResponse::error(['startTime' => 'Start time must be in the future.'], 'Validation failed', 422)
-                );
-            }
-
-            $dayStart = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$workStart}", $tz);
-            $dayEnd   = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$workEnd}", $tz);
-
-            if ($start->lt($dayStart) || $end->gt($dayEnd)) {
-                throw new HttpResponseException(
-                    ApiResponse::error([
-                        'workingHours' => "Booking must be within working hours ({$workStart}–{$workEnd})."
-                    ], 'Validation failed', 422)
-                );
-            }
-
-            if ($hours['break_start'] && $hours['break_end']) {
-                $breakStart = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$hours['break_start']}", $tz);
-                $breakEnd   = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$hours['break_end']}", $tz);
-
-                if ($start->lt($breakEnd) && $end->gt($breakStart)) {
-                    throw new HttpResponseException(
-                        ApiResponse::error([
-                            'breakTime' => "Booking overlaps break time ({$hours['break_start']}–{$hours['break_end']})."
-                        ], 'Validation failed', 422)
-                    );
-                }
-            }
-
-            if (($start->minute % 5) !== 0 || ($end->minute % 5) !== 0) {
-                throw new HttpResponseException(
-                    ApiResponse::error(['grid' => 'Time must be in 5-minute increments.'], 'Validation failed', 422)
-                );
-            }
-
-            $hasOverlap = $this->bookingRepository->hasOverlap(
-                masterId: (int) $seg['master_id'],
-                date: $date,
-                startTime: substr($seg['start_time'], 0, 5),
-                endTime: substr($seg['end_time'], 0, 5),
-                excludeBookingId: $excludeBookingId
-            );
-
-            if ($hasOverlap) {
-                throw new HttpResponseException(
-                    ApiResponse::error(['masterId' => 'Master is not available in selected time range.'], 'Master is not available in selected time range.', 422)
-                );
-            }
-        }
-    }
-
-
-    /**
-     * Optional: if root startTime/endTime exist, ensure they match segments min/max.
-     */
     protected function validateRootTimeMatchesSegments(array $data, array $segments): void
     {
         $rootStart = $data['start_time'] ?? $data['startTime'] ?? null;
@@ -636,6 +578,7 @@ class BookingService
     {
         $booking->services()->create([
             'master_id'        => $seg['master_id'],
+            'is_any_master'    => (bool)($seg['is_any_master'] ?? false),
             'bookable_id'      => $seg['bookable_id'],
             'bookable_type'    => $seg['bookable_type'],
             'price'            => $seg['price'],
@@ -800,6 +743,57 @@ class BookingService
         ]);
 
         return $booking->load(['services.bookable', 'services.master', 'master', 'cancelledBy'])->refresh();
+    }
+
+    protected function validateSegmentsBasic(array $segments, string $tz): void
+    {
+        $now = Carbon::now($tz);
+
+        foreach ($segments as $seg) {
+            $date = $seg['date'];
+
+            $hours = $this->getWorkingHours($date, $tz);
+            if ($hours['is_closed']) {
+                throw new HttpResponseException(
+                    ApiResponse::error(['workingHours' => 'Business is closed on selected day.'], 'Validation failed', 422)
+                );
+            }
+
+            $start = $this->parseTimeToCarbon($date, $seg['start_time'], $tz);
+            $end   = $this->parseTimeToCarbon($date, $seg['end_time'], $tz);
+
+            if ($start->lte($now)) {
+                throw new HttpResponseException(
+                    ApiResponse::error(['startTime' => 'Start time must be in the future.'], 'Validation failed', 422)
+                );
+            }
+
+            $dayStart = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$hours['start']}", $tz);
+            $dayEnd   = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$hours['end']}", $tz);
+
+            if ($start->lt($dayStart) || $end->gt($dayEnd)) {
+                throw new HttpResponseException(
+                    ApiResponse::error(['workingHours' => "Booking must be within working hours ({$hours['start']}–{$hours['end']})."], 'Validation failed', 422)
+                );
+            }
+
+            if (($start->minute % 5) !== 0 || ($end->minute % 5) !== 0) {
+                throw new HttpResponseException(
+                    ApiResponse::error(['grid' => 'Time must be in 5-minute increments.'], 'Validation failed', 422)
+                );
+            }
+
+            if (!empty($hours['break_start']) && !empty($hours['break_end'])) {
+                $breakStart = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$hours['break_start']}", $tz);
+                $breakEnd   = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$hours['break_end']}", $tz);
+
+                if ($start->lt($breakEnd) && $end->gt($breakStart)) {
+                    throw new HttpResponseException(
+                        ApiResponse::error(['breakTime' => "Booking overlaps break time ({$hours['break_start']}–{$hours['break_end']})."], 'Validation failed', 422)
+                    );
+                }
+            }
+        }
     }
 
 }
