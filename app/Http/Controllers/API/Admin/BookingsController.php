@@ -6,6 +6,7 @@ use App\Filters\BookingFilter;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreAppointmentRequest;
 use App\Http\Requests\StoreBreakRequest;
+use App\Http\Requests\UpdateBreakRequest;
 use App\Http\Resources\BookingResource;
 use App\Http\Resources\BreakResource;
 use App\Models\Booking;
@@ -61,6 +62,32 @@ class BookingsController extends Controller
         return ApiResponse::success([
             'break' => new BreakResource($break),
         ], 'Break created successfully');
+    }
+
+    public function updateBreak(UpdateBreakRequest $request, Booking $booking): JsonResponse
+    {
+        $data = $request->only('date', 'start_time', 'end_time', 'timezone', 'notes');
+
+        $break = $this->bookingService->updateBreak($booking, $data);
+
+        return ApiResponse::success([
+            'break' => new BreakResource($break),
+        ], 'Break updated successfully');
+    }
+
+    public function deleteBreak(Booking $booking): JsonResponse
+    {
+        if ($booking->type !== 'break') {
+            return ApiResponse::error(
+                ['message' => 'The specified booking is not a break.'],
+                'Invalid booking type', 422
+            );
+        }
+        $this->bookingService->deleteBreak($booking);
+
+        return ApiResponse::success([
+            'deleted' => true,
+        ], 'Break deleted successfully.');
     }
 
 }

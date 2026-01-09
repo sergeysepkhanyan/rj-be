@@ -38,9 +38,9 @@ class BookingService
         return $this->bookingRepository->find($id);
     }
 
-    public function deleteService($id)
+    public function deleteBreak(Booking $booking)
     {
-        return $this->bookingRepository->delete($id);
+        return $this->bookingRepository->delete($booking);
     }
 
     public function getPaginatedBookings(?BookingFilter $filter = null, int $perPage = 15, int $page = 1): LengthAwarePaginator
@@ -106,6 +106,65 @@ class BookingService
         ];
 
         return $this->bookingRepository->create($breakData);
+    }
+
+    public function updateBreak(Booking $booking, array $data): Booking
+    {
+        if ($booking->type !== 'break') {
+            throw new HttpResponseException(
+                ApiResponse::error([], 'Only breaks can be updated with this endpoint.', 422)
+            );
+        }
+
+        $tz = $data['timezone'] ?? $booking->timezone ?? 'UTC';
+
+        $date = isset($data['date']) ? trim($data['date']) : $booking->date;
+
+        $startTime = isset($data['start_time'])
+            ? trim($data['start_time'])
+            : $booking->start_time;
+
+        $endTime = isset($data['end_time'])
+            ? trim($data['end_time'])
+            : $booking->end_time;
+
+        $start = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$startTime}", $tz);
+        $end   = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$endTime}", $tz);
+
+        if ($end->lte($start)) {
+            throw new HttpResponseException(
+                ApiResponse::error(['endTime' => 'End time must be after start time.'], 'Validation failed', 422)
+            );
+        }
+
+        $hasOverlap = $this->bookingRepository->hasOverlap(
+            masterId: $booking->master_id,
+            date: $date,
+            startTime: $start->format('H:i'),
+            endTime: $end->format('H:i'),
+            excludeBookingId: $booking->id
+        );
+
+        if ($hasOverlap) {
+            throw new HttpResponseException(
+                ApiResponse::error([], 'Master is not available in selected time range.', 422)
+            );
+        }
+
+        $updateData = [
+            'date' => $date,
+            'timezone' => $tz,
+            'start_time' => $start->format('H:i'),
+            'end_time' => $end->format('H:i'),
+            'duration' => $start->diffInMinutes($end),
+            'duration_unit' => 'minutes',
+        ];
+
+        if (array_key_exists('notes', $data)) {
+            $updateData['notes'] = $data['notes'];
+        }
+
+        return $this->bookingRepository->update($booking, $updateData);
     }
 
     /**

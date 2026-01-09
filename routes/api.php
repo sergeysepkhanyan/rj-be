@@ -171,6 +171,8 @@ Route::middleware(['set.locale'])->group(function () {
 
 
         Route::post('/admin/booking/break', [AdminBookingsController::class, 'storeBreak']);
+        Route::delete('/admin/booking/break/{booking}', [AdminBookingsController::class, 'deleteBreak']);
+        Route::put('/admin/booking/break/{booking}', [AdminBookingsController::class, 'updateBreak']);
         Route::get('/admin/bookings', [AdminBookingsController::class, 'index']);
 
         Route::post('/admin/post/create', [AdminPostsController::class, 'store']);

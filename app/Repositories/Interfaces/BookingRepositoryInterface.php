@@ -10,5 +10,5 @@ interface BookingRepositoryInterface
     public function find($id);
     public function create(array $data);
     public function update(Booking $booking, array $data): Booking;
-    public function delete($id);
+    public function delete(Booking $booking);
 }

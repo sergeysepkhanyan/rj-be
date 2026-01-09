@@ -32,9 +32,8 @@ class BookingRepository implements BookingRepositoryInterface
         return $booking;
     }
 
-    public function delete($id)
+    public function delete(Booking $booking): ?bool
     {
-        $booking = Booking::findOrFail($id);
         return $booking->delete();
     }
 
