@@ -5,12 +5,14 @@ namespace App\Http\Controllers\API;
 use App\Filters\BookingFilter;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\AvailableSlotsRequest;
+use App\Http\Requests\CancelBookingRequest;
 use App\Http\Requests\StoreBookingRequest;
 use App\Http\Requests\UpdateBookingRequest;
 use App\Http\Resources\BookingResource;
 use App\Models\Booking;
 use App\Services\ApiResponse;
 use App\Services\BookingService;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -69,9 +71,11 @@ class BookingsController extends Controller
     }
 
     /**
+     * @throws AuthorizationException
      */
     public function update(UpdateBookingRequest $request, Booking $booking): JsonResponse
     {
+        $this->authorize('update', $booking);
         $updated = $this->bookingService->updateBooking(
             $booking,
             $request->all()
@@ -80,6 +84,19 @@ class BookingsController extends Controller
         return ApiResponse::success([
             'booking' => new BookingResource($updated),
         ], 'Booking updated successfully');
+    }
+
+    /**
+     * @throws AuthorizationException
+     */
+    public function cancel(CancelBookingRequest $request, Booking $booking): JsonResponse
+    {
+        $this->authorize('update', $booking);
+        $result = $this->bookingService->cancelBooking($booking, $request->validated());
+
+        return ApiResponse::success([
+            'booking' => new BookingResource($result),
+        ], 'Booking cancelled successfully.');
     }
 }
 

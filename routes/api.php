@@ -96,6 +96,7 @@ Route::middleware(['set.locale'])->group(function () {
 
         Route::get('/bookings', [BookingsController::class, 'index']);
         Route::put('/bookings/{booking}', [BookingsController::class, 'update']);
+        Route::patch('/bookings/cancel/{booking}', [BookingsController::class, 'cancel']);
 
 
 

@@ -365,7 +365,7 @@ class BookingService
                 $this->attachServiceToBookingWithSegment($booking, $seg, $i + 1);
             }
 
-            return $booking->load(['services.bookable', 'services.master']);
+            return $booking->load(['services.bookable', 'services.master', 'master']);
         });
     }
 
@@ -429,7 +429,7 @@ class BookingService
                 $this->attachServiceToBookingWithSegment($booking, $seg, $i + 1);
             }
 
-            return $booking->load(['services.bookable', 'services.master']);
+            return $booking->load(['services.bookable', 'services.master', 'master']);
         });
     }
 
@@ -755,6 +755,51 @@ class BookingService
         throw new HttpResponseException(
             ApiResponse::error(['time' => "Invalid time format: {$time}"], 'Validation failed', 422)
         );
+    }
+
+    public function cancelBooking(Booking $booking, array $data = []): Booking
+    {
+        $user = auth()->user();
+
+        if (($booking->type ?? 'booking') !== 'booking') {
+            throw new HttpResponseException(
+                ApiResponse::error([], 'Only bookings can be cancelled.', 422)
+            );
+        }
+
+        if ($booking->status === 'cancelled') {
+            return $booking;
+        }
+
+        if ($booking->status === 'completed') {
+            throw new HttpResponseException(
+                ApiResponse::error([], 'Completed booking cannot be cancelled.', 422)
+            );
+        }
+        $isAdmin = $user && method_exists($user, 'hasRole') && $user->hasRole('superadmin');
+
+        if (! $isAdmin) {
+            if (! $user) {
+                throw new HttpResponseException(
+                    ApiResponse::error([], 'Unauthorized.', 401)
+                );
+            }
+
+            if ((int)$booking->user_id !== (int)$user->id) {
+                throw new HttpResponseException(
+                    ApiResponse::error([], 'You can cancel only your own booking.', 403)
+                );
+            }
+        }
+
+        $booking->update([
+            'status' => 'cancelled',
+            'cancelled_at' => now(),
+            'cancelled_by_user_id' => $user?->id,
+            'cancel_reason' => $data['reason'] ?? null,
+        ]);
+
+        return $booking->load(['services.bookable', 'services.master', 'master', 'cancelledBy'])->refresh();
     }
 
 }

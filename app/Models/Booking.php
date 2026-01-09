@@ -24,6 +24,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property mixed $master_id
  * @property mixed $start_time
  * @property mixed $end_time
+ * @property mixed $status
  */
 class Booking extends Model
 {
@@ -50,6 +51,9 @@ class Booking extends Model
         'status',
         'notes',
         'timezone',
+        'cancelled_at',
+        'cancelled_by_user_id',
+        'cancel_reason'
     ];
 
     protected $casts = [
@@ -104,5 +108,10 @@ class Booking extends Model
     public function scopeOnlyBookings(Builder $query): Builder
     {
         return $query->where('type', 'booking');
+    }
+
+    public function cancelledBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'cancelled_by_user_id');
     }
 }

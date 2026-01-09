@@ -21,6 +21,11 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * @property mixed $price
  * @property mixed $discount_value
  * @property mixed $discount_type
+ * @property mixed $timezone
+ * @property mixed $discount_label
+ * @property mixed $cancelledBy
+ * @property mixed $cancelled_at
+ * @property mixed $cancel_reason
  */
 class BookingResource extends BaseResource
 {
@@ -28,40 +33,64 @@ class BookingResource extends BaseResource
     {
         $data = parent::toArray($request);
 
+        $services = $this->services ?? collect();
+        $overallStart = $this->start_time;
+        $overallEnd   = $this->end_time;
+
+        if ($services->count() > 0 && $services->first()?->start_time && $services->last()?->end_time) {
+            $sorted = $services->sortBy('start_time')->values();
+            $overallStart = substr((string) $sorted->first()->start_time, 0, 5);
+            $overallEnd   = substr((string) $sorted->last()->end_time, 0, 5);
+        }
+
         return [
-            'id' => $data['id'] ?? null,
-            'customerName' => $data['customer_name'] ?? null,
+            'id'            => $data['id'] ?? null,
+            'customerName'  => $data['customer_name'] ?? null,
             'customerEmail' => $data['customer_email'] ?? null,
             'customerPhone' => $data['customer_phone'] ?? null,
-            'date'        => $this->date,
-            'startTime'   => $this->start_time,
-            'endTime'     => $this->end_time,
-            'type'        => $this->type,
-            'status'      => $this->status,
-            'price'       => $this->price,
-            'discount'    => $this->discount_value . ($this->discount_type === 'percent' ? ' %' : ''),
-            'totalPrice'  => $this->final_price,
-            'notes'       => $this->notes,
-
-            'services' => $this->services->map(function ($bs) {
+            'date'          => $this->date,
+            'timezone'      => $this->timezone ?? null,
+            'startTime'     => $overallStart,
+            'endTime'       => $overallEnd,
+            'type'          => $this->type,
+            'status'        => $this->status,
+            'cancelledBy'   => $this->when($this->cancelledBy, new UserResource($this->cancelledBy)),
+            'cancelledAt'   => $this->cancelled_at,
+            "cancelReason"  => $this->cancel_reason,
+            'price'         => $this->price,
+            'discountType'  => $this->discount_type,
+            'discountValue' => $this->discount_value,
+            'discountLabel' => $this->discount_label,
+            'totalPrice'    => $this->final_price,
+            'notes'         => $this->notes,
+            'services' => $services->map(function ($bs) {
                 $bookable = $bs->bookable;
-                $serviceType = null;
-                if ($bookable instanceof SubService) {
-                    $serviceType = 'subservice';
-                } elseif ($bookable instanceof SubServiceItem) {
-                    $serviceType = 'item';
-                }
+
+                $serviceType = match (true) {
+                    $bookable instanceof SubService => 'subservice',
+                    $bookable instanceof SubServiceItem => 'item',
+                    default => null,
+                };
 
                 return [
-                    'id'            => $bs->id,
-                    'serviceType'  => $serviceType,
-                    'serviceId'    => $bookable?->id,
-                    'name'          => $bookable?->name,
-                    'price'         => $bs->price,
-                    'duration'      => $bs->duration_minutes,
-                ];
-            }),
+                    'id'          => $bs->id,
 
+                    'serviceType' => $serviceType,
+                    'serviceId'   => $bookable?->id,
+                    'name'        => $bookable?->name,
+
+                    'price'       => $bs->price,
+                    'duration'    => $bs->duration_minutes,
+                    'date'        => $bs->date ?? $this->date,
+                    'timezone'    => $bs->timezone ?? $this->timezone,
+                    'startTime'   => $bs->start_time ? substr((string) $bs->start_time, 0, 5) : null,
+                    'endTime'     => $bs->end_time ? substr((string) $bs->end_time, 0, 5) : null,
+                    'master' => ($bs->relationLoaded('master') && $bs->master)
+                        ? new StaffResource($bs->master)
+                        : null,
+
+                ];
+            })->values(),
             'master' => $this->when($this->master, new StaffResource($this->master)),
         ];
     }

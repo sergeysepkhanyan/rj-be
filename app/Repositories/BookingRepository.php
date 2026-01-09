@@ -39,7 +39,7 @@ class BookingRepository implements BookingRepositoryInterface
 
     public function paginateWithFilter(?BookingFilter $filter = null, int $perPage = 15, int $page = 1): LengthAwarePaginator
     {
-        $query = Booking::with('master')->orderBy('date')->orderBy('start_time');
+        $query = Booking::with(['services.bookable', 'services.master', 'master', 'cancelledBy'])->orderBy('date')->orderBy('start_time');
 
         if ($filter) {
             $query = $filter->apply($query);
