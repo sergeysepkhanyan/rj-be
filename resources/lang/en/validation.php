@@ -259,7 +259,10 @@ return [
         'time_grid_5min' => 'Please choose times in 5-minute steps.',
         'overlaps_break' => 'Your booking overlaps the break time (:start–:end).',
 
-
+        'master_cannot_perform_service' => 'The selected master is not available for this service.',
+        'no_masters_for_service' => 'No masters are available for this service.',
+        'no_available_master' => 'No master is available for the selected time.',
+        'master_unavailable' => 'This master is not available for the selected time.',
     ],
 
 
