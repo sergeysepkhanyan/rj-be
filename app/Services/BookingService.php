@@ -4,13 +4,12 @@ namespace App\Services;
 
 use App\Filters\BookingFilter;
 use App\Models\Booking;
-use App\Models\SubService;
-use App\Models\SubServiceItem;
 use App\Models\Weekday;
 use App\Repositories\Interfaces\BookingRepositoryInterface;
 use App\Repositories\Interfaces\SubServiceItemRepositoryInterface;
 use App\Repositories\Interfaces\SubServiceRepositoryInterface;
 use App\Repositories\Interfaces\WorkingHourRepositoryInterface;
+use App\Support\VatCalculator;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Exceptions\HttpResponseException;
@@ -170,7 +169,6 @@ class BookingService
 
     /**
      * Available slots for ONE master and ONE chosen service duration.
-     * Uses same timezone + same business hours + same overlap base (repo busy).
      */
     public function getAvailableSlots(array $data): array
     {
@@ -331,7 +329,7 @@ class BookingService
 
         $pricing = $this->buildPricingData([
             ...$data,
-            'services' => $this->normalizeServicesForPricing($rawServices),
+            'services' => $this->normalizeServicesForPricing($segments),
         ]);
 
         return DB::transaction(function () use ($data, $user, $tz, $date, $segments, $pricing) {
@@ -404,7 +402,7 @@ class BookingService
 
         $pricing = $this->buildPricingData([
             ...$data,
-            'services' => $this->normalizeServicesForPricing($rawServices),
+            'services' => $this->normalizeServicesForPricing($segments),
         ]);
 
         return DB::transaction(function () use ($booking, $data, $tz, $date, $segments, $pricing) {
@@ -458,6 +456,7 @@ class BookingService
 
             $startTime   = $s['start_time']   ?? $s['startTime']   ?? null;
             $endTime     = $s['end_time']     ?? $s['endTime']     ?? null;
+
             if (!$serviceType || !$serviceId) {
                 throw new HttpResponseException(
                     ApiResponse::error(['services' => "services[$index] must include serviceType/serviceId."], 'Validation failed', 422)
@@ -470,14 +469,13 @@ class BookingService
                 );
             }
 
-
             if (!$startTime || !$endTime) {
                 throw new HttpResponseException(
                     ApiResponse::error(['services' => "services[$index] must include startTime/endTime."], 'Validation failed', 422)
                 );
             }
 
-            $serviceable = $this->resolveServiceable($serviceType, (int) $serviceId);
+            $serviceable = $this->resolveServiceable((string)$serviceType, (int) $serviceId);
             $expectedMinutes = (int) ($serviceable->duration ?? 0);
 
             $start = $this->parseTimeToCarbon($date, (string)$startTime, $tz);
@@ -489,18 +487,11 @@ class BookingService
                 );
             }
 
-            $expectedMinutes = (int) $serviceable->duration;
-
-            $start = $this->parseTimeToCarbon($date, (string) $startTime, $tz);
-            $end   = $this->parseTimeToCarbon($date, (string) $endTime, $tz);
-
             $actualMinutes = (int) $start->diffInMinutes($end);
 
             if ($expectedMinutes <= 0) {
                 throw new HttpResponseException(
-                    ApiResponse::error([
-                        'serviceDuration' => "services[$index] has invalid configured duration."
-                    ], 'Validation failed', 422)
+                    ApiResponse::error(['serviceDuration' => "services[$index] has invalid configured duration."], 'Validation failed', 422)
                 );
             }
 
@@ -511,14 +502,25 @@ class BookingService
                     ], 'Validation failed', 422)
                 );
             }
+
+            $basePrice  = (float) ($serviceable->price ?? 0);
+            $vatEnabled = (bool)  ($serviceable->vat_enabled ?? false);
+            $vat = VatCalculator::breakdown($basePrice, $vatEnabled);
+
             $isAnyMaster = (bool)($s['any_master'] ?? $s['anyMaster'] ?? false);
+
             $segments[] = [
                 'master_id'        => (int) $masterId,
                 'is_any_master'    => $isAnyMaster,
                 'bookable_type'    => get_class($serviceable),
                 'bookable_id'      => $serviceable->id,
                 'duration_minutes' => $expectedMinutes,
-                'price'            => (float) ($s['price'] ?? 0),
+                'price'            => (float) $vat['final_price'],
+                'base_price'       => (float) $vat['base_price'],
+                'vat_enabled'      => (bool)  $vat['vat_enabled'],
+                'vat_rate'         => (float) $vat['vat_rate'],
+                'vat_amount'       => (float) $vat['vat_amount'],
+                'final_price'      => (float) $vat['final_price'],
                 'sort_order'       => $s['sort_order'] ?? $s['sortOrder'] ?? null,
                 'date'             => $date,
                 'timezone'         => $tz,
@@ -559,19 +561,13 @@ class BookingService
 
     protected function resolveServiceable(string $type, int $id): Model
     {
-        $class = match ($type) {
-            'subservice' => SubService::class,
-            'item'       => SubServiceItem::class,
-            default      => null,
-        };
-
-        if (! $class) {
-            throw new HttpResponseException(
+        return match ($type) {
+            'SubService', 'subservice' => $this->subServiceRepository->find($id),
+            'SubServiceItem', 'item'   => $this->subServiceItemRepository->find($id),
+            default => throw new HttpResponseException(
                 ApiResponse::error(['serviceType' => 'Unknown service type.'], 'Validation failed', 422)
-            );
-        }
-
-        return $class::findOrFail($id);
+            ),
+        };
     }
 
     protected function attachServiceToBookingWithSegment(Booking $booking, array $seg, int $defaultSort): void
@@ -582,6 +578,11 @@ class BookingService
             'bookable_id'      => $seg['bookable_id'],
             'bookable_type'    => $seg['bookable_type'],
             'price'            => $seg['price'],
+            'base_price'       => $seg['base_price'] ?? $seg['price'],
+            'vat_enabled'      => (bool)($seg['vat_enabled'] ?? false),
+            'vat_rate'         => (float)($seg['vat_rate'] ?? (float) config('vat.rate', 0.05)),
+            'vat_amount'       => (float)($seg['vat_amount'] ?? 0),
+            'final_price'      => $seg['final_price'] ?? $seg['price'],
             'duration_minutes' => $seg['duration_minutes'],
             'sort_order'       => $seg['sort_order'] ?? $defaultSort,
             'date'             => $seg['date'],
@@ -591,11 +592,14 @@ class BookingService
         ]);
     }
 
-    protected function normalizeServicesForPricing(array $rawServices): array
+    /**
+     * Accepts segments or raw services; we now pass segments from create/update.
+     */
+    protected function normalizeServicesForPricing(array $services): array
     {
-        return collect($rawServices)->values()->map(function ($s) {
+        return collect($services)->values()->map(function ($s) {
             return [
-                'price' => $s['price'] ?? 0,
+                'price' => (float) ($s['price'] ?? 0),
             ];
         })->all();
     }
@@ -679,10 +683,9 @@ class BookingService
             'start' => substr((string) $row->start_time, 0, 5),
             'end'   => substr((string) $row->end_time, 0, 5),
             'break_start' => $row->break_start_time ? substr((string) $row->break_start_time, 0, 5) : null,
-            'break_end'   => $row->break_end_time   ? substr((string) $row->break_end_time, 0, 5) : null,
+            'break_end'   => $row->break_end_time   ? substr((string) $row->break_end_time   , 0, 5) : null,
         ];
     }
-
 
     protected function parseTimeToCarbon(string $date, string $time, string $tz): Carbon
     {
@@ -719,6 +722,7 @@ class BookingService
                 ApiResponse::error([], 'Completed booking cannot be cancelled.', 422)
             );
         }
+
         $isAdmin = $user && method_exists($user, 'hasRole') && $user->hasRole('superadmin');
 
         if (! $isAdmin) {
@@ -795,5 +799,4 @@ class BookingService
             }
         }
     }
-
 }

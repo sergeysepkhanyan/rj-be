@@ -11,6 +11,8 @@ class StoreSubServiceRequest extends BaseFormRequest
         'nameAr' => 'name_ar',
 //        'descriptionAr' => 'description_ar',
         'durationUnit' => 'duration_unit',
+        'vatEnabled' => 'vat_enabled',
+
     ];
     public function authorize(): bool
     {
@@ -47,13 +49,15 @@ class StoreSubServiceRequest extends BaseFormRequest
             'duration' => 'required_if:type,Simple|numeric',
             'currency' => 'required_if:type,Simple|string',
             'durationUnit' => 'required_if:type,Simple|string',
+            'vatEnabled' => ['sometimes', 'boolean'],
             'items' => 'required_if:type,Variant Based|array',
             'items.*.name' => 'required:type,Variant Based|string|max:255',
             'items.*.nameAr' => 'required:type,Variant Based|string|max:255',
             'items.*.price' => 'required_if:type,Variant Based|numeric',
             'items.*.duration' => 'required_if:type,Variant Based|numeric',
             'items.*.currency' => 'required_if:type,Variant Based|string',
-            'items.*.durationUnit' => 'required_if:type,Variant Based|string'
+            'items.*.durationUnit' => 'required_if:type,Variant Based|string',
+            'items.*.vatEnabled' => ['sometimes', 'boolean'],
         ];
     }
 }

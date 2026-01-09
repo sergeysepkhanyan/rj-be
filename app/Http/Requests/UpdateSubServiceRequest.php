@@ -10,6 +10,7 @@ class UpdateSubServiceRequest extends BaseFormRequest
         'nameAr' => 'name_ar',
 //        'descriptionAr' => 'description_ar',
         'durationUnit' => 'duration_unit',
+        'vatEnabled' => 'vat_enabled',
     ];
     public function authorize(): bool
     {
@@ -40,6 +41,7 @@ class UpdateSubServiceRequest extends BaseFormRequest
             'duration' => 'required_if:type,Simple|numeric',
             'currency' => 'required_if:type,Simple|string',
             'durationUnit' => 'required_if:type,Simple|string',
+            'vatEnabled' => ['sometimes', 'boolean'],
             'items' => 'required_if:type,Variant Based|array',
             'items.*.id' => 'sometimes|nullable|integer|exists:sub_service_items,id',
             'items.*.name' => 'required:type,Variant Based|string|max:255',
@@ -47,7 +49,8 @@ class UpdateSubServiceRequest extends BaseFormRequest
             'items.*.price' => 'required_if:type,Variant Based|numeric',
             'items.*.duration' => 'required_if:type,Variant Based|numeric',
             'items.*.currency' => 'required_if:type,Variant Based|string',
-            'items.*.durationUnit' => 'required_if:type,Variant Based|string'
+            'items.*.durationUnit' => 'required_if:type,Variant Based|string',
+            'items.*vatEnabled' => ['sometimes', 'boolean'],
         ];
     }
 }
