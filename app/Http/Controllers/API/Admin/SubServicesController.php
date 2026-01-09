@@ -28,7 +28,7 @@ class SubServicesController
     {
         $subService = $this->subServiceManagerService->createSubServiceWithItems(
             $request->only([
-                'name', 'description', 'name_ar', 'description_ar', 'service_id', 'image', 'type', 'price','currency', 'duration', 'duration_unit', ''
+                'name', 'description', 'name_ar', 'description_ar', 'service_id', 'image', 'type', 'price','currency', 'duration', 'duration_unit', 'vat_enabled'
             ]),
             $request->input('items')
         );
@@ -46,7 +46,7 @@ class SubServicesController
         $subService = $this->subServiceManagerService->updateSubServiceWithItems(
             $subService,
             $request->only([
-                'name', 'description', 'name_ar', 'description_ar', 'image', 'type', 'price','currency', 'duration', 'duration_unit'
+                'name', 'description', 'name_ar', 'description_ar', 'image', 'type', 'price','currency', 'duration', 'duration_unit', 'vat_enabled'
             ]),
             $request->input('items')
         );
