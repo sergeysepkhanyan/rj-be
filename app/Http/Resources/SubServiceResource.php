@@ -31,6 +31,9 @@ class SubServiceResource extends BaseResource
                 'durationUnit' => $this->duration_unit ?? null,
                 'price'        => $this->price ?? null,
                 'currency'     => $this->currency ?? null,
+                'vatEnabled' => (bool) ($this->vat_enabled ?? false),
+                'vatRate'    => (float) ($this->vat_rate ?? config('vat.rate', 0.05)),
+
             ]),
         ]);
     }
