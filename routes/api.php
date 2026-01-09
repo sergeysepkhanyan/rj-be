@@ -156,6 +156,7 @@ Route::middleware(['set.locale'])->group(function () {
 
         Route::post('/admin/post/create', [AdminPostsController::class, 'store']);
         Route::put('/admin/post/update/{post}', [AdminPostsController::class, 'update']);
+        Route::delete('/admin/post/delete/{post}', [AdminPostsController::class, 'destroy']);
 
         Route::get('/referrals', [ReferralsController::class, 'index']);
 

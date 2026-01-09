@@ -40,4 +40,13 @@ class PostsController extends Controller
             'post' => new PostResource($post),
         ], 'Post updated successfully');
     }
+
+    public function destroy(Post $post): JsonResponse
+    {
+        $this->postService->deletePost($post);
+
+        return ApiResponse::success([
+            'success' => true,
+        ], 'Post deleted successfully');
+    }
 }
