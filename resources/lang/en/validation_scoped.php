@@ -17,4 +17,14 @@ return [
             'string' => 'Password confirmation must be a text.',
         ],
     ],
+
+    'address' => [
+        'store' => [
+            'name' => [
+                'required' => 'First name is required.',
+                'string' => 'First name must be a text.',
+                'max' => 'First name cannot be longer than :max characters.',
+            ],
+        ],
+    ],
 ];

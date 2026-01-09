@@ -5,7 +5,6 @@ namespace App\Http\Requests;
 use App\Models\SubService;
 use App\Models\SubServiceItem;
 use App\Models\User;
-use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
@@ -23,44 +22,36 @@ class StoreBookingRequest extends BaseFormRequest
         'paymentMode' => 'payment_mode',
     ];
 
-    /**
-     * Determine if the user is authorized to make this request.
-     */
-    public function authorize(): bool
-    {
-        return true;
-    }
-
     public function rules(): array
     {
         return [
             'date'       => ['required', 'date_format:Y-m-d'],
             'startTime'  => ['required', 'date_format:H:i'],
-            'timezone'   => ['nullable', 'string', 'max:64'],
-            'customerName'  => ['nullable','string','max:255'],
-            'customerPhone' => ['nullable','string','max:50'],
-            'customerEmail' => ['required','email'],
-            'paymentMode' => ['required', 'string', 'in:pay_now,pay_later'],
+            'endTime'    => ['required', 'date_format:H:i'],
+
+            'timezone'      => ['nullable', 'string', 'max:64'],
+            'customerName'  => ['nullable', 'string', 'max:255'],
+            'customerPhone' => ['nullable', 'string', 'max:50'],
+            'customerEmail' => ['required', 'email'],
+
+            'paymentMode' => ['required', 'string', Rule::in(['pay_now', 'pay_later'])],
+
             'services' => ['required', 'array', 'min:1'],
+
             'services.*.serviceType' => ['required', Rule::in(['subservice', 'item'])],
             'services.*.serviceId'   => ['required', 'integer'],
-            'services.*.masterId' => [
-                'nullable',
-                'integer',
-                'exists:users,id',
-                function ($attr, $value, $fail) {
-                    $index = explode('.', $attr)[1] ?? null;
-                    $any = (bool) data_get($this->all(), "services.$index.anyMaster", false);
-                    if (! $any && empty($value)) {
-                        $fail('masterId is required when anyMaster is false.');
-                    }
-                },
-            ],
+            'services.*.startTime' => ['required', 'date_format:H:i'],
+            'services.*.endTime'   => ['required', 'date_format:H:i'],
+
             'services.*.anyMaster' => ['sometimes', 'boolean'],
-            'services.*.price'       => ['required', 'numeric', 'min:0'],
-            'discountType'  => ['nullable', 'in:percent,fixed,none'],
+            'services.*.masterId' => ['nullable', 'integer', 'exists:users,id'],
+
+            'services.*.price' => ['required', 'numeric', 'min:0'],
+
+            'discountType'  => ['nullable', Rule::in(['percent', 'fixed', 'none'])],
             'discountValue' => ['nullable', 'numeric', 'min:0'],
             'discountLabel' => ['nullable', 'string', 'max:255'],
+
             'notes' => ['nullable', 'string', 'max:1000'],
         ];
     }
@@ -70,25 +61,29 @@ class StoreBookingRequest extends BaseFormRequest
         $validator->after(function (Validator $validator) {
 
             $services = $this->input('services', []);
+
+            $services = $this->input('services', []);
             if (!is_array($services) || count($services) === 0) {
-                $validator->errors()->add('services', 'At least one service is required.');
                 return;
             }
 
             $minStart = null;
-            $maxEnd = null;
+            $maxEnd   = null;
 
             foreach ($services as $index => $service) {
-                $type = $service['serviceType'] ?? null;
-                $id   = $service['serviceId']  ??  null;
+                $type      = $service['serviceType'] ?? null;
+                $id        = $service['serviceId'] ?? null;
                 $anyMaster = (bool)($service['anyMaster'] ?? false);
-                $masterId = $service['masterId'] ?? null;
+                $masterId  = $service['masterId'] ?? null;
 
                 $startTime = $service['startTime'] ?? null;
-                $endTime   = $service['endTime']   ?? null;
+                $endTime   = $service['endTime'] ?? null;
 
                 if (!$type || !$id) {
-                    $validator->errors()->add("services.$index.serviceId", 'serviceType and serviceId are required.');
+                    $validator->errors()->add(
+                        "services.$index.serviceId",
+                        __('validation.booking.service_type_and_id_required')
+                    );
                 } else {
                     $exists = match ($type) {
                         'subservice' => SubService::where('id', $id)->exists(),
@@ -99,33 +94,38 @@ class StoreBookingRequest extends BaseFormRequest
                     if (!$exists) {
                         $validator->errors()->add(
                             "services.$index.serviceId",
-                            'The selected service is invalid for its type.'
+                            __('validation.booking.service_invalid_for_type')
                         );
                     }
                 }
-
                 if ($anyMaster) {
                     if (!empty($masterId)) {
-                        $validator->errors()->add("services.$index.masterId", 'masterId must not be provided when anyMaster is true.');
+                        $validator->errors()->add(
+                            "services.$index.masterId",
+                            __('validation.booking.master_forbidden_when_any_true')
+                        );
                     }
                 } else {
                     if (empty($masterId)) {
-                        $validator->errors()->add("services.$index.masterId", 'masterId is required when anyMaster is false.');
+                        $validator->errors()->add(
+                            "services.$index.masterId",
+                            __('validation.booking.master_required_when_any_false')
+                        );
                     } else {
                         $master = User::with('role')->find($masterId);
+
                         if (!$master) {
-                            $validator->errors()->add("services.$index.masterId", 'The selected master does not exist.');
+                            $validator->errors()->add(
+                                "services.$index.masterId",
+                                __('validation.booking.master_not_found')
+                            );
                         } elseif (!$master->role || $master->role->slug !== 'master') {
-                            $validator->errors()->add("services.$index.masterId", 'The selected user is not a master.');
+                            $validator->errors()->add(
+                                "services.$index.masterId",
+                                __('validation.booking.user_not_master')
+                            );
                         }
                     }
-                }
-
-                if (!$startTime) {
-                    $validator->errors()->add("services.$index.startTime", 'startTime is required.');
-                }
-                if (!$endTime) {
-                    $validator->errors()->add("services.$index.endTime", 'endTime is required.');
                 }
 
                 if ($startTime) {
@@ -135,15 +135,22 @@ class StoreBookingRequest extends BaseFormRequest
                     $maxEnd = $maxEnd === null ? $endTime : max($maxEnd, $endTime);
                 }
             }
-            $rootStart = $this->input('start_time') ?? $this->input('startTime');
-            $rootEnd   = $this->input('end_time')   ?? $this->input('endTime');
+
+            $rootStart = $this->input('startTime');
+            $rootEnd   = $this->input('endTime');
 
             if ($rootStart && $minStart && $rootStart !== $minStart) {
-                $validator->errors()->add('startTime', "startTime must match first service start ({$minStart}).");
+                $validator->errors()->add(
+                    'startTime',
+                    __('validation.booking.root_start_must_match', ['time' => $minStart])
+                );
             }
 
             if ($rootEnd && $maxEnd && $rootEnd !== $maxEnd) {
-                $validator->errors()->add('endTime', "endTime must match last service end ({$maxEnd}).");
+                $validator->errors()->add(
+                    'endTime',
+                    __('validation.booking.root_end_must_match', ['time' => $maxEnd])
+                );
             }
         });
     }

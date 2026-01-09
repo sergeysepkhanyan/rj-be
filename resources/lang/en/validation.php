@@ -98,5 +98,169 @@ return [
             'string' => 'Author name must be a text.',
             'max' => 'Author name cannot be longer than :max characters.',
         ],
+
+        'type' => [
+            'required' => 'Address type is required.',
+            'in' => 'Address type must be one of: :values.',
+        ],
+
+        'isDefault' => [
+            'boolean' => 'Default address must be true or false.',
+        ],
+
+        'lastName' => [
+            'string' => 'Last name must be a text.',
+            'max' => 'Last name cannot be longer than :max characters.',
+        ],
+
+        'address' => [
+            'required' => 'Address is required.',
+            'string' => 'Address must be a text.',
+            'max' => 'Address cannot be longer than :max characters.',
+        ],
+
+        'additionalAddress' => [
+            'string' => 'Additional address must be a text.',
+            'max' => 'Additional address cannot be longer than :max characters.',
+        ],
+
+        'city' => [
+            'required' => 'City is required.',
+            'string' => 'City must be a text.',
+            'max' => 'City cannot be longer than :max characters.',
+        ],
+
+        'state' => [
+            'required' => 'State is required.',
+            'string' => 'State must be a text.',
+            'max' => 'State cannot be longer than :max characters.',
+        ],
+
+        'zipCode' => [
+            'required' => 'ZIP code is required.',
+            'string' => 'ZIP code must be a text.',
+            'max' => 'ZIP code cannot be longer than :max characters.',
+        ],
+
+        'setDefaultShipping' => [
+            'boolean' => 'Set as default shipping address must be true or false.',
+        ],
+
+        'setDefaultBilling' => [
+            'boolean' => 'Set as default billing address must be true or false.',
+        ],
+
+        'startTime' => [
+            'required' => 'Start time is required.',
+            'date_format' => 'Start time must be in this format: :format.',
+        ],
+        'endTime' => [
+            'required' => 'End time is required.',
+            'date_format' => 'End time must be in this format: :format.',
+        ],
+        'timezone' => [
+            'string' => 'Timezone must be a text.',
+            'max' => 'Timezone cannot be longer than :max characters.',
+        ],
+        'customerName' => [
+            'string' => 'Customer name must be a text.',
+            'max' => 'Customer name cannot be longer than :max characters.',
+        ],
+        'customerPhone' => [
+            'string' => 'Customer phone must be a text.',
+            'max' => 'Customer phone cannot be longer than :max characters.',
+        ],
+        'customerEmail' => [
+            'required' => 'Customer email is required.',
+            'email' => 'Please enter a valid email address.',
+        ],
+        'paymentMode' => [
+            'required' => 'Payment method is required.',
+            'in' => 'Payment method must be one of: :values.',
+        ],
+        'services' => [
+            'required' => 'Please select at least one service.',
+            'array' => 'Services must be a list.',
+            'min' => 'Please select at least one service.',
+        ],
+        'services.*.serviceType' => [
+            'required' => 'Service type is required.',
+            'in' => 'Service type must be one of: :values.',
+        ],
+        'services.*.serviceId' => [
+            'required' => 'Service is required.',
+            'integer' => 'Service is invalid.',
+        ],
+        'services.*.anyMaster' => [
+            'boolean' => 'Any master must be true or false.',
+        ],
+        'services.*.masterId' => [
+            'integer' => 'Master is invalid.',
+            'exists' => 'Selected master was not found.',
+        ],
+        'services.*.price' => [
+            'required' => 'Price is required.',
+            'numeric' => 'Price must be a number.',
+            'min' => 'Price must be at least :min.',
+        ],
+        'discountType' => [
+            'in' => 'Discount type must be one of: :values.',
+        ],
+        'discountValue' => [
+            'numeric' => 'Discount value must be a number.',
+            'min' => 'Discount value must be at least :min.',
+        ],
+        'discountLabel' => [
+            'string' => 'Discount label must be a text.',
+            'max' => 'Discount label cannot be longer than :max characters.',
+        ],
+        'notes' => [
+            'string' => 'Notes must be a text.',
+            'max' => 'Notes cannot be longer than :max characters.',
+        ],
     ],
+
+
+
+    'break' => [
+        'end_after_start' => 'End time must be after start time.',
+        'master_unavailable' => 'This master is not available for the selected time.',
+    ],
+
+    'available_slots' => [
+        'master_required' => 'Please select a master.',
+        'date_required' => 'Please select a date.',
+    ],
+
+    'booking' => [
+        'services_required' => 'Please select at least one service.',
+        'service_type_and_id_required' => 'Please choose a service type and a service.',
+        'service_invalid_for_type' => 'The selected service does not match the chosen service type.',
+        'master_required_when_any_false' => 'Please choose a master for this service.',
+        'master_forbidden_when_any_true' => 'You do not need to choose a master for this service.',
+        'master_not_found' => 'The selected master could not be found.',
+        'user_not_master' => 'The selected person is not available as a master.',
+        'service_start_required' => 'Please select a start time for this service.',
+        'service_end_required' => 'Please select an end time for this service.',
+
+        'end_after_start' => 'End time must be after start time.',
+        'invalid_duration_config' => 'This service has an invalid duration configuration.',
+        'duration_mismatch' => 'This service should take :expected minutes, but the selected time is :actual minutes.',
+
+        'unknown_service_type' => 'Unknown service type.',
+        'invalid_time_format' => 'Invalid time format: :time.',
+
+        'root_start_must_match' => 'The booking start time must match the first service start time (:time).',
+        'root_end_must_match' => 'The booking end time must match the last service end time (:time).',
+
+        'closed_day' => 'We are closed on the selected day.',
+        'start_must_be_future' => 'Start time must be in the future.',
+        'within_working_hours' => 'Please choose a time within working hours (:start–:end).',
+        'time_grid_5min' => 'Please choose times in 5-minute steps.',
+        'overlaps_break' => 'Your booking overlaps the break time (:start–:end).',
+
+
+    ],
+
+
 ];

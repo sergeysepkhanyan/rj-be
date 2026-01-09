@@ -22,24 +22,27 @@ class MasterAssignmentService
         $services = collect($services)->values()->all();
 
         foreach ($services as $i => $s) {
-            $anyMaster = (bool)($s['any_master'] ?? false);
+            $anyMaster = (bool)($s['anyMaster'] ?? $s['any_master'] ?? false);
 
-            $serviceType = $s['service_type'] ?? null;
-            $serviceId   = (int)($s['service_id'] ?? 0);
+            $serviceType = $s['serviceType'] ?? $s['service_type'] ?? null;
+            $serviceId   = (int)($s['serviceId'] ?? $s['service_id'] ?? 0);
 
-            $startTime = (string)($s['start_time'] ?? '');
-            $endTime   = (string)($s['end_time'] ?? '');
-            $providedMasterId = $s['master_id'] ?? null;
+            $startTime = (string)($s['startTime'] ?? $s['start_time'] ?? '');
+            $endTime   = (string)($s['endTime'] ?? $s['end_time'] ?? '');
+
+            $providedMasterId = $s['masterId'] ?? $s['master_id'] ?? null;
 
             if (!$serviceType || !$serviceId || !$startTime || !$endTime) {
-                throw new HttpResponseException(
-                    ApiResponse::error(['services' => "services[$i] missing required fields."], 'Validation failed', 422)
-                );
+                $this->throwValidation([
+                    "services.$i.serviceId"   => __('validation.booking.service_type_and_id_required'),
+                    "services.$i.startTime"   => __('validation.booking.service_start_required'),
+                    "services.$i.endTime"     => __('validation.booking.service_end_required'),
+                ], 'validation.failed');
             }
 
             if ($anyMaster) {
                 $chosenMasterId = $this->pickAvailableMasterForService(
-                    serviceType: $serviceType,
+                    serviceType: (string) $serviceType,
                     serviceId: $serviceId,
                     date: $date,
                     startTime: $startTime,
@@ -54,17 +57,17 @@ class MasterAssignmentService
             }
 
             if (empty($providedMasterId)) {
-                throw new HttpResponseException(
-                    ApiResponse::error(['services' => "services[$i].master_id is required when any_master is false."], 'Validation failed', 422)
-                );
+                $this->throwValidation([
+                    "services.$i.masterId" => __('validation.booking.master_required_when_any_false'),
+                ], 'validation.failed');
             }
 
             $masterId = (int) $providedMasterId;
 
-            if (!$this->isMasterEligibleForService($masterId, $serviceType, $serviceId)) {
-                throw new HttpResponseException(
-                    ApiResponse::error(['services' => "services[$i] selected master cannot perform this service."], 'Validation failed', 422)
-                );
+            if (!$this->isMasterEligibleForService($masterId, (string) $serviceType, $serviceId)) {
+                $this->throwValidation([
+                    "services.$i.masterId" => __('validation.booking.master_cannot_perform_service'),
+                ], 'validation.failed');
             }
 
             $this->assertMasterFree(
@@ -72,7 +75,8 @@ class MasterAssignmentService
                 date: $date,
                 startTime: $startTime,
                 endTime: $endTime,
-                excludeBookingId: $excludeBookingId
+                excludeBookingId: $excludeBookingId,
+                errorKey: "services.$i.masterId"
             );
         }
 
@@ -90,9 +94,9 @@ class MasterAssignmentService
         $candidateMasterIds = $this->getEligibleMasterIdsForService($serviceType, $serviceId);
 
         if (empty($candidateMasterIds)) {
-            throw new HttpResponseException(
-                ApiResponse::error(['master' => 'No masters can perform this service.'], 'Validation failed', 422)
-            );
+            $this->throwValidation([
+                'masterId' => __('validation.booking.no_masters_for_service'),
+            ], 'validation.failed');
         }
 
         foreach ($candidateMasterIds as $mid) {
@@ -109,9 +113,9 @@ class MasterAssignmentService
             }
         }
 
-        throw new HttpResponseException(
-            ApiResponse::error(['master' => 'No available master for selected time range.'], 'Validation failed', 422)
-        );
+        $this->throwValidation([
+            'masterId' => __('validation.booking.no_available_master'),
+        ], 'validation.failed');
     }
 
     private function assertMasterFree(
@@ -119,7 +123,8 @@ class MasterAssignmentService
         string $date,
         string $startTime,
         string $endTime,
-        ?int $excludeBookingId
+        ?int $excludeBookingId,
+        string $errorKey = 'masterId'
     ): void {
         $hasOverlap = $this->bookingRepository->hasOverlap(
             masterId: $masterId,
@@ -130,9 +135,9 @@ class MasterAssignmentService
         );
 
         if ($hasOverlap) {
-            throw new HttpResponseException(
-                ApiResponse::error(['masterId' => 'Master is not available in selected time range.'], 'Validation failed', 422)
-            );
+            $this->throwValidation([
+                $errorKey => __('validation.booking.master_unavailable'),
+            ], 'validation.failed');
         }
     }
 
@@ -150,18 +155,31 @@ class MasterAssignmentService
             $item = SubServiceItem::query()
                 ->with('subService.masters:id')
                 ->findOrFail($serviceId);
+
             return $item->subService?->masters?->pluck('id')->all() ?? [];
         }
 
-        throw new HttpResponseException(
-            ApiResponse::error(['serviceType' => 'Unknown service type.'], 'Validation failed', 422)
-        );
+        $this->throwValidation([
+            'serviceType' => __('validation.booking.unknown_service_type'),
+        ], 'validation.failed');
     }
-
 
     private function isMasterEligibleForService(int $masterId, string $serviceType, int $serviceId): bool
     {
         $eligible = $this->getEligibleMasterIdsForService($serviceType, $serviceId);
         return in_array($masterId, $eligible, true);
     }
+
+    protected function throwValidation(array $errors, string $messageKey, array $replace = [], int $status = 422): never
+    {
+
+        $normalized = array_map(function ($v) {
+            return is_array($v) ? array_values($v) : [(string)$v];
+        }, $errors);
+
+        throw new HttpResponseException(
+            \App\Services\ApiResponse::error($normalized, __($messageKey, $replace), $status)
+        );
+    }
 }
+

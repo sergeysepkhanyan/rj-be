@@ -13,11 +13,6 @@ class StoreAddressRequest extends BaseFormRequest
         'setDefaultBilling'  => 'set_default_billing',
     ];
 
-    public function authorize(): bool
-    {
-        return true;
-    }
-
     public function rules(): array
     {
         return [
@@ -25,7 +20,7 @@ class StoreAddressRequest extends BaseFormRequest
             'isDefault' => 'boolean',
             'name' => 'required|string|max:255',
             'lastName' => 'nullable|string|max:255',
-            'mobile' => 'required|string|max:20',
+            'mobile' => 'required|string',
             'address' => 'required|string|max:255',
             'additionalAddress' => 'nullable|string|max:100',
             'city' => 'required|string|max:100',
@@ -33,6 +28,15 @@ class StoreAddressRequest extends BaseFormRequest
             'zipCode' => 'required|string|max:20',
             'setDefaultShipping' => ['sometimes', 'boolean'],
             'setDefaultBilling'  => ['sometimes', 'boolean'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'name.required' => __('validation_scoped.address.store.name.required'),
+            'name.string'   => __('validation_scoped.address.store.name.string'),
+            'name.max'      => __('validation_scoped.address.store.name.max'),
         ];
     }
 }

@@ -17,6 +17,8 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use App\Services\ApiResponse;
+
 
 class BookingService
 {
@@ -63,8 +65,9 @@ class BookingService
         $end   = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$endTime}", $tz);
 
         if ($end->lte($start)) {
-            throw new HttpResponseException(
-                ApiResponse::error(['endTime' => 'End time must be after start time.'], 'Validation failed', 422)
+            $this->throwValidation(
+                ['endTime' => __('validation.break.end_after_start')],
+                'validation.failed'
             );
         }
 
@@ -76,8 +79,9 @@ class BookingService
         );
 
         if ($hasOverlap) {
-            throw new HttpResponseException(
-                ApiResponse::error([], 'Master is not available in selected time range.', 422)
+            $this->throwValidation(
+                ['masterId' => __('validation.break.master_unavailable')],
+                'validation.failed'
             );
         }
 
@@ -111,9 +115,7 @@ class BookingService
     public function updateBreak(Booking $booking, array $data): Booking
     {
         if ($booking->type !== 'break') {
-            throw new HttpResponseException(
-                ApiResponse::error([], 'Only breaks can be updated with this endpoint.', 422)
-            );
+            $this->throwValidation([], 'booking.break_only_update', []);
         }
 
         $tz = $data['timezone'] ?? $booking->timezone ?? 'UTC';
@@ -180,8 +182,12 @@ class BookingService
         $subserviceItemId = $data['sub_service_item_id'] ?? null;
 
         if (!$masterId || !$date) {
-            throw new HttpResponseException(
-                ApiResponse::error(['masterId' => 'master_id and date are required.'], 'Validation failed', 422)
+            $this->throwValidation(
+                [
+                    'masterId' => __('validation.available_slots.master_required'),
+                    'date' => __('validation.available_slots.date_required'),
+                ],
+                'validation.failed'
             );
         }
 
@@ -311,8 +317,9 @@ class BookingService
 
         $rawServices = $data['services'] ?? [];
         if (!is_array($rawServices) || count($rawServices) === 0) {
-            throw new HttpResponseException(
-                ApiResponse::error(['services' => 'At least one service is required.'], 'Validation failed', 422)
+            $this->throwValidation(
+                ['services' => __('validation.booking.services_required')],
+                'validation.failed'
             );
         }
 
@@ -382,11 +389,11 @@ class BookingService
         $date = trim($data['date'] ?? ($booking->date?->format('Y-m-d') ?? ''));
 
         $rawServices = $data['services'] ?? [];
-        if (!is_array($rawServices) || count($rawServices) === 0) {
-            throw new HttpResponseException(
-                ApiResponse::error(['services' => 'At least one service is required.'], 'Validation failed', 422)
-            );
-        }
+//        if (!is_array($rawServices) || count($rawServices) === 0) {
+//            throw new HttpResponseException(
+//                ApiResponse::error(['services' => 'At least one service is required.'], 'Validation failed', 422)
+//            );
+//        }
 
         $rawServices = $this->masterAssignmentService->assignAndValidateMasters(
             date: $date,
@@ -458,20 +465,27 @@ class BookingService
             $endTime     = $s['end_time']     ?? $s['endTime']     ?? null;
 
             if (!$serviceType || !$serviceId) {
-                throw new HttpResponseException(
-                    ApiResponse::error(['services' => "services[$index] must include serviceType/serviceId."], 'Validation failed', 422)
+                $this->throwValidation(
+                    ["services.$index.serviceId" => __('validation.booking.service_type_and_id_required')],
+                    'validation.failed'
                 );
             }
 
             if (!$masterId) {
-                throw new HttpResponseException(
-                    ApiResponse::error(['services' => "services[$index] must include masterId (master assignment failed)."], 'Validation failed', 422)
+                $this->throwValidation(
+                    ["services.$index.masterId" => __('validation.booking.master_required_when_any_false')],
+                    'validation.failed'
                 );
             }
 
+
             if (!$startTime || !$endTime) {
-                throw new HttpResponseException(
-                    ApiResponse::error(['services' => "services[$index] must include startTime/endTime."], 'Validation failed', 422)
+                $this->throwValidation(
+                    [
+                        "services.$index.startTime" => __('validation.booking.service_start_required'),
+                        "services.$index.endTime" => __('validation.booking.service_end_required'),
+                    ],
+                    'validation.failed'
                 );
             }
 
@@ -482,24 +496,28 @@ class BookingService
             $end   = $this->parseTimeToCarbon($date, (string)$endTime, $tz);
 
             if ($end->lte($start)) {
-                throw new HttpResponseException(
-                    ApiResponse::error(['endTime' => "services[$index].endTime must be after startTime."], 'Validation failed', 422)
+                $this->throwValidation(
+                    ["services.$index.endTime" => __('validation.booking.end_after_start')],
+                    'validation.failed'
                 );
             }
 
             $actualMinutes = (int) $start->diffInMinutes($end);
 
             if ($expectedMinutes <= 0) {
-                throw new HttpResponseException(
-                    ApiResponse::error(['serviceDuration' => "services[$index] has invalid configured duration."], 'Validation failed', 422)
+                $this->throwValidation(
+                    ["services.$index.serviceId" => __('validation.booking.invalid_duration_config')],
+                    'validation.failed'
                 );
             }
 
             if ($actualMinutes !== $expectedMinutes) {
-                throw new HttpResponseException(
-                    ApiResponse::error([
-                        'serviceDuration' => "services[$index] requires {$expectedMinutes} minutes, but provided range is {$actualMinutes} minutes."
-                    ], 'Validation failed', 422)
+                $this->throwValidation(
+                    ["services.$index.serviceId" => __('validation.booking.duration_mismatch', [
+                        'expected' => $expectedMinutes,
+                        'actual' => $actualMinutes,
+                    ])],
+                    'validation.failed'
                 );
             }
 
@@ -547,27 +565,39 @@ class BookingService
         $max = substr($segments[count($segments) - 1]['end_time'], 0, 5);
 
         if ($rootStart && $rootStart !== $min) {
-            throw new HttpResponseException(
-                ApiResponse::error(['startTime' => "startTime must match first service start ({$min})."], 'Validation failed', 422)
+            $this->throwValidation(
+                ['startTime' => __('validation.booking.root_start_must_match', ['time' => $min])],
+                'validation.failed'
             );
         }
 
         if ($rootEnd && $rootEnd !== $max) {
-            throw new HttpResponseException(
-                ApiResponse::error(['endTime' => "endTime must match last service end ({$max})."], 'Validation failed', 422)
+            $this->throwValidation(
+                ['endTime' => __('validation.booking.root_end_must_match', ['time' => $max])],
+                'validation.failed'
             );
         }
     }
 
     protected function resolveServiceable(string $type, int $id): Model
     {
-        return match ($type) {
+        $serviceable = match ($type) {
             'SubService', 'subservice' => $this->subServiceRepository->find($id),
             'SubServiceItem', 'item'   => $this->subServiceItemRepository->find($id),
-            default => throw new HttpResponseException(
-                ApiResponse::error(['serviceType' => 'Unknown service type.'], 'Validation failed', 422)
-            ),
+            default => null,
         };
+
+        if (!$serviceable) {
+            throw new HttpResponseException(
+                ApiResponse::error(
+                    ['serviceType' => __('validation.booking.unknown_service_type')],
+                    __('validation.failed'),
+                    422
+                )
+            );
+        }
+
+        return $serviceable;
     }
 
     protected function attachServiceToBookingWithSegment(Booking $booking, array $seg, int $defaultSort): void
@@ -698,8 +728,9 @@ class BookingService
             return Carbon::createFromFormat('Y-m-d H:i:s', "{$date} {$time}", $tz);
         }
 
-        throw new HttpResponseException(
-            ApiResponse::error(['time' => "Invalid time format: {$time}"], 'Validation failed', 422)
+        $this->throwValidation(
+            ['time' => __('validation.booking.invalid_time_format', ['time' => $time])],
+            'validation.failed'
         );
     }
 
@@ -708,9 +739,7 @@ class BookingService
         $user = auth()->user();
 
         if (($booking->type ?? 'booking') !== 'booking') {
-            throw new HttpResponseException(
-                ApiResponse::error([], 'Only bookings can be cancelled.', 422)
-            );
+            $this->throwValidation([], 'messages.booking.only_bookings_can_be_cancelled');
         }
 
         if ($booking->status === 'cancelled') {
@@ -718,24 +747,18 @@ class BookingService
         }
 
         if ($booking->status === 'completed') {
-            throw new HttpResponseException(
-                ApiResponse::error([], 'Completed booking cannot be cancelled.', 422)
-            );
+            $this->throwValidation([], 'messages.booking.completed_cannot_be_cancelled');
         }
 
         $isAdmin = $user && method_exists($user, 'hasRole') && $user->hasRole('superadmin');
 
         if (! $isAdmin) {
             if (! $user) {
-                throw new HttpResponseException(
-                    ApiResponse::error([], 'Unauthorized.', 401)
-                );
+                $this->throwError('messages.auth.unauthorized', 401);
             }
 
             if ((int)$booking->user_id !== (int)$user->id) {
-                throw new HttpResponseException(
-                    ApiResponse::error([], 'You can cancel only your own booking.', 403)
-                );
+                $this->throwError('messages.booking.cancel_only_own', 403);
             }
         }
 
@@ -758,8 +781,9 @@ class BookingService
 
             $hours = $this->getWorkingHours($date, $tz);
             if ($hours['is_closed']) {
-                throw new HttpResponseException(
-                    ApiResponse::error(['workingHours' => 'Business is closed on selected day.'], 'Validation failed', 422)
+                $this->throwValidation(
+                    ['date' => __('validation.booking.closed_day')],
+                    'validation.failed'
                 );
             }
 
@@ -767,8 +791,9 @@ class BookingService
             $end   = $this->parseTimeToCarbon($date, $seg['end_time'], $tz);
 
             if ($start->lte($now)) {
-                throw new HttpResponseException(
-                    ApiResponse::error(['startTime' => 'Start time must be in the future.'], 'Validation failed', 422)
+                $this->throwValidation(
+                    ['startTime' => __('validation.booking.start_must_be_future')],
+                    'validation.failed'
                 );
             }
 
@@ -776,14 +801,19 @@ class BookingService
             $dayEnd   = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$hours['end']}", $tz);
 
             if ($start->lt($dayStart) || $end->gt($dayEnd)) {
-                throw new HttpResponseException(
-                    ApiResponse::error(['workingHours' => "Booking must be within working hours ({$hours['start']}–{$hours['end']})."], 'Validation failed', 422)
+                $this->throwValidation(
+                    ['workingHours' => __('validation.booking.within_working_hours', [
+                        'start' => $hours['start'],
+                        'end' => $hours['end'],
+                    ])],
+                    'validation.failed'
                 );
             }
 
             if (($start->minute % 5) !== 0 || ($end->minute % 5) !== 0) {
-                throw new HttpResponseException(
-                    ApiResponse::error(['grid' => 'Time must be in 5-minute increments.'], 'Validation failed', 422)
+                $this->throwValidation(
+                    ['grid' => __('validation.booking.time_grid_5min')],
+                    'validation.failed'
                 );
             }
 
@@ -792,11 +822,30 @@ class BookingService
                 $breakEnd   = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$hours['break_end']}", $tz);
 
                 if ($start->lt($breakEnd) && $end->gt($breakStart)) {
-                    throw new HttpResponseException(
-                        ApiResponse::error(['breakTime' => "Booking overlaps break time ({$hours['break_start']}–{$hours['break_end']})."], 'Validation failed', 422)
+                    $this->throwValidation(
+                        ['breakTime' => __('validation.booking.overlaps_break', [
+                            'start' => $hours['break_start'],
+                            'end' => $hours['break_end'],
+                        ])],
+                        'validation.failed'
                     );
                 }
             }
         }
     }
+
+    protected function throwValidation(array $errors, string $messageKey, array $replace = [], int $status = 422): void
+    {
+        throw new HttpResponseException(
+            ApiResponse::error($errors, __($messageKey, $replace), $status)
+        );
+    }
+
+    protected function throwError(string $messageKey, int $status, array $errors = [], array $replace = []): void
+    {
+        throw new HttpResponseException(
+            ApiResponse::error($errors ?: null, __($messageKey, $replace), $status)
+        );
+    }
+
 }

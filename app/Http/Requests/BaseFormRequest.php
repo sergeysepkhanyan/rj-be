@@ -45,10 +45,11 @@ abstract class BaseFormRequest extends FormRequest
         return $mapped;
     }
 
-    protected function failedValidation(Validator $validator)
+    protected function failedValidation(\Illuminate\Contracts\Validation\Validator $validator)
     {
-        throw new HttpResponseException(
-            ApiResponse::error($validator->errors(), 'Validation failed', 422)
+        throw new \Illuminate\Http\Exceptions\HttpResponseException(
+            \App\Services\ApiResponse::error($validator->errors(), __('validation.failed'), 422)
         );
     }
+
 }

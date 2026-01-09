@@ -4,7 +4,6 @@ namespace App\Http\Controllers\API\Admin;
 
 use App\Filters\BookingFilter;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\StoreAppointmentRequest;
 use App\Http\Requests\StoreBreakRequest;
 use App\Http\Requests\UpdateBreakRequest;
 use App\Http\Resources\BookingResource;
@@ -28,7 +27,7 @@ class BookingsController extends Controller
     public function index(Request $request, BookingFilter $filter): JsonResponse
     {
         $perPage = $request->input('per_page', 10);
-        $page = $request->input('per_page', 1);
+        $page = $request->input('page', 1);
 
         $bookings = $this->bookingService->getPaginatedBookings($filter, $perPage, $page);
 
@@ -79,8 +78,9 @@ class BookingsController extends Controller
     {
         if ($booking->type !== 'break') {
             return ApiResponse::error(
-                ['message' => 'The specified booking is not a break.'],
-                'Invalid booking type', 422
+                ['type' => __('messages.break.not_a_break')],
+                __('validation.failed'),
+                422
             );
         }
         $this->bookingService->deleteBreak($booking);

@@ -17,27 +17,30 @@ class UpdateAddressRequest extends BaseFormRequest
     ];
 
 
-    public function authorize(): bool
-    {
-        return true;
-    }
-
-
     public function rules(): array
     {
         return [
-            'type' => 'in:billing,shipping',
-            'is_default' => 'boolean',
-            'name' => 'string|max:255',
-            'last_name' => 'nullable|string|max:255',
-            'mobile' => 'string|max:20',
-            'address' => 'string|max:255',
-            'additional_address' => 'nullable|string|max:100',
-            'city' => 'string|max:100',
-            'state' => 'string|max:100',
-            'zip_code' => 'string|max:20',
+            'type' => 'required|in:billing,shipping',
+            'isDefault' => 'boolean',
+            'name' => 'required|string|max:255',
+            'lastName' => 'nullable|string|max:255',
+            'mobile' => 'required|string',
+            'address' => 'required|string|max:255',
+            'additionalAddress' => 'nullable|string|max:100',
+            'city' => 'required|string|max:100',
+            'state' => 'required|string|max:100',
+            'zipCode' => 'required|string|max:20',
             'setDefaultShipping' => ['sometimes', 'boolean'],
             'setDefaultBilling'  => ['sometimes', 'boolean'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'name.required' => __('validation_scoped.address.store.name.required'),
+            'name.string'   => __('validation_scoped.address.store.name.string'),
+            'name.max'      => __('validation_scoped.address.store.name.max'),
         ];
     }
 }
