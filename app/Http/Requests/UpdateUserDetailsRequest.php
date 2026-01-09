@@ -10,11 +10,6 @@ class UpdateUserDetailsRequest extends BaseFormRequest
         'dateOfBirth' => 'date_of_birth',
     ];
 
-    public function authorize(): bool
-    {
-        return true;
-    }
-
     public function rules(): array
     {
         $userId = auth()->id();
@@ -41,5 +36,28 @@ class UpdateUserDetailsRequest extends BaseFormRequest
             'dateOfBirth' => 'sometimes|required|date|date_format:Y-m-d|before_or_equal:' . now()->subYears(18)->toDateString(),
         ];
     }
+
+    public function messages(): array
+    {
+        return [
+            'name.required' => __('validation.profile.name.required'),
+            'name.string'   => __('validation.profile.name.string'),
+            'name.max'      => __('validation.profile.name.max'),
+
+            'email.required' => __('validation.profile.email.required'),
+            'email.email'    => __('validation.profile.email.email'),
+            'email.unique'   => __('validation.profile.email.unique'),
+
+            'mobile.required' => __('validation.profile.mobile.required'),
+            'mobile.string'   => __('validation.profile.mobile.string'),
+            'mobile.unique'   => __('validation.profile.mobile.unique'),
+
+            'dateOfBirth.required' => __('validation.profile.dateOfBirth.required'),
+            'dateOfBirth.date'     => __('validation.profile.dateOfBirth.date'),
+            'dateOfBirth.date_format' => __('validation.profile.dateOfBirth.date_format'),
+            'dateOfBirth.before_or_equal' => __('validation.profile.dateOfBirth.min_age'),
+        ];
+    }
+
 }
 

@@ -6,10 +6,6 @@ use App\Http\Requests\BaseFormRequest;
 
 class StoreContactRequest extends BaseFormRequest
 {
-    public function authorize(): bool
-    {
-        return true;
-    }
 
     public function rules(): array
     {
@@ -25,8 +21,9 @@ class StoreContactRequest extends BaseFormRequest
     public function messages(): array
     {
         return [
-            'website.max' => 'Bot detected.',
+            'website.max' => __('validation.contact.bot_detected'),
         ];
     }
+
 }
 

@@ -218,8 +218,28 @@ return [
             'string' => 'Notes must be a text.',
             'max' => 'Notes cannot be longer than :max characters.',
         ],
-    ],
 
+        'phone' => [
+            'string' => 'Phone number must be text.',
+            'max' => 'Phone number cannot exceed :max characters.',
+        ],
+        'message' => [
+            'required' => 'Message is required.',
+            'string' => 'Message must be text.',
+            'min' => 'Message must be at least :min characters.',
+            'max' => 'Message cannot exceed :max characters.',
+        ],
+
+        'gender' => [
+            'required' => 'Please select a gender.',
+            'in' => 'Gender must be one of: Male, Female, or Kids.',
+        ],
+
+        'image' => [
+            'required' => 'Image is required.',
+        ],
+
+    ],
 
 
     'break' => [
@@ -265,5 +285,32 @@ return [
         'master_unavailable' => 'This master is not available for the selected time.',
     ],
 
+    'contact' => [
+        'bot_detected' => 'Bot detected.',
+    ],
+
+    'profile' => [
+        'name' => [
+            'required' => 'Name is required.',
+            'string' => 'Name must be text.',
+            'max' => 'Name cannot exceed :max characters.',
+        ],
+        'email' => [
+            'required' => 'Email address is required.',
+            'email' => 'Please enter a valid email address.',
+            'unique' => 'This email is already in use.',
+        ],
+        'mobile' => [
+            'required' => 'Mobile number is required.',
+            'string' => 'Mobile number must be text.',
+            'unique' => 'This mobile number is already in use.',
+        ],
+        'dateOfBirth' => [
+            'required' => 'Date of birth is required.',
+            'date' => 'Date of birth must be a valid date.',
+            'date_format' => 'Date of birth must be in the format YYYY-MM-DD.',
+            'min_age' => 'You must be at least 18 years old.',
+        ],
+    ],
 
 ];

@@ -14,10 +14,6 @@ class UpdateCategoryRequest extends BaseFormRequest
         'nameAr' => 'name_ar',
         'image' => 'image',
     ];
-    public function authorize(): bool
-    {
-        return true;
-    }
 
     public function rules(): array
     {

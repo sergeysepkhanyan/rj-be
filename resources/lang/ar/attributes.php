@@ -50,4 +50,8 @@ return [
     'discountValue' => 'قيمة الخصم',
     'discountLabel' => 'وصف الخصم',
     'notes' => 'ملاحظات',
+    'nameAr' => 'الاسم بالعربية',
+    'gender' => 'الجنس',
+    'last4' => 'آخر 4 أرقام',
+
 ];

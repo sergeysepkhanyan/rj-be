@@ -15,14 +15,9 @@ class UpdateServiceRequest extends BaseFormRequest
         'descriptionAr' => 'description_ar',
         'image' => 'image',
     ];
-    public function authorize(): bool
-    {
-        return true;
-    }
 
     public function rules(): array
     {
-        $serviceId = $this->route('service')->id ?? null;
 
         return [
             'name' => [
@@ -39,8 +34,29 @@ class UpdateServiceRequest extends BaseFormRequest
             'description' => 'required|string',
             'descriptionAr' => 'required|string',
             'image' => 'nullable|string',
-//            'gender' => 'required|string|in:Male,Female,Kids',
         ];
     }
+
+    public function messages(): array
+    {
+        return [
+            'name.required' => __('validation_scoped.service.name.required'),
+            'name.string'   => __('validation_scoped.service.name.string'),
+            'name.max'      => __('validation_scoped.service.name.max'),
+
+            'nameAr.required' => __('validation_scoped.service.nameAr.required'),
+            'nameAr.string'   => __('validation_scoped.service.nameAr.string'),
+            'nameAr.max'      => __('validation_scoped.service.nameAr.max'),
+
+            'description.required' => __('validation_scoped.service.description.required'),
+            'description.string'   => __('validation_scoped.service.description.string'),
+
+            'descriptionAr.required' => __('validation_scoped.service.descriptionAr.required'),
+            'descriptionAr.string'   => __('validation_scoped.service.descriptionAr.string'),
+
+            'image.string' => __('validation_scoped.service.image.string'),
+        ];
+    }
+
 }
 

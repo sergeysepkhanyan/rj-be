@@ -50,5 +50,7 @@ return [
     'discountValue' => 'Discount value',
     'discountLabel' => 'Discount label',
     'notes' => 'Notes',
-
+    'nameAr' => 'Arabic name',
+    'gender' => 'Gender',
+    'last4' => 'Last 4 digits',
 ];

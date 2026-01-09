@@ -14,10 +14,6 @@ class StoreCategoryRequest extends BaseFormRequest
         'nameAr' => 'name_ar',
         'image' => 'image',
     ];
-    public function authorize(): bool
-    {
-        return true;
-    }
 
     public function rules(): array
     {
@@ -37,10 +33,24 @@ class StoreCategoryRequest extends BaseFormRequest
                 Rule::unique('categories', 'name_ar')
                     ->where('gender', $this->gender)
             ],
-//            'description' => 'required|string',
-//            'descriptionAr' => 'required|string',
             'image' => 'required|string',
             'gender' => 'required|string|in:Male,Female,Kids',
         ];
     }
+
+    public function messages(): array
+    {
+        return [
+            'name.required'  => __('validation_scoped.category.name.required'),
+            'name.string'    => __('validation_scoped.category.name.string'),
+            'name.max'       => __('validation_scoped.category.name.max'),
+            'name.unique'    => __('validation_scoped.category.name.unique'),
+
+            'nameAr.required' => __('validation_scoped.category.nameAr.required'),
+            'nameAr.string'   => __('validation_scoped.category.nameAr.string'),
+            'nameAr.max'      => __('validation_scoped.category.nameAr.max'),
+            'nameAr.unique'   => __('validation_scoped.category.nameAr.unique'),
+        ];
+    }
+
 }

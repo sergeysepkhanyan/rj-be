@@ -10,15 +10,17 @@ class UpdatePaymentMethodRequest extends BaseFormRequest
         'isDefault' => 'is_default'
     ];
 
-    public function authorize(): bool
-    {
-        return true;
-    }
-
     public function rules(): array
     {
         return [
             'isDefault' => 'boolean',
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'isDefault.boolean' => __('validation_scoped.payment_method.isDefault.boolean'),
         ];
     }
 }

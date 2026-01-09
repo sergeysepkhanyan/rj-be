@@ -9,10 +9,6 @@ class StoreBreakRequest extends BaseFormRequest
         'startTime' => 'start_time',
         'endTime' => 'end_time',
     ];
-    public function authorize(): bool
-    {
-        return true;
-    }
 
     public function rules(): array
     {

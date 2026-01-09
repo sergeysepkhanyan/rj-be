@@ -9,11 +9,6 @@ class UpdateBreakRequest extends BaseFormRequest
         'endTime'   => 'end_time',
     ];
 
-    public function authorize(): bool
-    {
-        return true;
-    }
-
     public function rules(): array
     {
         return [
