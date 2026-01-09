@@ -12,13 +12,6 @@ class AvailableSlotsRequest extends BaseFormRequest
         'subServiceItemId' => 'sub_service_item_id'
     ];
 
-    /**
-     * Determine if the user is authorized to make this request.
-     */
-    public function authorize(): bool
-    {
-        return true;
-    }
 
     public function rules(): array
     {

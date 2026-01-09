@@ -17,14 +17,6 @@ class CreatePostRequest extends BaseFormRequest
         'authorName'       => 'author',
     ];
 
-    /**
-     * Determine if the user is authorized to make this request.
-     */
-    public function authorize(): bool
-    {
-        return true;
-    }
-
     public function rules(): array
     {
         return [
@@ -42,7 +34,7 @@ class CreatePostRequest extends BaseFormRequest
             'publishDate'     => ['nullable', 'date', 'before_or_equal:today'],
             'showAuthorName'  => ['nullable', 'boolean'],
             'status'          => ['required', 'in:Draft,Published,Archived'],
-            'authorName'     => ['nullable', 'string', 'max:255'],
+            'authorName'      => ['nullable', 'string', 'max:255'],
         ];
     }
 

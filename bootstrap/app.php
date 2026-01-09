@@ -45,7 +45,7 @@ return Application::configure(basePath: dirname(__DIR__))
             if ($request->is('api/*') || $request->expectsJson()) {
                 return ApiResponse::error(
                     $e->errors(),
-                    'Validation failed.',
+                    __('validation.failed'),
                     422
                 );
             }
@@ -54,44 +54,28 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $exceptions->render(function (AuthenticationException $e, Request $request) {
             if ($request->is('api/*') || $request->expectsJson()) {
-                return ApiResponse::error(
-                    null,
-                    'Unauthenticated.',
-                    401
-                );
+                return ApiResponse::error(null, __('messages.unauthenticated'), 401);
             }
             return null;
         });
 
         $exceptions->render(function (AuthorizationException $e, Request $request) {
             if ($request->is('api/*') || $request->expectsJson()) {
-                return ApiResponse::error(
-                    null,
-                    $e->getMessage() ?: 'Forbidden.',
-                    403
-                );
+                return ApiResponse::error(null, __('messages.forbidden'), 403);
             }
             return null;
         });
 
         $exceptions->render(function (ModelNotFoundException $e, Request $request) {
             if ($request->is('api/*') || $request->expectsJson()) {
-                return ApiResponse::error(
-                    null,
-                    'Resource not found.',
-                    404
-                );
+                return ApiResponse::error(null, __('messages.resource_not_found'), 404);
             }
             return null;
         });
 
         $exceptions->render(function (NotFoundHttpException $e, Request $request) {
             if ($request->is('api/*') || $request->expectsJson()) {
-                return ApiResponse::error(
-                    null,
-                    'Endpoint not found.',
-                    404
-                );
+                return ApiResponse::error(null, __('messages.endpoint_not_found'), 404);
             }
             return null;
         });
@@ -103,8 +87,8 @@ return Application::configure(basePath: dirname(__DIR__))
             $status = $e instanceof HttpExceptionInterface ? $e->getStatusCode() : 500;
 
             $message = app()->isProduction()
-                ? 'Something went wrong. Please try again later.'
-                : ($e->getMessage() ?: 'Server error.');
+                ? __('messages.something_went_wrong')
+                : ($e->getMessage() ?: __('messages.server_error'));
 
             return ApiResponse::error(null, $message, $status);
         });

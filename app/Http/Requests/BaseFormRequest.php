@@ -12,6 +12,16 @@ abstract class BaseFormRequest extends FormRequest
 {
     protected array $fieldMap = [];
 
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    public function attributes(): array
+    {
+        return trans('attributes');
+    }
+
     protected function passedValidation(): void
     {
         $this->replace($this->mapKeysRecursively($this->all()));
