@@ -16,15 +16,15 @@ class PaymentMethodsController extends Controller
 {
     public function __construct(
         protected PaymentMethodService $paymentMethodService
-    )
-    {
-    }
+    ) {}
 
     public function index(): JsonResponse
     {
         $methods = $this->paymentMethodService->listForUser(auth()->id());
+
         return ApiResponse::success(
-            PaymentMethodResource::collection($methods)
+            PaymentMethodResource::collection($methods),
+            __('success.payment_method.listed')
         );
     }
 
@@ -33,13 +33,14 @@ class PaymentMethodsController extends Controller
         $data = $request->all();
         $data = array_intersect_key($data, array_flip((new PaymentMethod)->getFillable()));
         $data['user_id'] = auth()->id();
+
         $method = $this->paymentMethodService->createPaymentMethod($data);
 
         return ApiResponse::success(
             [
                 'method' => new PaymentMethodResource($method)
             ],
-            'Payment method added successfully'
+            __('success.payment_method.created')
         );
     }
 
@@ -49,14 +50,17 @@ class PaymentMethodsController extends Controller
     public function update(UpdatePaymentMethodRequest $request, PaymentMethod $paymentMethod): JsonResponse
     {
         $this->authorize('update', $paymentMethod);
+
         $data = $request->all();
         $data = array_intersect_key($data, array_flip((new PaymentMethod)->getFillable()));
+
         $method = $this->paymentMethodService->updatePaymentMethod($paymentMethod, $data);
+
         return ApiResponse::success(
             [
                 'method' => new PaymentMethodResource($method)
             ],
-            'Payment method updated successfully'
+            __('success.payment_method.updated')
         );
     }
 
@@ -66,10 +70,12 @@ class PaymentMethodsController extends Controller
     public function destroy(PaymentMethod $paymentMethod): JsonResponse
     {
         $this->authorize('delete', $paymentMethod);
+
         $this->paymentMethodService->delete($paymentMethod);
+
         return ApiResponse::success(
-            ['success' => true],
-            'Payment method deleted successfully'
+            ['deleted' => true],
+            __('success.payment_method.deleted')
         );
     }
 }

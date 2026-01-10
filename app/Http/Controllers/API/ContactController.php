@@ -20,7 +20,10 @@ class ContactController extends Controller
             userAgent: $request->userAgent()
         );
 
-        return ApiResponse::success(['success' => true], 'Message sent successfully');
-
+        return ApiResponse::success(
+            ['success' => true],
+            __('success.contact.sent')
+        );
     }
 }
+

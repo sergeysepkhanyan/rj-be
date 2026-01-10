@@ -256,6 +256,9 @@ return [
 
     ],
 
+    'auth' => [
+        'invalid_verification_link' => 'This verification link is invalid or has expired.',
+    ],
 
     'break' => [
         'end_after_start' => 'End time must be after start time.',

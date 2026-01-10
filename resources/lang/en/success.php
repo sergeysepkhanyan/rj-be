@@ -1,9 +1,7 @@
 <?php
 
 return [
-    'booking' => [
-        'list' => 'Bookings retrieved successfully.',
-    ],
+
     'break' => [
         'created' => 'Break created successfully.',
         'updated' => 'Break updated successfully.',
@@ -59,10 +57,38 @@ return [
         'logged_in' => 'Successfully logged in.',
         'logged_out' => 'Logged out successfully.',
         'token_refreshed' => 'Token refreshed successfully.',
+        'email_verified' => 'Your email has been verified successfully.',
     ],
     'password' => [
         'reset_link_sent' => 'Reset link sent successfully.',
         'reset_done' => 'Password reset successfully.',
+    ],
+    'address' => [
+        'listed'  => 'Addresses retrieved successfully.',
+        'created' => 'Address created successfully.',
+        'updated' => 'Address updated successfully.',
+        'deleted' => 'Address deleted successfully.',
+    ],
+    'payment_method' => [
+        'listed'  => 'Payment methods retrieved successfully.',
+        'created' => 'Payment method added successfully.',
+        'updated' => 'Payment method updated successfully.',
+        'deleted' => 'Payment method deleted successfully.',
+    ],
+    'booking' => [
+        'listed'        => 'My bookings retrieved successfully.',
+        'slots_loaded'  => 'Available slots loaded successfully.',
+        'created'       => 'Booking created successfully.',
+        'updated'       => 'Booking updated successfully.',
+        'cancelled'     => 'Booking cancelled successfully.',
+        'list'          => 'Bookings retrieved successfully.',
+    ],
+    'contact' => [
+        'sent' => 'Message sent successfully.',
+    ],
+    'files' => [
+        'image_uploaded'  => 'Image uploaded successfully.',
+        'images_uploaded' => 'Images uploaded successfully.',
     ],
 
 ];

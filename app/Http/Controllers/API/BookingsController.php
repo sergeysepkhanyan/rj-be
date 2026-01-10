@@ -13,17 +13,14 @@ use App\Models\Booking;
 use App\Services\ApiResponse;
 use App\Services\BookingService;
 use Illuminate\Auth\Access\AuthorizationException;
-use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\ValidationException;
 
 class BookingsController extends Controller
 {
     public function __construct(
         protected BookingService $bookingService
     ) {}
-
 
     public function index(Request $request, BookingFilter $filter): JsonResponse
     {
@@ -48,7 +45,7 @@ class BookingsController extends Controller
                 'prev'  => $bookings->previousPageUrl(),
                 'next'  => $bookings->nextPageUrl(),
             ],
-        ], 'My bookings retrieved successfully');
+        ], __('success.booking.listed'));
     }
 
     public function availableSlots(AvailableSlotsRequest $request): JsonResponse
@@ -57,17 +54,16 @@ class BookingsController extends Controller
 
         return ApiResponse::success([
             'slots' => $slots,
-        ]);
+        ], __('success.booking.slots_loaded'));
     }
 
-    /**
-     */
     public function store(StoreBookingRequest $request): JsonResponse
     {
         $booking = $this->bookingService->createBooking($request->all());
+
         return ApiResponse::success([
-            'booking'    => new BookingResource($booking)
-        ], 'Booking created successfully.');
+            'booking' => new BookingResource($booking)
+        ], __('success.booking.created'));
     }
 
     /**
@@ -76,6 +72,7 @@ class BookingsController extends Controller
     public function update(UpdateBookingRequest $request, Booking $booking): JsonResponse
     {
         $this->authorize('update', $booking);
+
         $updated = $this->bookingService->updateBooking(
             $booking,
             $request->all()
@@ -83,7 +80,7 @@ class BookingsController extends Controller
 
         return ApiResponse::success([
             'booking' => new BookingResource($updated),
-        ], 'Booking updated successfully');
+        ], __('success.booking.updated'));
     }
 
     /**
@@ -92,11 +89,13 @@ class BookingsController extends Controller
     public function cancel(CancelBookingRequest $request, Booking $booking): JsonResponse
     {
         $this->authorize('update', $booking);
+
         $result = $this->bookingService->cancelBooking($booking, $request->validated());
 
         return ApiResponse::success([
             'booking' => new BookingResource($result),
-        ], 'Booking cancelled successfully.');
+        ], __('success.booking.cancelled'));
     }
 }
+
 

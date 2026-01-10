@@ -259,6 +259,11 @@ return [
 
     ],
 
+    'auth' => [
+        'invalid_verification_link' => 'رابط التحقق غير صالح أو منتهي الصلاحية.',
+    ],
+
+
     'break' => [
         'end_after_start' => 'يجب أن يكون وقت النهاية بعد وقت البداية.',
         'master_unavailable' => 'الماستر غير متاح في الوقت المحدد.',
