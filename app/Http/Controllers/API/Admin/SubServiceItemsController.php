@@ -2,34 +2,19 @@
 
 namespace App\Http\Controllers\API\Admin;
 
-use App\Http\Requests\StoreSubServiceRequest;
-use App\Http\Requests\UpdateSubServiceRequest;
-use App\Http\Resources\AdminServiceResource;
-use App\Models\Service;
-use App\Models\SubService;
 use App\Models\SubServiceItem;
 use App\Services\ApiResponse;
 use App\Services\SubServiceItemManagerService;
-use App\Services\SubServiceManagerService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\Rule;
-
 
 class SubServiceItemsController
 {
-    protected SubServiceItemManagerService $subServiceItemManagerService;
-
-    public function __construct(SubServiceItemManagerService $subServiceItemManagerService)
-    {
-        $this->subServiceItemManagerService = $subServiceItemManagerService;
-    }
+    public function __construct(protected SubServiceItemManagerService $subServiceItemManagerService) {}
 
     public function destroy(SubServiceItem $subServiceItem): JsonResponse
     {
         $this->subServiceItemManagerService->deleteSubServiceItem($subServiceItem->id);
 
-        return ApiResponse::success([], 'Subservice item deleted successfully');
+        return ApiResponse::success([], __('success.subservice_item.deleted'));
     }
 }

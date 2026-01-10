@@ -17,13 +17,19 @@ class WorkingHoursController extends Controller
     {
         $this->service->bulkUpdate($request->only('days')['days']);
 
-        return ApiResponse::success(['success' => true], 'Working hours updated.');
+        return ApiResponse::success(
+            ['success' => true],
+            __('success.working_hours.updated')
+        );
     }
 
     public function updateDay(int $day, WorkingHoursUpdateDayRequest $request): JsonResponse
     {
         $this->service->updateDay($day, $request->all());
 
-        return ApiResponse::success(['success' => true], 'Working hours updated.');
+        return ApiResponse::success(
+            ['success' => true],
+            __('success.working_hours.updated')
+        );
     }
 }

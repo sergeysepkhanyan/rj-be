@@ -4,6 +4,11 @@ return [
     'failed' => 'Validation failed.',
 
     'custom' => [
+
+        'referral_id' => [
+            'exists' => 'The selected referral is invalid.',
+        ],
+
         'email' => [
             'required' => 'Email address is required.',
             'email' => 'Please enter a valid email address.',
@@ -19,6 +24,16 @@ return [
             'required' => 'Password is required.',
             'min' => 'Password must be at least :min characters.',
             'same' => 'Password and password confirmation must match.',
+            'string'    => 'Password must be a text.',
+            'confirmed' => 'Password confirmation does not match.',
+        ],
+        'identifier' => [
+            'required' => 'Email or phone is required.',
+            'string'   => 'Email or phone must be a text.',
+        ],
+        'token' => [
+            'required' => 'Token is required.',
+            'string'   => 'Token must be a text.',
         ],
 
         'passwordConfirmation' => [

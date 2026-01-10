@@ -1,26 +1,27 @@
 <?php
 
 namespace App\Http\Controllers\API\Auth;
+
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\SignupRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Models\UserRole;
-use App\Repositories\UserRepository;
 use App\Services\ApiResponse;
-use App\Services\UserService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Validator;
 
 class AuthController extends Controller
 {
     public function signup(SignupRequest $request): JsonResponse
     {
         $data = $request->all();
-        $roleId = UserRole::where('slug', 'client')->first()->id;
+
+        $roleId = UserRole::query()
+            ->where('slug', 'client')
+            ->value('id');
+
         $user = User::create([
             'user_role_id' => $roleId,
             'name' => $data['name'] ?? null,
@@ -30,11 +31,11 @@ class AuthController extends Controller
         ]);
 
         $user->sendEmailVerificationNotification();
+
         return ApiResponse::success([
             'success' => true,
-        ], 'Registration successful. Please verify your email.');
+        ], __('success.auth.register_verify_email'));
     }
-
 
     public function login(LoginRequest $request): JsonResponse
     {
@@ -42,43 +43,52 @@ class AuthController extends Controller
 
         $user = User::query()->where('email', $credentials['email'])->first();
 
-        if (!$user || $user->status !== 'active') {
-            return ApiResponse::error([
-                'success' => false,
-            ], 'Invalid credentials', 401);
+        if (!$user || ($user->status ?? null) !== 'active') {
+            return ApiResponse::error(
+                ['auth' => [__('errors.auth.invalid_credentials')]],
+                __('errors.auth.invalid_credentials'),
+                401
+            );
         }
 
         if (!$user->hasVerifiedEmail()) {
-            return ApiResponse::error([
-                'success' => false,
-            ], 'Please verify your email first.', 403);
+            return ApiResponse::error(
+                ['email' => [__('errors.auth.email_not_verified')]],
+                __('errors.auth.email_not_verified'),
+                403
+            );
         }
 
         if (!$token = auth()->attempt($credentials)) {
-            return ApiResponse::error([
-                'success' => false,
-            ], 'Invalid credentials', 401);
+            return ApiResponse::error(
+                ['auth' => [__('errors.auth.invalid_credentials')]],
+                __('errors.auth.invalid_credentials'),
+                401
+            );
         }
 
         $user = auth()->user()->load('role');
+
         return ApiResponse::success([
-            [
-                'user' => new UserResource($user),
-                'token' => $token,
-            ]
-        ], 'Successfully logged in');
+            'user' => new UserResource($user),
+            'token' => $token,
+        ], __('success.auth.logged_in'));
     }
 
     public function logout(): JsonResponse
     {
         auth()->logout();
+
         return ApiResponse::success([
             'success' => true,
-        ], 'Logged out successfully.');
+        ], __('success.auth.logged_out'));
     }
 
     public function refresh(): JsonResponse
     {
-        return ApiResponse::success(['token' => auth()->refresh()], 'Successfully logged in.');
+        return ApiResponse::success([
+            'token' => auth()->refresh(),
+        ], __('success.auth.token_refreshed'));
     }
 }
+

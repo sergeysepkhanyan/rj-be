@@ -10,35 +10,33 @@ use App\Models\Post;
 use App\Services\ApiResponse;
 use App\Services\PostService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 class PostsController extends Controller
 {
-    protected PostService $postService;
-
-    public function __construct(PostService $postService)
-    {
-        $this->postService = $postService;
-    }
+    public function __construct(protected PostService $postService) {}
 
     public function store(CreatePostRequest $request): JsonResponse
     {
         $data = $request->all();
         $data = array_intersect_key($data, array_flip((new Post)->getFillable()));
+
         $post = $this->postService->createPost($data);
+
         return ApiResponse::success([
             'post' => new PostResource($post),
-        ], 'Post created successfully');
+        ], __('success.post.created'));
     }
 
     public function update(UpdatePostRequest $request, Post $post): JsonResponse
     {
         $data = $request->all();
         $data = array_intersect_key($data, array_flip((new Post)->getFillable()));
+
         $post = $this->postService->updatePost($post, $data);
+
         return ApiResponse::success([
             'post' => new PostResource($post),
-        ], 'Post updated successfully');
+        ], __('success.post.updated'));
     }
 
     public function destroy(Post $post): JsonResponse
@@ -47,6 +45,7 @@ class PostsController extends Controller
 
         return ApiResponse::success([
             'success' => true,
-        ], 'Post deleted successfully');
+        ], __('success.post.deleted'));
     }
 }
+

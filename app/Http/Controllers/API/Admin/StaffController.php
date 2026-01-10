@@ -11,21 +11,15 @@ use App\Services\ApiResponse;
 use App\Services\UserService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
 
 class StaffController extends Controller
 {
-    protected UserService $userService;
-
-    public function __construct(UserService $userService)
-    {
-        $this->userService = $userService;
-    }
+    public function __construct(protected UserService $userService) {}
 
     public function index(Request $request): JsonResponse
     {
-        $perPage = $request->get('per_page', 10);
-        $page = $request->get('page', 1);
+        $perPage = (int) $request->get('per_page', 10);
+        $page    = (int) $request->get('page', 1);
 
         $staff = $this->userService->getPaginatedStaff($perPage, $page);
 
@@ -43,22 +37,26 @@ class StaffController extends Controller
                 'prev' => $staff->previousPageUrl(),
                 'next' => $staff->nextPageUrl(),
             ],
-        ], 'Staff members retrieved successfully');
+        ], __('success.staff.list'));
     }
-
 
     public function store(StoreStaffRequest $request): JsonResponse
     {
         $data = $request->all();
-        if ($data['role'] === 'admin' && !$this->userService->canAddAdmins(1)) {
-            return ApiResponse::error(null, 'You can only have up to 2 admin users', 422);
+
+        if (($data['role'] ?? null) === 'admin' && !$this->userService->canAddAdmins(1)) {
+            return ApiResponse::error(
+                ['role' => [__('errors.staff.admin_limit')]],
+                __('validation.failed'),
+                422
+            );
         }
 
         $staff = $this->userService->createUser($data);
 
         return ApiResponse::success([
             'user' => new StaffResource($staff),
-        ], 'Staff member added successfully', 201);
+        ], __('success.staff.created'), 201);
     }
 
     public function update(UpdateStaffRequest $request, User $user): JsonResponse
@@ -68,26 +66,31 @@ class StaffController extends Controller
 
         return ApiResponse::success([
             'user' => new StaffResource($user),
-        ], 'Staff member updated successfully');
+        ], __('success.staff.updated'));
     }
 
     public function destroy(User $user): JsonResponse
     {
-        if (in_array($user->role->slug, ['superadmin', 'client'])) {
-            return ApiResponse::error([], 'You cannot delete this user type', 403);
+        if (in_array($user->role->slug, ['superadmin', 'client'], true)) {
+            return ApiResponse::error(
+                ['role' => [__('errors.staff.cannot_delete_user_type')]],
+                __('errors.common.forbidden'),
+                403
+            );
         }
 
         $this->userService->deleteUser($user->id);
 
-        return ApiResponse::success([], 'Staff member deleted successfully');
+        return ApiResponse::success([], __('success.staff.deleted'));
     }
 
     public function restore(int $id): JsonResponse
     {
         $user = $this->userService->restoreUser($id);
+
         return ApiResponse::success([
             'user' => new StaffResource($user),
-        ], 'User activated successfully');
+        ], __('success.staff.restored'));
     }
-
 }
+

@@ -11,17 +11,17 @@ use Illuminate\Http\Request;
 
 class PagesController extends Controller
 {
-    protected PageService $pageService;
-
-    public function __construct(PageService $pageService)
-    {
-        $this->pageService = $pageService;
-    }
+    public function __construct(protected PageService $pageService) {}
 
     public function update(Request $request): JsonResponse
     {
         $data = $request->all();
+
         $page = $this->pageService->update($data);
-        return ApiResponse::success(new PageResource($page), 'Page updated successfully.');
+
+        return ApiResponse::success(
+            new PageResource($page),
+            __('success.page.updated')
+        );
     }
 }

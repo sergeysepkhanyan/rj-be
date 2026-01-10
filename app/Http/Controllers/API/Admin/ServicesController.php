@@ -11,8 +11,6 @@ use App\Services\ApiResponse;
 use App\Services\ServiceManagerService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
-
 
 class ServicesController
 {
@@ -44,29 +42,36 @@ class ServicesController
                 'next' => $services->nextPageUrl(),
             ],
             'filters' => $request->only(['search']),
-        ]);
+        ], __('success.service.listed'));
     }
 
     public function store(StoreServiceRequest $request): JsonResponse
     {
-        $data = $request->all();
-        $data = array_intersect_key($data, array_flip((new Service)->getFillable()));
+        $data = array_intersect_key(
+            $request->all(),
+            array_flip((new Service)->getFillable())
+        );
+
         $service = $this->serviceManagerService->createService($data);
         $service->load('subServices.items', 'category');
 
         return ApiResponse::success([
             'service' => new AdminServiceResource($service),
-        ], 'Service created successfully.');
+        ], __('success.service.created'));
     }
 
     public function update(UpdateServiceRequest $request, Service $service): JsonResponse
     {
-        $data = $request->all();
-        $data = array_intersect_key($data, array_flip((new Service)->getFillable()));
+        $data = array_intersect_key(
+            $request->all(),
+            array_flip((new Service)->getFillable())
+        );
+
         $service = $this->serviceManagerService->updateService($service, $data);
+
         return ApiResponse::success([
             'service' => new AdminServiceResource($service),
-        ], 'Service updated successfully.');
+        ], __('success.service.updated'));
     }
 
     public function destroy(Service $service): JsonResponse
@@ -76,6 +81,6 @@ class ServicesController
         return ApiResponse::success([
             'deleted' => true,
             'service_id' => $service->id,
-        ], 'Service deleted successfully.');
+        ], __('success.service.deleted'));
     }
 }

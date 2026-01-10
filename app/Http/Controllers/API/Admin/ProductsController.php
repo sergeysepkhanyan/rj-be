@@ -1,26 +1,19 @@
 <?php
 
-namespace App\Http\Controllers\API\Admin;;
+namespace App\Http\Controllers\API\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateProductRequest;
 use App\Http\Resources\ProductResource;
 use App\Models\Product;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
 use App\Services\ProductService;
 use App\Services\ApiResponse;
+use Illuminate\Http\JsonResponse;
 
 class ProductsController extends Controller
 {
-    protected ProductService $productService;
-
-    public function __construct(ProductService $productService)
-    {
-        $this->productService = $productService;
-    }
+    public function __construct(protected ProductService $productService) {}
 
     public function store(StoreProductRequest $request): JsonResponse
     {
@@ -43,12 +36,17 @@ class ProductsController extends Controller
 
         $productData['main_image'] = $productFilePaths[0] ?? null;
 
-        $product = $this->productService->createProduct($productData, $detailsData, $productFilePaths);
+        $product = $this->productService->createProduct(
+            $productData,
+            $detailsData,
+            $productFilePaths
+        );
 
         return ApiResponse::success([
             'product' => new ProductResource($product),
-        ], 'Product created successfully');
+        ], __('success.product.created'));
     }
+
     public function update(UpdateProductRequest $request, Product $product): JsonResponse
     {
         $productData = $request->only([
@@ -79,6 +77,7 @@ class ProductsController extends Controller
 
         return ApiResponse::success([
             'product' => new ProductResource($updated),
-        ], 'Product updated successfully');
+        ], __('success.product.updated'));
     }
 }
+

@@ -13,21 +13,15 @@ use App\Services\ApiResponse;
 use App\Services\BookingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class BookingsController extends Controller
 {
-    protected BookingService $bookingService;
-
-    public function __construct(BookingService $bookingService)
-    {
-        $this->bookingService = $bookingService;
-    }
+    public function __construct(protected BookingService $bookingService) {}
 
     public function index(Request $request, BookingFilter $filter): JsonResponse
     {
-        $perPage = $request->input('per_page', 10);
-        $page = $request->input('page', 1);
+        $perPage = (int) $request->input('per_page', 10);
+        $page    = (int) $request->input('page', 1);
 
         $bookings = $this->bookingService->getPaginatedBookings($filter, $perPage, $page);
 
@@ -45,33 +39,29 @@ class BookingsController extends Controller
                 'prev' => $bookings->previousPageUrl(),
                 'next' => $bookings->nextPageUrl(),
             ],
-        ], 'Bookings retrieved successfully');
+        ], __('success.booking.list'));
     }
 
     public function storeBreak(StoreBreakRequest $request): JsonResponse
     {
-        $data = $request->only('date', 'start_time', 'end_time', 'master_id');
+        $data = $request->only(['date', 'start_time', 'end_time', 'master_id', 'timezone', 'notes']);
+
         $break = $this->bookingService->createBreak($data);
-        if (!$break) {
-            return ApiResponse::error(
-                ['message' => 'Break overlaps with existing booking or invalid time.'],
-                'Validation failed', 422
-            );
-        }
+
         return ApiResponse::success([
             'break' => new BreakResource($break),
-        ], 'Break created successfully');
+        ], __('success.break.created'));
     }
 
     public function updateBreak(UpdateBreakRequest $request, Booking $booking): JsonResponse
     {
-        $data = $request->only('date', 'start_time', 'end_time', 'timezone', 'notes');
+        $data = $request->only(['date', 'start_time', 'end_time', 'timezone', 'notes']);
 
         $break = $this->bookingService->updateBreak($booking, $data);
 
         return ApiResponse::success([
             'break' => new BreakResource($break),
-        ], 'Break updated successfully');
+        ], __('success.break.updated'));
     }
 
     public function deleteBreak(Booking $booking): JsonResponse
@@ -83,11 +73,11 @@ class BookingsController extends Controller
                 422
             );
         }
+
         $this->bookingService->deleteBreak($booking);
 
         return ApiResponse::success([
             'deleted' => true,
-        ], 'Break deleted successfully.');
+        ], __('success.break.deleted'));
     }
-
 }
