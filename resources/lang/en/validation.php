@@ -301,6 +301,7 @@ return [
         'no_masters_for_service' => 'No masters are available for this service.',
         'no_available_master' => 'No master is available for the selected time.',
         'master_unavailable' => 'This master is not available for the selected time.',
+        'master_day_off' => 'Selected master is not available on this day.',
     ],
 
     'contact' => [

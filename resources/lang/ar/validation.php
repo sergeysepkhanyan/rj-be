@@ -305,6 +305,7 @@ return [
         'no_masters_for_service' => 'لا يوجد ماستر متاح لهذه الخدمة.',
         'no_available_master' => 'لا يوجد ماستر متاح في الوقت المحدد.',
         'master_unavailable' => 'الماستر غير متاح في الوقت المحدد.',
+        'master_day_off' => 'الموظف غير متاح في هذا اليوم.',
     ],
 
     'contact' => [

@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Models\SubService;
 use App\Models\SubServiceItem;
+use App\Models\User;
+use Carbon\CarbonImmutable;
 use App\Repositories\Interfaces\BookingRepositoryInterface;
 use Illuminate\Http\Exceptions\HttpResponseException;
 
@@ -23,8 +25,9 @@ class MasterAssignmentService
 
         foreach ($services as $i => $s) {
             $anyMaster = (bool)($s['anyMaster'] ?? $s['any_master'] ?? false);
+            $serviceTypeRaw = $s['serviceType'] ?? $s['service_type'] ?? null;
+            $serviceType = strtolower(trim((string)$serviceTypeRaw));
 
-            $serviceType = $s['serviceType'] ?? $s['service_type'] ?? null;
             $serviceId   = (int)($s['serviceId'] ?? $s['service_id'] ?? 0);
 
             $startTime = (string)($s['startTime'] ?? $s['start_time'] ?? '');
@@ -42,9 +45,10 @@ class MasterAssignmentService
 
             if ($anyMaster) {
                 $chosenMasterId = $this->pickAvailableMasterForService(
-                    serviceType: (string) $serviceType,
+                    serviceType: $serviceType,
                     serviceId: $serviceId,
                     date: $date,
+                    tz: $tz,
                     startTime: $startTime,
                     endTime: $endTime,
                     excludeBookingId: $excludeBookingId
@@ -52,6 +56,7 @@ class MasterAssignmentService
 
                 $services[$i]['master_id'] = $chosenMasterId;
                 $services[$i]['any_master'] = true;
+                $services[$i]['service_type'] = $serviceType;
 
                 continue;
             }
@@ -64,11 +69,18 @@ class MasterAssignmentService
 
             $masterId = (int) $providedMasterId;
 
-            if (!$this->isMasterEligibleForService($masterId, (string) $serviceType, $serviceId)) {
+            if (!$this->isMasterEligibleForService($masterId, $serviceType, $serviceId)) {
                 $this->throwValidation([
                     "services.$i.masterId" => __('validation.booking.master_cannot_perform_service'),
                 ], 'validation.failed');
             }
+
+            $this->assertMasterNotOff(
+                masterId: $masterId,
+                date: $date,
+                tz: $tz,
+                errorKey: "services.$i.masterId"
+            );
 
             $this->assertMasterFree(
                 masterId: $masterId,
@@ -78,6 +90,9 @@ class MasterAssignmentService
                 excludeBookingId: $excludeBookingId,
                 errorKey: "services.$i.masterId"
             );
+
+            $services[$i]['service_type'] = $serviceType;
+            $services[$i]['master_id'] = $masterId;
         }
 
         return $services;
@@ -87,6 +102,7 @@ class MasterAssignmentService
         string $serviceType,
         int $serviceId,
         string $date,
+        string $tz,
         string $startTime,
         string $endTime,
         ?int $excludeBookingId
@@ -100,6 +116,10 @@ class MasterAssignmentService
         }
 
         foreach ($candidateMasterIds as $mid) {
+            if ($this->isMasterOffOnDate((int)$mid, $date, $tz)) {
+                continue;
+            }
+
             $hasOverlap = $this->bookingRepository->hasOverlap(
                 masterId: (int) $mid,
                 date: $date,
@@ -170,9 +190,30 @@ class MasterAssignmentService
         return in_array($masterId, $eligible, true);
     }
 
+    private function isMasterOffOnDate(int $masterId, string $date, string $tz): bool
+    {
+        $day = CarbonImmutable::createFromFormat('Y-m-d', $date, $tz);
+        $isoDay = $day->dayOfWeekIso;
+
+        return User::query()
+            ->whereKey($masterId)
+            ->masters()
+            ->whereHas('weekends', fn ($q) => $q->where('day', $isoDay))
+            ->exists();
+
+    }
+
+    private function assertMasterNotOff(int $masterId, string $date, string $tz, string $errorKey = 'masterId'): void
+    {
+        if ($this->isMasterOffOnDate($masterId, $date, $tz)) {
+            $this->throwValidation([
+                $errorKey => __('validation.booking.master_day_off'),
+            ], 'validation.failed');
+        }
+    }
+
     protected function throwValidation(array $errors, string $messageKey, array $replace = [], int $status = 422): never
     {
-
         $normalized = array_map(function ($v) {
             return is_array($v) ? array_values($v) : [(string)$v];
         }, $errors);

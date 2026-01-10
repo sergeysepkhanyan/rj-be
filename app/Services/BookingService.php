@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Filters\BookingFilter;
 use App\Models\Booking;
+use App\Models\User;
 use App\Models\Weekday;
 use App\Repositories\Interfaces\BookingRepositoryInterface;
 use App\Repositories\Interfaces\SubServiceItemRepositoryInterface;
@@ -17,8 +18,6 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use App\Services\ApiResponse;
-
 
 class BookingService
 {
@@ -71,8 +70,16 @@ class BookingService
             );
         }
 
+        $masterId = (int)($data['master_id'] ?? 0);
+        if ($masterId && $this->isMasterOffOnDate($masterId, $date, $tz)) {
+            $this->throwValidation(
+                ['masterId' => __('validation.booking.master_day_off')],
+                'validation.failed'
+            );
+        }
+
         $hasOverlap = $this->bookingRepository->hasOverlap(
-            masterId:  (int) $data['master_id'],
+            masterId:  $masterId,
             date:      $date,
             startTime: $start->format('H:i'),
             endTime:   $end->format('H:i'),
@@ -87,7 +94,7 @@ class BookingService
 
         $breakData = [
             'user_id' => null,
-            'master_id' => (int) $data['master_id'],
+            'master_id' => $masterId,
             'type' => 'break',
             'status' => $data['status'] ?? 'active',
             'date' => $date,
@@ -134,9 +141,11 @@ class BookingService
         $end   = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$endTime}", $tz);
 
         if ($end->lte($start)) {
-            throw new HttpResponseException(
-                ApiResponse::error(['endTime' => 'End time must be after start time.'], 'Validation failed', 422)
-            );
+            $this->throwValidation(['endTime' => __('validation.break.end_after_start')], 'validation.failed');
+        }
+
+        if ($this->isMasterOffOnDate((int)$booking->master_id, $date, $tz)) {
+            $this->throwValidation(['masterId' => __('validation.booking.master_day_off')], 'validation.failed');
         }
 
         $hasOverlap = $this->bookingRepository->hasOverlap(
@@ -148,9 +157,7 @@ class BookingService
         );
 
         if ($hasOverlap) {
-            throw new HttpResponseException(
-                ApiResponse::error([], 'Master is not available in selected time range.', 422)
-            );
+            $this->throwValidation(['masterId' => __('validation.break.master_unavailable')], 'validation.failed');
         }
 
         $updateData = [
@@ -191,10 +198,13 @@ class BookingService
             );
         }
 
+        if ($this->isMasterOffOnDate($masterId, $date, $tz)) {
+            return [];
+        }
+
         $durationMinutes = $this->resolveDurationMinutes($subserviceId, $subserviceItemId);
 
         $hours = $this->getWorkingHours($date, $tz);
-
         if ($hours['is_closed']) {
             return [];
         }
@@ -389,11 +399,6 @@ class BookingService
         $date = trim($data['date'] ?? ($booking->date?->format('Y-m-d') ?? ''));
 
         $rawServices = $data['services'] ?? [];
-//        if (!is_array($rawServices) || count($rawServices) === 0) {
-//            throw new HttpResponseException(
-//                ApiResponse::error(['services' => 'At least one service is required.'], 'Validation failed', 422)
-//            );
-//        }
 
         $rawServices = $this->masterAssignmentService->assignAndValidateMasters(
             date: $date,
@@ -477,7 +482,6 @@ class BookingService
                     'validation.failed'
                 );
             }
-
 
             if (!$startTime || !$endTime) {
                 $this->throwValidation(
@@ -623,7 +627,7 @@ class BookingService
     }
 
     /**
-     * Accepts segments or raw services; we now pass segments from create/update.
+     * Accepts segments; we pass segments from create/update.
      */
     protected function normalizeServicesForPricing(array $services): array
     {
@@ -713,13 +717,14 @@ class BookingService
             'start' => substr((string) $row->start_time, 0, 5),
             'end'   => substr((string) $row->end_time, 0, 5),
             'break_start' => $row->break_start_time ? substr((string) $row->break_start_time, 0, 5) : null,
-            'break_end'   => $row->break_end_time   ? substr((string) $row->break_end_time   , 0, 5) : null,
+            'break_end'   => $row->break_end_time   ? substr((string) $row->break_end_time  , 0, 5) : null,
         ];
     }
 
     protected function parseTimeToCarbon(string $date, string $time, string $tz): Carbon
     {
         $time = trim($time);
+
         if (preg_match('/^\d{2}:\d{2}$/', $time)) {
             return Carbon::createFromFormat('Y-m-d H:i', "{$date} {$time}", $tz);
         }
@@ -787,6 +792,14 @@ class BookingService
                 );
             }
 
+            $masterId = (int)($seg['master_id'] ?? 0);
+            if ($masterId && $this->isMasterOffOnDate($masterId, $date, $tz)) {
+                $this->throwValidation(
+                    ['masterId' => __('validation.booking.master_day_off')],
+                    'validation.failed'
+                );
+            }
+
             $start = $this->parseTimeToCarbon($date, $seg['start_time'], $tz);
             $end   = $this->parseTimeToCarbon($date, $seg['end_time'], $tz);
 
@@ -834,6 +847,18 @@ class BookingService
         }
     }
 
+    private function isMasterOffOnDate(int $masterId, string $date, string $tz): bool
+    {
+        $day = CarbonImmutable::createFromFormat('Y-m-d', $date, $tz);
+        $isoDay = $day->dayOfWeekIso;
+
+        return User::query()
+            ->whereKey($masterId)
+            ->masters()
+            ->whereHas('weekends', fn ($q) => $q->where('day', $isoDay))
+            ->exists();
+    }
+
     protected function throwValidation(array $errors, string $messageKey, array $replace = [], int $status = 422): void
     {
         throw new HttpResponseException(
@@ -847,5 +872,4 @@ class BookingService
             ApiResponse::error($errors ?: null, __($messageKey, $replace), $status)
         );
     }
-
 }
