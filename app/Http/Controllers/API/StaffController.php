@@ -10,17 +10,13 @@ use Illuminate\Http\JsonResponse;
 
 class StaffController extends Controller
 {
-    protected UserService $userService;
-
-    public function __construct(UserService $userService)
-    {
-        $this->userService = $userService;
-    }
+    public function __construct(protected UserService $userService) {}
 
     public function getMasters(): JsonResponse
     {
         return ApiResponse::success([
             'masters' => StaffResource::collection($this->userService->getMasters()),
-        ], 'Staff members added successfully');
+        ], __('success.staff.masters_listed'));
     }
 }
+

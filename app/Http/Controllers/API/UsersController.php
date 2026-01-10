@@ -10,55 +10,62 @@ use App\Models\User;
 use App\Services\ApiResponse;
 use App\Services\UserService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 class UsersController extends Controller
 {
-    protected UserService $userService;
-
-    public function __construct(UserService $userService)
-    {
-        $this->userService = $userService;
-    }
+    public function __construct(protected UserService $userService) {}
 
     public function updateDetails(UpdateUserDetailsRequest $request): JsonResponse
     {
-        $user = auth()->user();
+        $authUser = auth()->user();
 
-        if (!$user) {
-            return ApiResponse::error(['message' => 'Unauthorized'], 'Unauthorized');
+        if (! $authUser) {
+            return ApiResponse::error(null, __('auth.unauthenticated'), 401);
         }
-        $user = $this->userService->getUserById($user->id);
+
+        $user = $this->userService->getUserById($authUser->id);
+
         $data = $request->all();
         $data = array_intersect_key($data, array_flip((new User)->getFillable()));
+
         $user = $this->userService->updateUser($user, $data);
 
         return ApiResponse::success([
             'user' => new UserResource($user),
-        ], 'User updated successfully.');
+        ], __('success.user.updated'));
     }
 
     public function changePassword(ChangeUserPasswordRequest $request): JsonResponse
     {
+        $authUser = auth()->user();
+
+        if (! $authUser) {
+            return ApiResponse::error(null, __('auth.unauthenticated'), 401);
+        }
+
+        $data = $request->only(['password', 'old_password']);
+
         try {
-            $user = auth()->user();
+            $result = $this->userService->changePassword($authUser->id, $data);
 
-            if (!$user) {
-                return ApiResponse::error(['message' => 'Unauthorized'], 'Unauthorized');
-            }
+            if (!($result['success'] ?? false)) {
+                $msg = $result['message_key']
+                    ? __($result['message_key'])
+                    : ($result['message'] ?? __('messages.something_went_wrong'));
 
-            $data = $request->only('password', 'old_password');
-            $result = $this->userService->changePassword($user->id, $data);
-
-            if (!$result['success']) {
-                return ApiResponse::error(['message' => $result['message']], '', 422);
+                return ApiResponse::error(
+                    ['password' => [$msg]],
+                    __('validation.failed'),
+                    422
+                );
             }
 
             return ApiResponse::success([
-                'user' => new UserResource($user),
-            ], $result['message']);
-        } catch (\Exception $e) {
-            return ApiResponse::error();
+                'user' => new UserResource($this->userService->getUserById($authUser->id)),
+            ], __('success.user.password_changed'));
+
+        } catch (\Throwable $e) {
+            return ApiResponse::error(null, __('messages.something_went_wrong'), 500);
         }
     }
 }

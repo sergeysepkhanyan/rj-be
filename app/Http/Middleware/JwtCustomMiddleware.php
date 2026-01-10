@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Middleware;
 
 use Closure;
@@ -14,15 +15,31 @@ class JwtCustomMiddleware
     {
         try {
             JWTAuth::parseToken()->authenticate();
+
         } catch (TokenExpiredException $e) {
-            return ApiResponse::error(['general' => ['Token expired']], 'Unauthorized', 401);
+            return ApiResponse::error(
+                ['auth' => [__('auth.token_expired')]],
+                __('auth.unauthorized'),
+                401
+            );
+
         } catch (TokenInvalidException $e) {
-            return ApiResponse::error(['general' => ['Token invalid']], 'Unauthorized', 401);
+            return ApiResponse::error(
+                ['auth' => [__('auth.token_invalid')]],
+                __('auth.unauthorized'),
+                401
+            );
+
         } catch (JWTException $e) {
-            return ApiResponse::error(['general' => ['Token not provided']], 'Unauthorized', 401);
+            return ApiResponse::error(
+                ['auth' => [__('auth.token_missing')]],
+                __('auth.unauthorized'),
+                401
+            );
         }
 
         return $next($request);
     }
 }
+
 

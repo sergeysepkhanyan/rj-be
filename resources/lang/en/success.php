@@ -40,6 +40,7 @@ return [
         'updated' => 'Staff member updated successfully.',
         'deleted' => 'Staff member deleted successfully.',
         'restored' => 'User activated successfully.',
+        'masters_listed' => 'Masters retrieved successfully.',
     ],
     'subservice_item' => [
         'deleted' => 'Subservice item deleted successfully.',
@@ -89,6 +90,18 @@ return [
     'files' => [
         'image_uploaded'  => 'Image uploaded successfully.',
         'images_uploaded' => 'Images uploaded successfully.',
+    ],
+    'posts' => [
+        'listed'   => 'Posts retrieved successfully.',
+        'selected' => 'Post retrieved successfully.',
+    ],
+    'products' => [
+        'listed' => 'Products retrieved successfully.',
+    ],
+
+    'user' => [
+        'updated' => 'Profile updated successfully.',
+        'password_changed' => 'Password updated successfully.',
     ],
 
 ];
