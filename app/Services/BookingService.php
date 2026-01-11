@@ -96,7 +96,7 @@ class BookingService
             'user_id' => null,
             'master_id' => $masterId,
             'type' => 'break',
-            'status' => $data['status'] ?? 'active',
+            'status' =>  'confirmed',
             'date' => $date,
             'timezone' => $tz,
             'start_time' => $start->format('H:i'),
@@ -106,14 +106,7 @@ class BookingService
             'customer_name' => 'Break',
             'customer_email' => null,
             'customer_phone' => null,
-            'notes' => $data['notes'] ?? null,
-            'price' => null,
-            'discount_type' => null,
-            'discount_value' => null,
-            'discount_label' => null,
-            'final_price' => null,
-            'payment_mode' => null,
-            'payment_status' => null,
+            'notes' => $data['notes'] ?? null
         ];
 
         return $this->bookingRepository->create($breakData);
