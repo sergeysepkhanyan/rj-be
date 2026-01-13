@@ -6,11 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\SignupRequest;
 use App\Http\Resources\UserResource;
+use App\Mail\VerifyEmailMail;
 use App\Models\User;
 use App\Models\UserRole;
 use App\Services\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 
 class AuthController extends Controller
 {
@@ -30,7 +32,7 @@ class AuthController extends Controller
             'password' => Hash::make($data['password']),
         ]);
 
-        $user->sendEmailVerificationNotification();
+        Mail::to($user->email)->send(new VerifyEmailMail($user));
 
         return ApiResponse::success([
             'success' => true,

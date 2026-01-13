@@ -18,6 +18,7 @@ use Illuminate\Contracts\Auth\CanResetPassword as CanResetPasswordContract;
 /**
  * @property mixed $role
  * @property mixed $id
+ * @property mixed $name
  * @method static Builder|User masters()
  * @method static Builder|User active()
  */
