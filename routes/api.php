@@ -128,6 +128,7 @@ Route::middleware(['set.locale'])->group(function () {
         Route::get('/admin/categories', [AdminCategoriesController::class, 'index']);
         Route::post('/admin/categories', [AdminCategoriesController::class, 'store']);
         Route::put('/admin/categories/{category}', [AdminCategoriesController::class, 'update']);
+        Route::delete('/admin/categories/{category}', [AdminCategoriesController::class, 'destroy']);
 
         Route::get('/admin/services', [AdminServicesController::class, 'index']);
         Route::post('/admin/services', [AdminServicesController::class, 'store']);
