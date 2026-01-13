@@ -12,5 +12,13 @@ return [
     'token_invalid'       => 'رمز التحقق غير صالح.',
     'token_missing'       => 'رمز التحقق مفقود.',
     'unauthenticated'     => 'يجب تسجيل الدخول للوصول إلى هذه الصفحة.',
+    'auth' => [
+        'unauthorized' => 'يجب تسجيل الدخول لتنفيذ هذا الإجراء.',
+    ],
 
+    'booking' => [
+        'only_bookings_can_be_cancelled' => 'يمكن إلغاء الحجوزات فقط.',
+        'completed_cannot_be_cancelled' => 'لا يمكن إلغاء الحجز بعد اكتماله.',
+        'cancel_only_own' => 'يمكنك إلغاء حجوزاتك الخاصة فقط.',
+    ],
 ];

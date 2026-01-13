@@ -5,7 +5,6 @@
     $discountType = $b['discountType'] ?? 'none';
     $discountValue = $b['discountValue'] ?? null;
     $discountLabel = $b['discountLabel'] ?? null;
-
     $hasDiscount = $discountType && $discountType !== 'none' && $discountValue !== null;
 
     $baseTotal = $vat['baseTotal'] ?? null;
@@ -14,6 +13,13 @@
     $finalTotal = $b['totalPrice'] ?? null;
 
     $fmt = fn($n) => is_numeric($n) ? number_format((float)$n, 2, '.', '') : $n;
+
+    $cancelledByName = null;
+    if (isset($b['cancelledBy']) && is_array($b['cancelledBy'])) {
+        $cancelledByName = $b['cancelledBy']['name'] ?? null;
+    }
+
+    $cancelReason = $b['cancelReason'] ?? null;
 @endphp
 
     <!doctype html>
@@ -21,7 +27,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Booking confirmed</title>
+    <title>Booking cancelled</title>
 </head>
 <body style="margin:0; padding:0; background:#f6f7fb; font-family: Arial, sans-serif; color:#111;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f6f7fb; padding:24px 12px;">
@@ -29,9 +35,9 @@
         <td align="center">
             <table role="presentation" width="640" cellpadding="0" cellspacing="0" style="background:#fff; border-radius:14px; overflow:hidden; box-shadow:0 8px 30px rgba(0,0,0,0.06);">
                 <tr>
-                    <td style="padding:22px 24px; background:#111; color:#fff;">
-                        <div style="font-size:18px; font-weight:700;">✅ Booking confirmed</div>
-                        <div style="font-size:13px; opacity:0.9; margin-top:6px;">
+                    <td style="padding:22px 24px; background:#8b0000; color:#fff;">
+                        <div style="font-size:18px; font-weight:700;">❌ Booking cancelled</div>
+                        <div style="font-size:13px; opacity:0.92; margin-top:6px;">
                             Booking #{{ $b['id'] ?? '' }} • {{ $b['date'] ?? '' }} • {{ $b['startTime'] ?? '' }}–{{ $b['endTime'] ?? '' }}
                         </div>
                     </td>
@@ -42,18 +48,23 @@
                         <div style="font-size:16px; font-weight:700; margin-bottom:8px;">
                             Hi {{ $b['customerName'] ?? 'there' }} 👋
                         </div>
+
                         <div style="font-size:14px; line-height:1.6; color:#333;">
-                            Your booking is confirmed. Below is a summary of your services and the final price.
-                            @if(!empty($b['notes']))
-                                <div style="margin-top:10px; padding:10px 12px; background:#f6f7fb; border-radius:10px;">
-                                    <strong>Notes:</strong> {{ $b['notes'] }}
-                                </div>
+                            Your booking has been cancelled.
+                            @if($cancelledByName)
+                                <span style="color:#555;">Cancelled by: <strong>{{ $cancelledByName }}</strong>.</span>
                             @endif
                         </div>
 
+                        @if($cancelReason)
+                            <div style="margin-top:12px; padding:10px 12px; background:#f6f7fb; border-radius:10px; font-size:13px; color:#333;">
+                                <strong>Reason:</strong> {{ $cancelReason }}
+                            </div>
+                        @endif
+
                         <div style="height:16px;"></div>
 
-                        <div style="font-size:15px; font-weight:700; margin-bottom:10px;">Services</div>
+                        <div style="font-size:15px; font-weight:700; margin-bottom:10px;">Cancelled services summary</div>
 
                         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:separate; border-spacing:0 10px;">
                             @foreach($services as $s)
@@ -76,9 +87,6 @@
                                                 <div style="font-size:12px; color:#555; margin-top:4px;">
                                                     {{ $time }}
                                                     @if($duration) • {{ $duration }} min @endif
-                                                    @if(isset($s['master']) && is_array($s['master']) && !empty($s['master']['name']))
-                                                    • with {{ $s['master']['name'] }}
-                                                    @endif
                                                 </div>
 
                                                 <div style="font-size:12px; color:#555; margin-top:8px;">
@@ -100,8 +108,6 @@
                                 </tr>
                             @endforeach
                         </table>
-
-                        <div style="height:10px;"></div>
 
                         <div style="border-top:1px solid #eee; margin:18px 0;"></div>
 
@@ -127,11 +133,6 @@
                                     <td style="font-size:13px; color:#555; padding-top:10px;">
                                         Discount
                                         @if($discountLabel) ({{ $discountLabel }}) @endif
-                                        @if($discountType === 'percent')
-                                            — {{ $discountValue }}%
-                                        @elseif($discountType === 'fixed')
-                                            — {{ $fmt($discountValue) }}
-                                        @endif
                                     </td>
                                     <td align="right" style="font-size:13px; color:#111; font-weight:700; padding-top:10px;">
                                         applied
@@ -150,15 +151,16 @@
                         <div style="height:18px;"></div>
 
                         <div style="font-size:12px; color:#666; line-height:1.6;">
-                            If you need to change or cancel your booking, please contact us and mention booking #{{ $b['id'] ?? '' }}.
+                            If this cancellation was a mistake, please contact us and we’ll help you rebook.
+                            Mention booking #{{ $b['id'] ?? '' }}.
                         </div>
                     </td>
                 </tr>
 
                 <tr>
                     <td style="padding:18px 24px; background:#f6f7fb; font-size:12px; color:#666;">
-                        Thank you! 💛<br>
-                        <span style="color:#999;">This is an automated confirmation email.</span>
+                        Thank you 💛<br>
+                        <span style="color:#999;">This is an automated email.</span>
                     </td>
                 </tr>
             </table>

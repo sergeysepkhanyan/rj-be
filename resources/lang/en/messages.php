@@ -12,4 +12,13 @@ return [
     'token_invalid' => 'Invalid authentication token.',
     'token_missing' => 'Authentication token is missing.',
     'unauthenticated' => 'You must be logged in to access this resource.',
+    'auth' => [
+        'unauthorized' => 'You must be logged in to perform this action.',
+    ],
+
+    'booking' => [
+        'only_bookings_can_be_cancelled' => 'Only bookings can be cancelled.',
+        'completed_cannot_be_cancelled' => 'Completed bookings cannot be cancelled.',
+        'cancel_only_own' => 'You can only cancel your own bookings.',
+    ],
 ];

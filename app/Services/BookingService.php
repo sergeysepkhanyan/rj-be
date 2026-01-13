@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Filters\BookingFilter;
+use App\Mail\BookingCancelledMail;
 use App\Mail\BookingConfirmedMail;
 use App\Models\Booking;
 use App\Models\User;
@@ -750,8 +751,7 @@ class BookingService
             $this->throwValidation([], 'messages.booking.completed_cannot_be_cancelled');
         }
 
-        $isAdmin = $user && method_exists($user, 'hasRole') && $user->hasRole('superadmin');
-
+        $isAdmin = $user?->isAdmin() ?? false;
         if (! $isAdmin) {
             if (! $user) {
                 $this->throwError('messages.auth.unauthorized', 401);
@@ -874,6 +874,15 @@ class BookingService
 
         if ($email) {
             Mail::to($email)->send(new BookingConfirmedMail($booking));
+        }
+    }
+
+    public function sendBookingCancellation(Booking $booking): void
+    {
+        $email = $booking->customer_email;
+
+        if ($email) {
+            Mail::to($email)->send(new BookingCancelledMail($booking));
         }
     }
 }
