@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Filters\BookingFilter;
+use App\Mail\BookingConfirmedMail;
 use App\Models\Booking;
 use App\Models\User;
 use App\Models\Weekday;
@@ -18,6 +19,7 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 
 class BookingService
 {
@@ -864,5 +866,14 @@ class BookingService
         throw new HttpResponseException(
             ApiResponse::error($errors ?: null, __($messageKey, $replace), $status)
         );
+    }
+
+    public function sendBookingConfirmation(Booking $booking): void
+    {
+        $email = $booking->customer_email;
+
+        if ($email) {
+            Mail::to($email)->send(new BookingConfirmedMail($booking));
+        }
     }
 }

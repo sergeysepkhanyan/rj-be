@@ -60,7 +60,7 @@ class BookingsController extends Controller
     public function store(StoreBookingRequest $request): JsonResponse
     {
         $booking = $this->bookingService->createBooking($request->all());
-
+        $this->bookingService->sendBookingConfirmation($booking);
         return ApiResponse::success([
             'booking' => new BookingResource($booking)
         ], __('success.booking.created'));
