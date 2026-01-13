@@ -22,12 +22,12 @@ class VerifyEmailMail extends Mailable
             ]
         );
 
-        return $this->subject('Verify your email for RJ')
+        return $this->subject('Welcome to RJ – confirm your account')
             ->from(config('mail.from.address'), config('mail.from.name'))
             ->view('emails.verify-email')
             ->text('emails.verify-email-text')
             ->with([
-                'name'      => $this->user->name,
+                'name' => $this->user->name,
                 'verifyUrl' => $backendUrl,
             ]);
     }

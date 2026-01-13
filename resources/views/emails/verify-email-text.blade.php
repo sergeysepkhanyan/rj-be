@@ -1,10 +1,12 @@
 Hi {{ $name ?: 'there' }} 👋
 
-Thanks for registering with RJ. Please confirm your email address to activate your account:
+Thanks for creating an account with RJ.
+
+To finish setting things up, please confirm your email address using the link below:
 
 {{ $verifyUrl }}
 
-This link expires in 60 minutes.
+This link will remain active for 60 minutes.
 
 If you didn’t create an account, you can safely ignore this email.
 
