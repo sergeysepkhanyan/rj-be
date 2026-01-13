@@ -12,7 +12,6 @@ class VerifyEmailMail extends Mailable
 
     public function build(): self
     {
-        // Signed backend verification URL (60 min)
         $backendUrl = URL::temporarySignedRoute(
             'verification.verify',
             now()->addMinutes(60),
@@ -22,13 +21,17 @@ class VerifyEmailMail extends Mailable
             ]
         );
 
-        return $this->subject('Welcome to RJ – confirm your account')
-            ->from(config('mail.from.address'), config('mail.from.name'))
+        $frontendBase = rtrim((string) config('app.frontend_url'), '/');
+
+        $frontendUrl = $frontendBase . '/verify-email?url=' . urlencode($backendUrl);
+
+        return $this->subject('Welcome to RJ – confirm your account')   // softer wording
+        ->from(config('mail.from.address'), config('mail.from.name'))
             ->view('emails.verify-email')
             ->text('emails.verify-email-text')
             ->with([
-                'name' => $this->user->name,
-                'verifyUrl' => $backendUrl,
+                'name'      => $this->user->name,
+                'verifyUrl' => $frontendUrl,
             ]);
     }
 }
