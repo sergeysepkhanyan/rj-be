@@ -24,7 +24,7 @@ class EmailVerificationController
 
         if (! $user->hasVerifiedEmail()) {
             $user->markEmailAsVerified();
-            $user->forceFill(['is_active' => true])->save();
+            $user->forceFill(['status' => 'active'])->save();
             event(new Verified($user));
         }
 
