@@ -152,6 +152,9 @@ Route::middleware(['set.locale'])->group(function () {
 
         Route::post('/admin/product/create', [AdminProductsController::class, 'store']);
         Route::put('/admin/product/update/{product}', [AdminProductsController::class, 'update']);
+    });
+
+    Route::middleware(['jwt.custom', 'verified', 'role:superadmin,admin'])->group(function () {
 
         Route::post('/admin/post/create', [AdminPostsController::class, 'store']);
         Route::put('/admin/post/update/{post}', [AdminPostsController::class, 'update']);
@@ -160,9 +163,7 @@ Route::middleware(['set.locale'])->group(function () {
         Route::get('/referrals', [ReferralsController::class, 'index']);
 
         Route::put('/admin/pages', [AdminPagesController::class, 'update']);
-    });
 
-    Route::middleware(['jwt.custom', 'verified', 'role:superadmin,admin'])->group(function () {
         Route::get('/admin/contact-messages', [AdminContactMessageController::class, 'index']);
         Route::put('/admin/working-hours', [AdminWorkingHoursController::class, 'bulkUpdate']);
         Route::put('/admin/working-hours/{day}', [AdminWorkingHoursController::class, 'updateDay']);
