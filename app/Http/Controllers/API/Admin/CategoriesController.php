@@ -50,4 +50,14 @@ class CategoriesController
             'category' => new AdminCategoryResource($category),
         ], __('success.category.updated'));
     }
+
+    public function destroy(Category $category): JsonResponse
+    {
+        $this->categoryService->deleteCategory($category);
+
+        return ApiResponse::success([
+            'deleted' => true,
+        ], __('success.category.deleted'));
+
+    }
 }

@@ -11,6 +11,7 @@ return [
         'list' => 'Categories retrieved successfully.',
         'created' => 'Category created successfully.',
         'updated' => 'Category updated successfully.',
+        'deleted' => 'Category deleted successfully.',
     ],
     'client' => [
         'list' => 'Clients retrieved successfully.',
