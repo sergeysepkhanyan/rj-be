@@ -38,6 +38,6 @@ VAT total: {{ $fmt($vat['vatTotal'] ?? 0) }}
 
 TOTAL: {{ $fmt($b['totalPrice'] ?? 0) }}
 
-Notes: {{ $b['notes'] ?? '-' }}
+{{--Notes: {{ $b['notes'] ?? '-' }}--}}
 
 If you need help, contact us and mention booking #{{ $b['id'] ?? '' }}.

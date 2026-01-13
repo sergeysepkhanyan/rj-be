@@ -44,11 +44,11 @@
                         </div>
                         <div style="font-size:14px; line-height:1.6; color:#333;">
                             Your booking is confirmed. Below is a summary of your services and the final price.
-                            @if(!empty($b['notes']))
-                                <div style="margin-top:10px; padding:10px 12px; background:#f6f7fb; border-radius:10px;">
-                                    <strong>Notes:</strong> {{ $b['notes'] }}
-                                </div>
-                            @endif
+{{--                            @if(!empty($b['notes']))--}}
+{{--                                <div style="margin-top:10px; padding:10px 12px; background:#f6f7fb; border-radius:10px;">--}}
+{{--                                    <strong>Notes:</strong> {{ $b['notes'] }}--}}
+{{--                                </div>--}}
+{{--                            @endif--}}
                         </div>
 
                         <div style="height:16px;"></div>
