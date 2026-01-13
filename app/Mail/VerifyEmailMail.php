@@ -24,11 +24,12 @@ class VerifyEmailMail extends Mailable
         $frontendUrl = rtrim(config('app.frontend_url'), '/')
             . '/verify-email?url=' . urlencode($backendUrl);
 
-        return $this->from(config('mail.from.address'), config('mail.from.name'))
-            ->subject('Verify your email for RJ')
+        return $this->subject('Verify your email for RJ')
+            ->from(config('mail.from.address'), config('mail.from.name'))
             ->view('emails.verify-email')
+            ->text('emails.verify-email-text')
             ->with([
-                'name'      => $this->user->name,
+                'name' => $this->user->name,
                 'verifyUrl' => $frontendUrl,
             ]);
     }
