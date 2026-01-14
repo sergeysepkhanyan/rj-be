@@ -130,7 +130,6 @@ Route::middleware(['set.locale'])->group(function () {
         Route::put('/admin/categories/{category}', [AdminCategoriesController::class, 'update']);
         Route::delete('/admin/categories/{category}', [AdminCategoriesController::class, 'destroy']);
 
-        Route::get('/admin/services', [AdminServicesController::class, 'index']);
         Route::post('/admin/services', [AdminServicesController::class, 'store']);
         Route::put('/admin/services/{service}', [AdminServicesController::class, 'update']);
         Route::delete('/admin/services/{service}', [AdminServicesController::class, 'destroy']);
@@ -153,6 +152,8 @@ Route::middleware(['set.locale'])->group(function () {
     });
 
     Route::middleware(['jwt.custom', 'verified', 'role:superadmin,admin'])->group(function () {
+
+        Route::get('/admin/services', [AdminServicesController::class, 'index']);
         Route::post('/admin/product/create', [AdminProductsController::class, 'store']);
         Route::put('/admin/product/update/{product}', [AdminProductsController::class, 'update']);
 
