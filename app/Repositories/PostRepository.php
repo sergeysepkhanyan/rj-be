@@ -41,7 +41,7 @@ class PostRepository implements PostRepositoryInterface
 
     public function findByUrlSlug(string $slug)
     {
-        return Post::where('slug', $slug)->firstOrFail();
+        return Post::where('slug', $slug)->first();
     }
 }
 
