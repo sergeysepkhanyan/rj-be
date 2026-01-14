@@ -125,7 +125,7 @@ Route::middleware(['set.locale'])->group(function () {
 
     Route::middleware(['jwt.custom', 'verified','role:superadmin'])->group(function () {
 
-        Route::get('/admin/categories', [AdminCategoriesController::class, 'index']);
+
         Route::post('/admin/categories', [AdminCategoriesController::class, 'store']);
         Route::put('/admin/categories/{category}', [AdminCategoriesController::class, 'update']);
         Route::delete('/admin/categories/{category}', [AdminCategoriesController::class, 'destroy']);
@@ -142,7 +142,6 @@ Route::middleware(['set.locale'])->group(function () {
 
         Route::delete('/admin/sub-service-items/{subServiceItem}', [SubServiceItemsController::class, 'destroy']);
 
-        Route::get('/admin/staff', [AdminStaffController::class, 'index']);
         Route::post('/admin/staff/create', [AdminStaffController::class, 'store']);
         Route::put('/admin/staff/update/{user}', [AdminStaffController::class, 'update']);
         Route::delete('/admin/staff/delete/{user}', [AdminStaffController::class, 'destroy']);;
@@ -152,7 +151,8 @@ Route::middleware(['set.locale'])->group(function () {
     });
 
     Route::middleware(['jwt.custom', 'verified', 'role:superadmin,admin'])->group(function () {
-
+        Route::get('/admin/categories', [AdminCategoriesController::class, 'index']);
+        Route::get('/admin/staff', [AdminStaffController::class, 'index']);
         Route::get('/admin/services', [AdminServicesController::class, 'index']);
         Route::post('/admin/product/create', [AdminProductsController::class, 'store']);
         Route::put('/admin/product/update/{product}', [AdminProductsController::class, 'update']);
