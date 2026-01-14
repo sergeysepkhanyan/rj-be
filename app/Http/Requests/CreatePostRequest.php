@@ -26,7 +26,7 @@ class CreatePostRequest extends BaseFormRequest
                 'string',
                 'max:255',
                 'regex:/^[a-z0-9-]+$/',
-                Rule::unique('posts', 'slug')->whereNull('deleted_at'),
+                Rule::unique('posts', 'slug'),
             ],
             'previewText'     => ['required', 'string'],
             'content'         => ['required', 'string'],
