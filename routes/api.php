@@ -150,12 +150,11 @@ Route::middleware(['set.locale'])->group(function () {
         Route::post('/admin/staff/create-many', [AdminStaffController::class, 'createMany']);
         Route::post('/admin/staff/update-many', [AdminStaffController::class, 'updateMany']);
         Route::patch('/admin/staff/{id}/restore', [AdminStaffController::class, 'restore']);
-
-        Route::post('/admin/product/create', [AdminProductsController::class, 'store']);
-        Route::put('/admin/product/update/{product}', [AdminProductsController::class, 'update']);
     });
 
     Route::middleware(['jwt.custom', 'verified', 'role:superadmin,admin'])->group(function () {
+        Route::post('/admin/product/create', [AdminProductsController::class, 'store']);
+        Route::put('/admin/product/update/{product}', [AdminProductsController::class, 'update']);
 
         Route::post('/admin/post/create', [AdminPostsController::class, 'store']);
         Route::put('/admin/post/update/{post}', [AdminPostsController::class, 'update']);
