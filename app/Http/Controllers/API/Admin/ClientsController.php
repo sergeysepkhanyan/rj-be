@@ -55,7 +55,7 @@ class ClientsController extends Controller
             return ApiResponse::error($validator->errors(), __('validation.failed'), 422);
         }
 
-        $client = $this->userService->updateUser($user->id, $data);
+        $client = $this->userService->updateUser($user, $data);
 
         return ApiResponse::success([
             'user' => new ClientResource($client),
