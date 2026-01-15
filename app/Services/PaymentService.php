@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Integrations\Stripe\StripeClient;
 use App\Integrations\Tabby\TabbyClient;
 use App\Models\Booking;
 use App\Models\Order;
@@ -14,6 +15,7 @@ class PaymentService
     public function __construct(
         protected PaymentRepositoryInterface $paymentRepository,
         protected TabbyClient $tabbyClient,
+        protected StripeClient $stripeClient,
     ) {}
 
     /**
@@ -72,6 +74,52 @@ class PaymentService
             'session_id' => $sessionId,
             'checkout_url' => $checkoutUrl,
             'status' => strtolower((string) data_get($res, 'status', 'created')),
+            'raw' => $res,
+        ]);
+    }
+
+    /**
+     * Creates Payment row + Stripe PaymentIntent, returns updated Payment.
+     */
+    public function startStripePaymentIntent(Order $order, Booking $booking): Payment
+    {
+        $idempotencyKey = (string) Str::uuid();
+        $payment = $this->paymentRepository->create([
+            'order_id' => $order->id,
+            'provider' => 'stripe',
+            'flow' => 'token_charge',
+            'amount' => $order->amount,
+            'currency' => $order->currency,
+            'status' => 'created',
+            'idempotency_key' => $idempotencyKey,
+        ]);
+
+        $amountMinor = (int) round(((float) $order->amount) * 100);
+        $payload = [
+            'amount' => $amountMinor,
+            'currency' => strtolower($order->currency ?? 'AED'),
+            'description' => "Booking #{$booking->id}",
+            'payment_method_types[]' => 'card',
+            'receipt_email' => $booking->customer_email,
+            'metadata[order_id]' => (string) $order->id,
+            'metadata[booking_id]' => (string) $booking->id,
+            'metadata[reference]' => (string) ($order->reference ?? $order->id),
+        ];
+
+        $res = $this->stripeClient->createPaymentIntent($payload, $idempotencyKey);
+        $paymentIntentId = data_get($res, 'id');
+        $status = (string) data_get($res, 'status', 'requires_payment_method');
+
+        $mappedStatus = match ($status) {
+            'succeeded' => 'paid',
+            'canceled' => 'canceled',
+            'processing' => 'pending',
+            default => 'pending',
+        };
+
+        return $this->paymentRepository->update($payment, [
+            'external_id' => $paymentIntentId,
+            'status' => $mappedStatus,
             'raw' => $res,
         ]);
     }

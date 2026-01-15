@@ -30,6 +30,10 @@ class OrderResource extends JsonResource
             'meta' => $this->meta,
             'createdAt' => $this->created_at,
             'latestPayment' => $this->whenLoaded('latestPayment', function () {
+                $clientSecret = null;
+                if ($this->latestPayment->provider === 'stripe') {
+                    $clientSecret = data_get($this->latestPayment->raw, 'client_secret');
+                }
                 return [
                     'id'            => $this->latestPayment->id,
                     'provider'      => $this->latestPayment->provider,
@@ -37,6 +41,7 @@ class OrderResource extends JsonResource
                     'status'        => $this->latestPayment->status,
                     'externalId'   => $this->latestPayment->external_id,
                     'checkoutUrl'  => $this->latestPayment->checkout_url,
+                    'clientSecret' => $clientSecret,
                     'createdAt'    => $this->latestPayment->created_at,
                 ];
             }),

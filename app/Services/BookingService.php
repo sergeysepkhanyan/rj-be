@@ -400,7 +400,12 @@ class BookingService
                 $this->bookingRepository->update($booking, ['status' => 'confirmed']);
                 return $booking->fresh()->load(['services.bookable', 'order.latestPayment']);
             }
-            $this->paymentService->startTabbyCheckout($order, $booking);
+            $provider = $data['payment_provider'] ?? $data['paymentProvider'] ?? 'tabby';
+            if ($provider === 'stripe') {
+                $this->paymentService->startStripePaymentIntent($order, $booking);
+            } else {
+                $this->paymentService->startTabbyCheckout($order, $booking);
+            }
             return $booking->load(['services.bookable', 'services.master', 'master', 'order.latestPayment']);
         });
     }

@@ -20,6 +20,7 @@ class StoreBookingRequest extends BaseFormRequest
         'customerPhone' => 'customer_phone',
         'customerEmail' => 'customer_email',
         'paymentMode' => 'payment_mode',
+        'paymentProvider' => 'payment_provider',
         'guestSessionId' => 'guest_session_id',
     ];
 
@@ -36,6 +37,7 @@ class StoreBookingRequest extends BaseFormRequest
             'customerEmail' => ['required', 'email'],
 
             'paymentMode' => ['required', 'string', Rule::in(['pay_now', 'pay_later'])],
+            'paymentProvider' => ['sometimes', 'string', Rule::in(['tabby', 'stripe'])],
 
             'services' => ['required', 'array', 'min:1'],
 

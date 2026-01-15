@@ -9,6 +9,6 @@ enum PaymentStatus: string
     case Authorized = 'authorized';
     case Paid = 'paid';
     case Failed = 'failed';
-    case Canceled = 'canceled';
+    case Cancelled = 'cancelled';
     case Expired = 'expired';
 }
