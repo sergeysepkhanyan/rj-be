@@ -46,4 +46,11 @@ class ContactMessageController extends Controller
             'item' => new ContactMessageResource($message),
         ]);
     }
+
+    public function unreadCount(): JsonResponse
+    {
+        return ApiResponse::success([
+            'count' => $this->service->countUnread(),
+        ]);
+    }
 }

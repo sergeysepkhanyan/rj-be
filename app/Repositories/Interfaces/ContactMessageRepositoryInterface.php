@@ -10,6 +10,7 @@ interface ContactMessageRepositoryInterface
 
     public function markEmailed(ContactMessage $message): ContactMessage;
     public function markRead(ContactMessage $message): ContactMessage;
+    public function countUnread(): int;
 
     public function paginate(array $filters, int $perPage = 15): LengthAwarePaginator;
 }

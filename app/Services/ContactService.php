@@ -40,5 +40,10 @@ class ContactService
     {
         return $this->repo->markRead($message);
     }
+
+    public function countUnread(): int
+    {
+        return $this->repo->countUnread();
+    }
 }
 

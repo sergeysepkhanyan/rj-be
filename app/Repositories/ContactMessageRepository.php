@@ -29,6 +29,13 @@ class ContactMessageRepository implements ContactMessageRepositoryInterface
         return $message->refresh();
     }
 
+    public function countUnread(): int
+    {
+        return ContactMessage::query()
+            ->whereNull('read_at')
+            ->count();
+    }
+
     public function paginate(array $filters, int $perPage = 15): \Illuminate\Contracts\Pagination\LengthAwarePaginator
     {
         $q = ContactMessage::query()->latest('id');
