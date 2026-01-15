@@ -42,30 +42,57 @@ class TabbyWebhookController extends Controller
             return response()->json(['ok' => true]);
         }
 
-        $this->paymentRepo->update($payment, [
-            'status' => strtolower($status),
-            'raw' => $remote,
-        ]);
-
+        $paymentUpdate = ['raw' => $remote];
         $order = $payment->order()->with('orderable')->first();
 
-        if ($status === 'CLOSED') {
-            $this->orderService->markPaid($order, ['tabby_payment_id' => $tabbyPaymentId]);
+        switch ($status) {
+            case 'AUTHORIZED':
+                $paymentUpdate['status'] = 'authorized';
+                $paymentUpdate['authorized_at'] = now();
+                break;
 
-            if ($order->orderable && $order->type === 'booking') {
-                $booking = $order->orderable;
-                $this->bookingRepo->update($booking, ['status' => 'confirmed']);
-            }
+            case 'CLOSED':
+                $paymentUpdate['status'] = 'paid';
+                $paymentUpdate['paid_at'] = now();
+                if ($order) {
+                    $this->orderService->markPaid($order, ['tabby_payment_id' => $tabbyPaymentId]);
+                    if ($order->orderable && $order->type === 'booking') {
+                        $booking = $order->orderable;
+                        $this->bookingRepo->update($booking, ['status' => 'confirmed']);
+                    }
+                }
+                break;
+
+            case 'REJECTED':
+                $paymentUpdate['status'] = 'failed';
+                $paymentUpdate['failed_at'] = now();
+                if ($order) {
+                    $this->orderService->cancel($order, ['reason' => $status]);
+                    if ($order->orderable && $order->type === 'booking') {
+                        $booking = $order->orderable;
+                        $this->bookingRepo->update($booking, ['status' => 'cancelled']);
+                    }
+                }
+                break;
+
+            case 'EXPIRED':
+                $paymentUpdate['status'] = 'expired';
+                $paymentUpdate['expired_at'] = now();
+                if ($order) {
+                    $this->orderService->cancel($order, ['reason' => $status]);
+                    if ($order->orderable && $order->type === 'booking') {
+                        $booking = $order->orderable;
+                        $this->bookingRepo->update($booking, ['status' => 'cancelled']);
+                    }
+                }
+                break;
+
+            default:
+                $paymentUpdate['status'] = 'pending';
+                break;
         }
 
-        if (in_array($status, ['REJECTED', 'EXPIRED'], true)) {
-            $this->orderService->cancel($order, ['reason' => $status]);
-
-            if ($order->orderable && $order->type === 'booking') {
-                $booking = $order->orderable;
-                $this->bookingRepo->update($booking, ['status' => 'cancelled']);
-            }
-        }
+        $this->paymentRepo->update($payment, $paymentUpdate);
 
         return response()->json(['ok' => true]);
     }
