@@ -7,6 +7,7 @@ use App\Models\Booking;
 use App\Repositories\Interfaces\BookingRepositoryInterface;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class BookingRepository implements BookingRepositoryInterface
@@ -88,36 +89,102 @@ class BookingRepository implements BookingRepositoryInterface
         string $date,
         string $startTime,
         string $endTime,
-        ?int $excludeBookingId = null
+        ?int $excludeBookingId = null,
+        ?string $timezone = null
     ): bool {
-        $breakOverlap = Booking::query()
+        $tz = $timezone ?: 'UTC';
+        $reqStart = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$startTime}", $tz);
+        $reqEnd   = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$endTime}", $tz);
+
+        $dateObj = Carbon::createFromFormat('Y-m-d', $date);
+        $dateRange = [
+            $dateObj->copy()->subDay()->toDateString(),
+            $dateObj->toDateString(),
+            $dateObj->copy()->addDay()->toDateString(),
+        ];
+
+        $breaks = Booking::query()
             ->where('master_id', $masterId)
-            ->whereDate('date', $date)
+            ->whereIn('date', $dateRange)
             ->where('status', '!=', 'cancelled')
             ->where('type', 'break')
-            ->where(function ($q) use ($startTime, $endTime) {
-                $q->where('start_time', '<', $endTime)
-                    ->where('end_time',   '>', $startTime);
-            })
-            ->exists();
+            ->get(['date', 'start_time', 'end_time', 'timezone']);
 
-        if ($breakOverlap) {
-            return true;
+        foreach ($breaks as $row) {
+            $rowTz = $row->timezone ?: 'UTC';
+            $rowDate = is_string($row->date) ? $row->date : $row->date->toDateString();
+            $startStr = (string) $row->start_time;
+            $endStr   = (string) $row->end_time;
+            if (strlen($startStr) === 5) $startStr .= ':00';
+            if (strlen($endStr) === 5)   $endStr   .= ':00';
+
+            $start = Carbon::createFromFormat('Y-m-d H:i:s', "{$rowDate} {$startStr}", $rowTz)->setTimezone($tz);
+            $end   = Carbon::createFromFormat('Y-m-d H:i:s', "{$rowDate} {$endStr}", $rowTz)->setTimezone($tz);
+
+            if ($reqStart < $end && $reqEnd > $start) {
+                return true;
+            }
         }
 
-        return DB::table('booking_services as bs')
+        $bookings = Booking::query()
+            ->where('master_id', $masterId)
+            ->whereIn('date', $dateRange)
+            ->where('status', '!=', 'cancelled')
+            ->where('type', 'booking')
+            ->when($excludeBookingId, function ($q) use ($excludeBookingId) {
+                $q->where('id', '!=', $excludeBookingId);
+            })
+            ->get(['date', 'start_time', 'end_time', 'timezone']);
+
+        foreach ($bookings as $row) {
+            $rowTz = $row->timezone ?: 'UTC';
+            $rowDate = is_string($row->date) ? $row->date : $row->date->toDateString();
+            $startStr = (string) $row->start_time;
+            $endStr   = (string) $row->end_time;
+            if (strlen($startStr) === 5) $startStr .= ':00';
+            if (strlen($endStr) === 5)   $endStr   .= ':00';
+
+            $start = Carbon::createFromFormat('Y-m-d H:i:s', "{$rowDate} {$startStr}", $rowTz)->setTimezone($tz);
+            $end   = Carbon::createFromFormat('Y-m-d H:i:s', "{$rowDate} {$endStr}", $rowTz)->setTimezone($tz);
+
+            if ($reqStart < $end && $reqEnd > $start) {
+                return true;
+            }
+        }
+
+        $segments = DB::table('booking_services as bs')
             ->join('bookings as b', 'b.id', '=', 'bs.booking_id')
             ->where('bs.master_id', $masterId)
-            ->whereDate('bs.date', $date)
+            ->whereIn('bs.date', $dateRange)
             ->where('b.status', '!=', 'cancelled')
             ->where('b.type', 'booking')
             ->when($excludeBookingId, function ($q) use ($excludeBookingId) {
                 $q->where('b.id', '!=', $excludeBookingId);
             })
-            ->where(function ($q) use ($startTime, $endTime) {
-                $q->where('bs.start_time', '<', $endTime)
-                    ->where('bs.end_time',   '>', $startTime);
-            })
-            ->exists();
+            ->get([
+                'bs.date',
+                'bs.start_time',
+                'bs.end_time',
+                'bs.timezone',
+                'b.timezone as booking_timezone',
+            ]);
+
+        foreach ($segments as $row) {
+            $rowTz = $row->timezone ?: ($row->booking_timezone ?: 'UTC');
+            $rowDate = is_string($row->date) ? $row->date : (string) $row->date;
+            $startStr = (string) $row->start_time;
+            $endStr   = (string) $row->end_time;
+            if (strlen($startStr) === 5) $startStr .= ':00';
+            if (strlen($endStr) === 5)   $endStr   .= ':00';
+
+            $start = Carbon::createFromFormat('Y-m-d H:i:s', "{$rowDate} {$startStr}", $rowTz)->setTimezone($tz);
+            $end   = Carbon::createFromFormat('Y-m-d H:i:s', "{$rowDate} {$endStr}", $rowTz)->setTimezone($tz);
+
+            if ($reqStart < $end && $reqEnd > $start) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

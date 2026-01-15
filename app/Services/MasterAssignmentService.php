@@ -51,6 +51,7 @@ class MasterAssignmentService
                     tz: $tz,
                     startTime: $startTime,
                     endTime: $endTime,
+                    timezone: $tz,
                     excludeBookingId: $excludeBookingId
                 );
 
@@ -87,6 +88,7 @@ class MasterAssignmentService
                 date: $date,
                 startTime: $startTime,
                 endTime: $endTime,
+                timezone: $tz,
                 excludeBookingId: $excludeBookingId,
                 errorKey: "services.$i.masterId"
             );
@@ -125,7 +127,8 @@ class MasterAssignmentService
                 date: $date,
                 startTime: substr((string) $startTime, 0, 5),
                 endTime: substr((string) $endTime, 0, 5),
-                excludeBookingId: $excludeBookingId
+                excludeBookingId: $excludeBookingId,
+                timezone: $tz
             );
 
             if (! $hasOverlap) {
@@ -143,6 +146,7 @@ class MasterAssignmentService
         string $date,
         string $startTime,
         string $endTime,
+        string $timezone,
         ?int $excludeBookingId,
         string $errorKey = 'masterId'
     ): void {
@@ -151,7 +155,8 @@ class MasterAssignmentService
             date: $date,
             startTime: substr((string) $startTime, 0, 5),
             endTime: substr((string) $endTime, 0, 5),
-            excludeBookingId: $excludeBookingId
+            excludeBookingId: $excludeBookingId,
+            timezone: $timezone
         );
 
         if ($hasOverlap) {

@@ -113,6 +113,8 @@ Route::middleware(['set.locale'])->group(function () {
     });
 
     Route::get('/bookings/available-slots', [BookingsController::class, 'availableSlots']);
+    Route::post('/bookings/selection', [BookingsController::class, 'selectSlot'])
+        ->middleware('jwt.optional');
     Route::get('/categories', [CategoriesController::class, 'index']);
     Route::get('/categories/{id}', [CategoriesController::class, 'show']);
     Route::get('/services', [ServicesController::class, 'index']);

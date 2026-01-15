@@ -80,6 +80,7 @@ return [
     'booking' => [
         'listed'        => 'My bookings retrieved successfully.',
         'slots_loaded'  => 'Available slots loaded successfully.',
+        'selection_added' => 'Service slot added successfully.',
         'created'       => 'Booking created successfully.',
         'updated'       => 'Booking updated successfully.',
         'cancelled'     => 'Booking cancelled successfully.',

@@ -302,6 +302,8 @@ return [
         'no_available_master' => 'No master is available for the selected time.',
         'master_unavailable' => 'This master is not available for the selected time.',
         'master_day_off' => 'Selected master is not available on this day.',
+        'slot_already_selected' => 'This time slot is already selected.',
+        'guest_session_required' => 'Guest session is required for booking selection.',
     ],
 
     'contact' => [

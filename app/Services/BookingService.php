@@ -9,6 +9,7 @@ use App\Models\Booking;
 use App\Models\User;
 use App\Models\Weekday;
 use App\Repositories\Interfaces\BookingRepositoryInterface;
+use App\Repositories\Interfaces\BookingSelectionRepositoryInterface;
 use App\Repositories\Interfaces\SubServiceItemRepositoryInterface;
 use App\Repositories\Interfaces\SubServiceRepositoryInterface;
 use App\Repositories\Interfaces\WorkingHourRepositoryInterface;
@@ -26,6 +27,7 @@ class BookingService
 {
     public function __construct(
         protected BookingRepositoryInterface $bookingRepository,
+        protected BookingSelectionRepositoryInterface $bookingSelectionRepository,
         protected SubServiceRepositoryInterface $subServiceRepository,
         protected SubServiceItemRepositoryInterface $subServiceItemRepository,
         protected WorkingHourRepositoryInterface $workingHourRepository,
@@ -86,6 +88,7 @@ class BookingService
             date:      $date,
             startTime: $start->format('H:i'),
             endTime:   $end->format('H:i'),
+            timezone:  $tz,
         );
 
         if ($hasOverlap) {
@@ -149,7 +152,8 @@ class BookingService
             date: $date,
             startTime: $start->format('H:i'),
             endTime: $end->format('H:i'),
-            excludeBookingId: $booking->id
+            excludeBookingId: $booking->id,
+            timezone: $tz
         );
 
         if ($hasOverlap) {
@@ -338,6 +342,7 @@ class BookingService
         $segments = $this->buildServiceSegmentsFromRequest($date, $rawServices, $tz);
 
         $this->validateSegmentsBasic($segments, $tz);
+        $this->assertNoDuplicateSegments($segments);
         $this->validateRootTimeMatchesSegments($data, $segments);
 
         $pricing = $this->buildPricingData([
@@ -384,6 +389,8 @@ class BookingService
             foreach ($segments as $i => $seg) {
                 $this->attachServiceToBookingWithSegment($booking, $seg, $i + 1);
             }
+
+            $this->clearSelectionsAfterBooking($user?->id, $data['guest_session_id'] ?? null);
 
             return $booking->load(['services.bookable', 'services.master', 'master']);
         });
@@ -842,6 +849,40 @@ class BookingService
         }
     }
 
+    protected function assertNoDuplicateSegments(array $segments): void
+    {
+        $count = count($segments);
+
+        for ($i = 0; $i < $count; $i++) {
+            $a = $segments[$i];
+            $masterA = (int)($a['master_id'] ?? 0);
+            if (!$masterA) {
+                continue;
+            }
+
+            $aStart = $this->parseTimeToCarbon($a['date'], (string)$a['start_time'], (string)$a['timezone']);
+            $aEnd   = $this->parseTimeToCarbon($a['date'], (string)$a['end_time'], (string)$a['timezone']);
+
+            for ($j = $i + 1; $j < $count; $j++) {
+                $b = $segments[$j];
+                $masterB = (int)($b['master_id'] ?? 0);
+                if ($masterA !== $masterB) {
+                    continue;
+                }
+
+                $bStart = $this->parseTimeToCarbon($b['date'], (string)$b['start_time'], (string)$b['timezone']);
+                $bEnd   = $this->parseTimeToCarbon($b['date'], (string)$b['end_time'], (string)$b['timezone']);
+
+                if ($aStart < $bEnd && $aEnd > $bStart) {
+                    $this->throwValidation(
+                        ['services' => __('validation.booking.slot_already_selected')],
+                        'validation.failed'
+                    );
+                }
+            }
+        }
+    }
+
     private function isMasterOffOnDate(int $masterId, string $date, string $tz): bool
     {
         $day = CarbonImmutable::createFromFormat('Y-m-d', $date, $tz);
@@ -852,6 +893,18 @@ class BookingService
             ->masters()
             ->whereHas('weekends', fn ($q) => $q->where('day', $isoDay))
             ->exists();
+    }
+
+    protected function clearSelectionsAfterBooking(?int $userId, ?string $guestSessionId): void
+    {
+        if ($userId) {
+            $this->bookingSelectionRepository->deleteByUserId($userId);
+            return;
+        }
+
+        if ($guestSessionId) {
+            $this->bookingSelectionRepository->deleteByGuestSession($guestSessionId);
+        }
     }
 
     protected function throwValidation(array $errors, string $messageKey, array $replace = [], int $status = 422): void

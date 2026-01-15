@@ -10,11 +10,16 @@ use Illuminate\Contracts\Validation\Validator;
 
 class LoginRequest extends BaseFormRequest
 {
+    protected array $fieldMap = [
+        'guestSessionId' => 'guest_session_id',
+    ];
+
     public function rules(): array
     {
         return [
             'email' => 'required|email',
             'password' => 'required|string|min:6',
+            'guestSessionId' => 'sometimes|string|max:64',
         ];
     }
 }

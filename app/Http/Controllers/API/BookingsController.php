@@ -7,11 +7,13 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\AvailableSlotsRequest;
 use App\Http\Requests\CancelBookingRequest;
 use App\Http\Requests\StoreBookingRequest;
+use App\Http\Requests\StoreBookingSelectionRequest;
 use App\Http\Requests\UpdateBookingRequest;
 use App\Http\Resources\BookingResource;
 use App\Models\Booking;
 use App\Services\ApiResponse;
 use App\Services\BookingService;
+use App\Services\BookingSelectionService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -19,7 +21,8 @@ use Illuminate\Http\Request;
 class BookingsController extends Controller
 {
     public function __construct(
-        protected BookingService $bookingService
+        protected BookingService $bookingService,
+        protected BookingSelectionService $bookingSelectionService
     ) {}
 
     public function index(Request $request, BookingFilter $filter): JsonResponse
@@ -55,6 +58,15 @@ class BookingsController extends Controller
         return ApiResponse::success([
             'slots' => $slots,
         ], __('success.booking.slots_loaded'));
+    }
+
+    public function selectSlot(StoreBookingSelectionRequest $request): JsonResponse
+    {
+        $selection = $this->bookingSelectionService->createSelection($request->all());
+
+        return ApiResponse::success([
+            'selection' => $selection,
+        ], __('success.booking.selection_added'));
     }
 
     public function store(StoreBookingRequest $request): JsonResponse

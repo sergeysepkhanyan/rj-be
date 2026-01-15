@@ -10,6 +10,7 @@ use App\Mail\VerifyEmailMail;
 use App\Models\User;
 use App\Models\UserRole;
 use App\Services\ApiResponse;
+use App\Services\BookingSelectionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
@@ -39,7 +40,7 @@ class AuthController extends Controller
         ], __('success.auth.register_verify_email'));
     }
 
-    public function login(LoginRequest $request): JsonResponse
+    public function login(LoginRequest $request, BookingSelectionService $bookingSelectionService): JsonResponse
     {
         $credentials = $request->only(['email', 'password']);
 
@@ -70,6 +71,15 @@ class AuthController extends Controller
         }
 
         $user = auth()->user()->load('role');
+
+        $guestSessionId = $request->input('guest_session_id')
+            ?? $request->input('guestSessionId')
+            ?? $request->header('X-Guest-Session-Id')
+            ?? $request->header('X-Guest-Session')
+            ?? $request->cookie('guest_session_id');
+        if ($guestSessionId) {
+            $bookingSelectionService->attachGuestSelectionsToUser($guestSessionId, $user->id);
+        }
 
         return ApiResponse::success([
             'user' => new UserResource($user),

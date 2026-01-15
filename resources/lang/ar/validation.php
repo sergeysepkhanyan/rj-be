@@ -306,6 +306,8 @@ return [
         'no_available_master' => 'لا يوجد ماستر متاح في الوقت المحدد.',
         'master_unavailable' => 'الماستر غير متاح في الوقت المحدد.',
         'master_day_off' => 'الموظف غير متاح في هذا اليوم.',
+        'slot_already_selected' => 'تم اختيار هذا الوقت مسبقاً.',
+        'guest_session_required' => 'معرّف جلسة الضيف مطلوب لاختيار الموعد.',
     ],
 
     'contact' => [

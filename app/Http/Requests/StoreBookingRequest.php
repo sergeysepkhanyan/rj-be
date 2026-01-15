@@ -20,6 +20,7 @@ class StoreBookingRequest extends BaseFormRequest
         'customerPhone' => 'customer_phone',
         'customerEmail' => 'customer_email',
         'paymentMode' => 'payment_mode',
+        'guestSessionId' => 'guest_session_id',
     ];
 
     public function rules(): array
@@ -53,6 +54,7 @@ class StoreBookingRequest extends BaseFormRequest
             'discountLabel' => ['nullable', 'string', 'max:255'],
 
             'notes' => ['nullable', 'string', 'max:1000'],
+            'guestSessionId' => ['nullable', 'string', 'max:64'],
         ];
     }
 
