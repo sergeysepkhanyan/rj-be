@@ -35,5 +35,10 @@ class ContactService
         $perPage = max(1, min($perPage, 100));
         return $this->repo->paginate($filters, $perPage);
     }
+
+    public function markRead(ContactMessage $message): ContactMessage
+    {
+        return $this->repo->markRead($message);
+    }
 }
 

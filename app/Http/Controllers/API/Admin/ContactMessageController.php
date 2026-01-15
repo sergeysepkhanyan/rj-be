@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\API\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\ContactMessageResource;
 use App\Services\ApiResponse;
 use App\Services\ContactService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Models\ContactMessage;
 
 class ContactMessageController extends Controller
 {
@@ -20,7 +22,7 @@ class ContactMessageController extends Controller
         $items = $this->service->list($filters, $perPage);
 
         return ApiResponse::success([
-            'items' => $items->items(),
+            'items' => ContactMessageResource::collection($items),
             'meta' => [
                 'current_page' => $items->currentPage(),
                 'last_page' => $items->lastPage(),
@@ -33,6 +35,15 @@ class ContactMessageController extends Controller
                 'prev' => $items->previousPageUrl(),
                 'next' => $items->nextPageUrl(),
             ]
+        ]);
+    }
+
+    public function markRead(ContactMessage $contactMessage): JsonResponse
+    {
+        $message = $this->service->markRead($contactMessage);
+
+        return ApiResponse::success([
+            'item' => new ContactMessageResource($message),
         ]);
     }
 }

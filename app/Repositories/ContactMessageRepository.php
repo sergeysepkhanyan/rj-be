@@ -20,6 +20,15 @@ class ContactMessageRepository implements ContactMessageRepositoryInterface
         return $message->refresh();
     }
 
+    public function markRead(ContactMessage $message): ContactMessage
+    {
+        if (!$message->read_at) {
+            $message->forceFill(['read_at' => now()])->save();
+        }
+
+        return $message->refresh();
+    }
+
     public function paginate(array $filters, int $perPage = 15): \Illuminate\Contracts\Pagination\LengthAwarePaginator
     {
         $q = ContactMessage::query()->latest('id');

@@ -168,6 +168,7 @@ Route::middleware(['set.locale'])->group(function () {
         Route::put('/admin/pages', [AdminPagesController::class, 'update']);
 
         Route::get('/admin/contact-messages', [AdminContactMessageController::class, 'index']);
+        Route::patch('/admin/contact-messages/{contactMessage}/read', [AdminContactMessageController::class, 'markRead']);
         Route::put('/admin/working-hours', [AdminWorkingHoursController::class, 'bulkUpdate']);
         Route::put('/admin/working-hours/{day}', [AdminWorkingHoursController::class, 'updateDay']);
 
