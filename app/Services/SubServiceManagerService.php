@@ -49,6 +49,12 @@ class SubServiceManagerService
     public function createSubServiceWithItems(array $subServiceData, array | null $itemsData)
     {
         return DB::transaction(function () use ($subServiceData, $itemsData) {
+            if (!array_key_exists('vat_enabled', $subServiceData)) {
+                $subServiceData['vat_enabled'] = true;
+            }
+
+            $itemsData = $this->applyVatEnabledDefault($itemsData);
+
             $subService = $this->subServiceRepository->create($subServiceData);
             if($subService->type === 'Variant Based'){
                 $this->subServiceItemRepository->createManyForSubService($subService, $itemsData);
@@ -60,6 +66,11 @@ class SubServiceManagerService
     public function updateSubServiceWithItems(SubService $subService, array $subServiceData, ?array $itemsData)
     {
         return DB::transaction(function () use ($subService, $subServiceData, $itemsData) {
+            if (!array_key_exists('vat_enabled', $subServiceData)) {
+                $subServiceData['vat_enabled'] = true;
+            }
+
+            $itemsData = $this->applyVatEnabledDefault($itemsData);
 
             $this->subServiceRepository->update($subService, $subServiceData);
 
@@ -68,6 +79,21 @@ class SubServiceManagerService
             }
             return $subService;
         });
+    }
+
+    private function applyVatEnabledDefault(?array $itemsData): ?array
+    {
+        if (!is_array($itemsData)) {
+            return $itemsData;
+        }
+
+        return array_map(function (array $item) {
+            if (!array_key_exists('vat_enabled', $item)) {
+                $item['vat_enabled'] = true;
+            }
+
+            return $item;
+        }, $itemsData);
     }
 
     public function getByServiceId(int $serviceId)
