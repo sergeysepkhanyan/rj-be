@@ -81,6 +81,11 @@ class Booking extends Model
         return $this->hasMany(BookingService::class);
     }
 
+    public function order(): MorphOne
+    {
+        return $this->morphOne(Order::class, 'orderable');
+    }
+
 
     public function isBreak(): bool
     {
