@@ -8,14 +8,9 @@ use App\Repositories\Interfaces\PaymentMethodRepositoryInterface;
 
 class PaymentMethodService
 {
-    protected PaymentMethodRepositoryInterface $paymentMethodRepository;
-
     public function __construct(
-        PaymentMethodRepositoryInterface $paymentMethodRepository,
-    )
-    {
-        $this->paymentMethodRepository = $paymentMethodRepository;
-    }
+       protected PaymentMethodRepositoryInterface $paymentMethodRepository,
+    ){}
 
     public function listForUser(int $userId)
     {

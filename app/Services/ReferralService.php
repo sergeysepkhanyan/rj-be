@@ -3,20 +3,14 @@
 namespace App\Services;
 
 use App\Models\Referral;
-use App\Models\Weekday;
 use App\Repositories\Interfaces\ReferralRepositoryInterface;
-use App\Repositories\Interfaces\WeekdayRepositoryInterface;
 
 class ReferralService
 {
-    protected ReferralRepositoryInterface $referralRepository;
 
     public function __construct(
-        ReferralRepositoryInterface $referralRepository,
-    )
-    {
-        $this->referralRepository = $referralRepository;
-    }
+      protected  ReferralRepositoryInterface $referralRepository,
+    ){}
 
     public function getAll()
     {

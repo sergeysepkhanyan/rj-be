@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
@@ -25,6 +26,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property mixed $start_time
  * @property mixed $end_time
  * @property mixed $status
+ * @property mixed $price
+ * @property mixed $payment_mode
  */
 class Booking extends Model
 {
@@ -51,9 +54,7 @@ class Booking extends Model
         'status',
         'notes',
         'timezone',
-        'cancelled_at',
-        'cancelled_by_user_id',
-        'cancel_reason'
+        'expires_at',
     ];
 
     protected $casts = [
@@ -61,6 +62,7 @@ class Booking extends Model
         'price'          => 'decimal:2',
         'discount_value' => 'decimal:2',
         'final_price'    => 'decimal:2',
+        'expires_at'     => 'datetime',
     ];
 
 
@@ -108,10 +110,5 @@ class Booking extends Model
     public function scopeOnlyBookings(Builder $query): Builder
     {
         return $query->where('type', 'booking');
-    }
-
-    public function cancelledBy(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'cancelled_by_user_id');
     }
 }

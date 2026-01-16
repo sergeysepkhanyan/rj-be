@@ -32,6 +32,8 @@ class BookingService
         protected SubServiceItemRepositoryInterface $subServiceItemRepository,
         protected WorkingHourRepositoryInterface $workingHourRepository,
         protected MasterAssignmentService $masterAssignmentService,
+        protected OrderService $orderService,
+        protected PaymentService $paymentService,
     ) {}
 
     public function getAllBooking()
@@ -359,7 +361,6 @@ class BookingService
             $bookingData = [
                 'user_id'        => $user?->id,
                 'type'           => 'booking',
-                'status'         => 'pending',
                 'date'           => $date,
                 'timezone'       => $tz,
                 'start_time'     => $bookingStart,
@@ -374,7 +375,10 @@ class BookingService
                 'final_price'    => $pricing['final_price'],
                 'payment_mode'   => $pricing['payment_mode'],
                 'payment_status' => $pricing['payment_status'],
-
+                'status' => $pricing['payment_mode'] === 'pay_now' ? 'pending_payment' : 'confirmed',
+                'expires_at' => $pricing['payment_mode'] === 'pay_now'
+                    ? now()->addMinutes((int) config('payment.booking_hold_minutes', 15))
+                    : null,
                 'customer_name'  => $data['customer_name']  ?? $data['customerName']  ?? ($user->name ?? null),
                 'customer_phone' => $data['customer_phone'] ?? $data['customerPhone'] ?? ($user->mobile ?? null),
                 'customer_email' => $data['customer_email'] ?? $data['customerEmail'] ?? ($user->email ?? null),
@@ -391,8 +395,14 @@ class BookingService
             }
 
             $this->clearSelectionsAfterBooking($user?->id, $data['guest_session_id'] ?? null);
-
-            return $booking->load(['services.bookable', 'services.master', 'master']);
+            $order = $this->orderService->createForBooking($booking, $booking->payment_mode);
+            if ($booking->payment_mode === 'pay_later') {
+                $this->bookingRepository->update($booking, ['status' => 'confirmed']);
+                return $booking->fresh()->load(['services.bookable', 'order.latestPayment']);
+            }
+            $provider = $data['payment_provider'] ?? $data['paymentProvider'] ?? 'stripe';
+            $this->paymentService->startStripePaymentIntent($order, $booking);
+            return $booking->load(['services.bookable', 'services.master', 'master', 'order.latestPayment']);
         });
     }
 
@@ -400,6 +410,10 @@ class BookingService
     {
         $tz   = $data['timezone'] ?? $booking->timezone ?? 'UTC';
         $date = trim($data['date'] ?? ($booking->date?->format('Y-m-d') ?? ''));
+
+        // Keep payment mode unchanged on update; status changes go through admin flow.
+        $data['payment_mode'] = $booking->payment_mode;
+        $data['paymentMode'] = $booking->payment_mode;
 
         $rawServices = $data['services'] ?? [];
 
@@ -660,10 +674,7 @@ class BookingService
 
         $paymentMode = $data['payment_mode'] ?? $data['paymentMode'] ?? 'pay_later';
 
-        $paymentStatus = match ($paymentMode) {
-            'pay_now'   => 'paid',
-            default     => 'unpaid',
-        };
+        $paymentStatus = 'unpaid';
 
         return [
             'total_price'     => $totalPrice,

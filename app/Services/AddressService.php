@@ -8,13 +8,10 @@ use Illuminate\Support\Facades\DB;
 
 class AddressService
 {
-    protected AddressRepositoryInterface $addressRepository;
-
     public function __construct(
-        AddressRepositoryInterface $addressRepository,
+      protected AddressRepositoryInterface $addressRepository,
     )
     {
-        $this->addressRepository = $addressRepository;
     }
 
     public function listForUser(int $userId)

@@ -14,17 +14,10 @@ use Illuminate\Support\Str;
 
 class UserService
 {
-    protected UserRepositoryInterface $userRepository;
-    protected UserRoleRepositoryInterface $userRoleRepository;
-
     public function __construct(
-        UserRepositoryInterface $userRepository,
-        UserRoleRepositoryInterface $userRoleRepository
-    )
-    {
-        $this->userRepository = $userRepository;
-        $this->userRoleRepository = $userRoleRepository;
-    }
+      protected  UserRepositoryInterface $userRepository,
+      protected UserRoleRepositoryInterface $userRoleRepository
+    ){}
 
     public function getAllUsers()
     {

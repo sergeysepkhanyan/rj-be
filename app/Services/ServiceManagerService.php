@@ -9,12 +9,7 @@ use Illuminate\Pagination\LengthAwarePaginator;
 
 class ServiceManagerService
 {
-    protected ServiceRepositoryInterface $serviceRepository;
-
-    public function __construct(ServiceRepositoryInterface $serviceRepository)
-    {
-        $this->serviceRepository = $serviceRepository;
-    }
+    public function __construct(protected ServiceRepositoryInterface $serviceRepository){}
 
     public function getAllServices( array $filters = [] )
     {

@@ -6,12 +6,7 @@ use App\Repositories\Interfaces\SubServiceItemVariantRepositoryInterface;
 
 class SubServiceItemVariantManagerService
 {
-    protected SubServiceItemVariantRepositoryInterface $subServiceItemVariantRepository;
-
-    public function __construct(SubServiceItemVariantRepositoryInterface $subServiceItemVariantRepository)
-    {
-        $this->subServiceItemVariantRepository = $subServiceItemVariantRepository;
-    }
+    public function __construct(protected SubServiceItemVariantRepositoryInterface $subServiceItemVariantRepository){}
 
     public function getAllSubServiceItemVariants()
     {

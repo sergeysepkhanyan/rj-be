@@ -7,12 +7,10 @@ use App\Support\UploadPathNormalizer;
 
 class PageService
 {
-    protected PageRepositoryInterface $pageRepository;
 
-    public function __construct(PageRepositoryInterface $pageRepository)
-    {
-        $this->pageRepository = $pageRepository;
-    }
+    public function __construct(
+       protected PageRepositoryInterface $pageRepository,
+    ){}
 
     public function getAllPages()
     {

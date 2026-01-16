@@ -80,4 +80,5 @@ class BookingsController extends Controller
             'deleted' => true,
         ], __('success.break.deleted'));
     }
+
 }

@@ -30,6 +30,8 @@ use App\Http\Controllers\API\UsersController;
 use App\Http\Controllers\API\Admin\StaffController as AdminStaffController;
 use App\Http\Controllers\API\Admin\BookingsController as AdminBookingsController;
 use App\Http\Controllers\API\Admin\ContactMessageController as AdminContactMessageController;
+use App\Http\Controllers\API\Webhook\StripeWebhookController;
+use App\Http\Controllers\API\Webhook\TabbyWebhookController;
 use App\Http\Controllers\API\WeekdaysController;
 use App\Http\Controllers\API\WorkingHoursController;
 use App\Http\Controllers\API\Admin\WorkingHoursController as AdminWorkingHoursController;
@@ -192,5 +194,10 @@ Route::middleware(['set.locale'])->group(function () {
     Route::get('/weekdays', [WeekdaysController::class, 'index']);
     Route::get('working-hours', [WorkingHoursController::class, 'index']);
 });
+
+Route::post('/webhooks/tabby', [TabbyWebhookController::class, 'handle']);
+Route::post('/webhooks/stripe', [StripeWebhookController::class, 'handle']);
+
+
 
 
