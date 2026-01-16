@@ -1,7 +1,5 @@
 <?php
 
-// app/Models/Booking.php
-
 namespace App\Models;
 
 use App\Traits\BelongsToUser;
@@ -11,8 +9,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\MorphOne;
 
 /**
  * @property mixed $type
@@ -52,6 +50,9 @@ class Booking extends Model
         'payment_mode',
         'payment_status',
         'status',
+        'cancelled_at',
+        'cancelled_by_user_id',
+        'cancel_reason',
         'notes',
         'timezone',
         'expires_at',
@@ -62,6 +63,7 @@ class Booking extends Model
         'price'          => 'decimal:2',
         'discount_value' => 'decimal:2',
         'final_price'    => 'decimal:2',
+        'cancelled_at'   => 'datetime',
         'expires_at'     => 'datetime',
     ];
 
@@ -74,6 +76,11 @@ class Booking extends Model
     public function master(): BelongsTo
     {
         return $this->belongsTo(User::class, 'master_id');
+    }
+
+    public function cancelledBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'cancelled_by_user_id');
     }
 
     public function services(): HasMany
