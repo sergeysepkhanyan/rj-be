@@ -400,12 +400,8 @@ class BookingService
                 $this->bookingRepository->update($booking, ['status' => 'confirmed']);
                 return $booking->fresh()->load(['services.bookable', 'order.latestPayment']);
             }
-            $provider = $data['payment_provider'] ?? $data['paymentProvider'] ?? 'tabby';
-            if ($provider === 'stripe') {
-                $this->paymentService->startStripePaymentIntent($order, $booking);
-            } else {
-                $this->paymentService->startTabbyCheckout($order, $booking);
-            }
+            $provider = $data['payment_provider'] ?? $data['paymentProvider'] ?? 'stripe';
+            $this->paymentService->startStripePaymentIntent($order, $booking);
             return $booking->load(['services.bookable', 'services.master', 'master', 'order.latestPayment']);
         });
     }
@@ -414,6 +410,10 @@ class BookingService
     {
         $tz   = $data['timezone'] ?? $booking->timezone ?? 'UTC';
         $date = trim($data['date'] ?? ($booking->date?->format('Y-m-d') ?? ''));
+
+        // Keep payment mode unchanged on update; status changes go through admin flow.
+        $data['payment_mode'] = $booking->payment_mode;
+        $data['paymentMode'] = $booking->payment_mode;
 
         $rawServices = $data['services'] ?? [];
 
@@ -674,10 +674,7 @@ class BookingService
 
         $paymentMode = $data['payment_mode'] ?? $data['paymentMode'] ?? 'pay_later';
 
-        $paymentStatus = match ($paymentMode) {
-            'pay_now'   => 'paid',
-            default     => 'unpaid',
-        };
+        $paymentStatus = 'unpaid';
 
         return [
             'total_price'     => $totalPrice,

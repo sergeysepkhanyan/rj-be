@@ -37,7 +37,7 @@ class StoreBookingRequest extends BaseFormRequest
             'customerEmail' => ['required', 'email'],
 
             'paymentMode' => ['required', 'string', Rule::in(['pay_now', 'pay_later'])],
-            'paymentProvider' => ['sometimes', 'string', Rule::in(['tabby', 'stripe'])],
+            'paymentProvider' => ['sometimes', 'string', Rule::in(['stripe'])],
 
             'services' => ['required', 'array', 'min:1'],
 

@@ -54,6 +54,7 @@ class Booking extends Model
         'status',
         'notes',
         'timezone',
+        'expires_at',
     ];
 
     protected $casts = [
@@ -61,6 +62,7 @@ class Booking extends Model
         'price'          => 'decimal:2',
         'discount_value' => 'decimal:2',
         'final_price'    => 'decimal:2',
+        'expires_at'     => 'datetime',
     ];
 
 

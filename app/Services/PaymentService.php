@@ -112,8 +112,7 @@ class PaymentService
 
         $mappedStatus = match ($status) {
             'succeeded' => 'paid',
-            'canceled' => 'canceled',
-            'processing' => 'pending',
+            'canceled' => 'cancelled',
             default => 'pending',
         };
 

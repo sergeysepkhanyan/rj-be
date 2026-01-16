@@ -155,3 +155,10 @@ The same layering and conventions are visible in:
 - Categories: `CategoriesController` → `CategoryService` → `CategoryRepository`, returning `CategoryResource` collections.
 
 These confirm the module structure and `ApiResponse` usage are consistent across the codebase.
+
+## Payments (Stripe-only)
+
+- The backend currently supports **Stripe only** for `pay_now` flows.
+- `POST /bookings` with `paymentMode=pay_now` starts a Stripe PaymentIntent and returns `clientSecret`.
+- Card data is collected by the frontend via Stripe SDK; the backend never receives card details.
+- Stripe webhooks update payment, order, and booking status.
