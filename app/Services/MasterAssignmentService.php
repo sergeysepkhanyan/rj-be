@@ -51,7 +51,6 @@ class MasterAssignmentService
                     tz: $tz,
                     startTime: $startTime,
                     endTime: $endTime,
-                    timezone: $tz,
                     excludeBookingId: $excludeBookingId
                 );
 
