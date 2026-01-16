@@ -58,7 +58,10 @@ class TabbyWebhookController extends Controller
                     $this->orderService->markPaid($order, ['tabby_payment_id' => $tabbyPaymentId]);
                     if ($order->orderable && $order->type === 'booking') {
                         $booking = $order->orderable;
-                        $this->bookingRepo->update($booking, ['status' => 'confirmed']);
+                        $this->bookingRepo->update($booking, [
+                            'status' => 'confirmed',
+                            'payment_status' => 'paid',
+                        ]);
                     }
                 }
                 break;
@@ -70,7 +73,10 @@ class TabbyWebhookController extends Controller
                     $this->orderService->cancel($order, ['reason' => $status]);
                     if ($order->orderable && $order->type === 'booking') {
                         $booking = $order->orderable;
-                        $this->bookingRepo->update($booking, ['status' => 'cancelled']);
+                        $this->bookingRepo->update($booking, [
+                            'status' => 'cancelled',
+                            'payment_status' => 'unpaid',
+                        ]);
                     }
                 }
                 break;
@@ -82,7 +88,10 @@ class TabbyWebhookController extends Controller
                     $this->orderService->cancel($order, ['reason' => $status]);
                     if ($order->orderable && $order->type === 'booking') {
                         $booking = $order->orderable;
-                        $this->bookingRepo->update($booking, ['status' => 'cancelled']);
+                        $this->bookingRepo->update($booking, [
+                            'status' => 'cancelled',
+                            'payment_status' => 'unpaid',
+                        ]);
                     }
                 }
                 break;
