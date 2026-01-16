@@ -52,7 +52,10 @@ class StripeWebhookController extends Controller
                     $this->orderService->markPaid($order, ['stripe_payment_intent_id' => $paymentIntentId]);
                     if ($order->orderable && $order->type === 'booking') {
                         $booking = $order->orderable;
-                        $this->bookingRepo->update($booking, ['status' => 'confirmed']);
+                        $this->bookingRepo->update($booking, [
+                            'status' => 'confirmed',
+                            'payment_status' => 'paid',
+                        ]);
                     }
                 }
                 break;
@@ -64,7 +67,10 @@ class StripeWebhookController extends Controller
                     $this->orderService->cancel($order, ['reason' => 'payment_failed']);
                     if ($order->orderable && $order->type === 'booking') {
                         $booking = $order->orderable;
-                        $this->bookingRepo->update($booking, ['status' => 'cancelled']);
+                        $this->bookingRepo->update($booking, [
+                            'status' => 'cancelled',
+                            'payment_status' => 'unpaid',
+                        ]);
                     }
                 }
                 break;
@@ -76,7 +82,10 @@ class StripeWebhookController extends Controller
                     $this->orderService->cancel($order, ['reason' => 'canceled']);
                     if ($order->orderable && $order->type === 'booking') {
                         $booking = $order->orderable;
-                        $this->bookingRepo->update($booking, ['status' => 'cancelled']);
+                        $this->bookingRepo->update($booking, [
+                            'status' => 'cancelled',
+                            'payment_status' => 'unpaid',
+                        ]);
                     }
                 }
                 break;
