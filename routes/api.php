@@ -15,6 +15,7 @@ use App\Http\Controllers\API\PostsController;
 use App\Http\Controllers\API\Admin\PostsController as AdminPostsController;
 use App\Http\Controllers\API\ProductsController;
 use App\Http\Controllers\API\Admin\ProductsController as AdminProductsController;
+use App\Http\Controllers\API\ProductCategoriesController;
 use App\Http\Controllers\API\Admin\ServicesController as AdminServicesController;
 use App\Http\Controllers\API\Admin\CategoriesController as AdminCategoriesController;
 use App\Http\Controllers\API\Admin\SubServicesController as AdminSubServicesController;
@@ -60,6 +61,7 @@ Route::middleware(['set.locale'])->group(function () {
     Route::get('/posts/{slug}', [PostsController::class, 'getBySlug']);
 
     Route::get('/products', [ProductsController::class, 'index']);
+    Route::get('/product-categories', [ProductCategoriesController::class, 'index']);
 
     Route::prefix('auth')->group(function () {
         Route::post('signup', [AuthController::class, 'signup']);

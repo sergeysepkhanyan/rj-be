@@ -349,17 +349,12 @@
                 "exec": [
                   "if (pm.response.code === 200) {",
                   "    const jsonData = pm.response.json();",
-                  "",
-                  "    if (jsonData.data && Array.isArray(jsonData.data) && jsonData.data.length > 0) {",
-                  "        const token = jsonData.data[0].token;",
-                  "        if (token) {",
-                  "            pm.collectionVariables.set(\"jwt_token\", token);",
-                  "            console.log(\"JWT token saved to collection variable:\", token);",
-                  "        } else {",
-                  "            console.log(\"Token not found in first data element\");",
-                  "        }",
+                  "    const token = jsonData?.data?.token || jsonData?.data?.user?.token || null;",
+                  "    if (token) {",
+                  "        pm.collectionVariables.set(\"jwt_token\", token);",
+                  "        console.log(\"JWT token saved to collection variable:\", token);",
                   "    } else {",
-                  "        console.log(\"Data array is empty or invalid\");",
+                  "        console.log(\"Token not found in response\");",
                   "    }",
                   "}",
                   "",
@@ -1205,7 +1200,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n    \"name\": \"Premium Leather Jacket\",\n    \"nameAr\": \"Premium Leather Jacket\",\n    \"description\": \"A stylish and durable leather jacket for all seasons.\",\n    \"descriptionAr\": \"A stylish and durable leather jacket for all seasons.\",\n    \"maxQuantity\": 100,\n    \"price\": 199.99,\n    \"currency\": \"AED\",\n    \"mainImage\": null,\n    \"referralId\": 1,\n    \"discount\": true,\n    \"discountType\": \"percentage\",\n    \"discountAmount\": 10,\n    \"status\": \"active\",\n    \"images\": [\n        \"images/product/OLY7mfD8O7743RRsR0EoujvgbpcrQJedd7U0AlAK.jpg\",\n        \"images/product/GeTlGeRGFURFnRNlNRa04TH5DJ6aOD39ifoZYaz9.jpg\"\n    ],\n    \"details\": [\n        {\n            \"details\": \"Material: 100% genuine leather\",\n            \"detailsAr\": \"Material: 100% genuine leather\",\n            \"description\": \"Soft-touch premium leather with a natural finish.\",\n            \"descriptionAr\": null\n        }\n    ]\n}",
+                  "raw": "{\n    \"name\": \"Premium Leather Jacket\",\n    \"nameAr\": \"Premium Leather Jacket\",\n    \"skuId\": \"SKU-001\",\n    \"productCategory\": \"Hair Care\",\n    \"description\": \"A stylish and durable leather jacket for all seasons.\",\n    \"descriptionAr\": \"A stylish and durable leather jacket for all seasons.\",\n    \"maxQuantity\": 100,\n    \"price\": 199.99,\n    \"currency\": \"AED\",\n    \"mainImage\": null,\n    \"referralId\": 1,\n    \"discount\": true,\n    \"discountType\": \"percentage\",\n    \"discountAmount\": 10,\n    \"status\": \"publish\",\n    \"images\": [\n        \"images/product/OLY7mfD8O7743RRsR0EoujvgbpcrQJedd7U0AlAK.jpg\",\n        \"images/product/GeTlGeRGFURFnRNlNRa04TH5DJ6aOD39ifoZYaz9.jpg\"\n    ],\n    \"details\": [\n        {\n            \"details\": \"Material: 100% genuine leather\",\n            \"detailsAr\": \"Material: 100% genuine leather\",\n            \"description\": \"Soft-touch premium leather with a natural finish.\",\n            \"descriptionAr\": null\n        }\n    ]\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -1250,7 +1245,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n    \"name\": \"Updated Product Name\",\n    \"nameAr\": \"Updated Product Name\",\n    \"description\": \"Updated description for the product\",\n    \"descriptionAr\": \"Updated description for the product\",\n    \"maxQuantity\": 100,\n    \"price\": 49.99,\n    \"currency\": \"AED\",\n    \"referralId\": 1,\n    \"discount\": true,\n    \"discountType\": \"percentage\",\n    \"discountAmount\": 10,\n    \"status\": \"active\",\n    \"removedFiles\": [\n        \"images/product/OLY7mfD8O7743RRsR0EoujvgbpcrQJedd7U0AlAK.jpg\"\n    ],\n    \"newFiles\": [\n        \"products/new_image1.jpg\",\n        \"products/new_image2.jpg\"\n    ],\n    \"details\": [\n        {\n            \"id\": 1,\n            \"details\": \"Updated detail 1\",\n            \"detailsAr\": \"Updated detail 1\",\n            \"description\": \"Updated description for detail 1\"\n        },\n        {\n            \"details\": \"New detail 2\",\n            \"detailsAr\": \"New detail 2\",\n            \"description\": \"Description for new detail 2\"\n        }\n    ]\n}",
+                  "raw": "{\n    \"name\": \"Updated Product Name\",\n    \"nameAr\": \"Updated Product Name\",\n    \"skuId\": \"SKU-001\",\n    \"productCategoryId\": 1,\n    \"description\": \"Updated description for the product\",\n    \"descriptionAr\": \"Updated description for the product\",\n    \"maxQuantity\": 100,\n    \"price\": 49.99,\n    \"currency\": \"AED\",\n    \"referralId\": 1,\n    \"discount\": true,\n    \"discountType\": \"percentage\",\n    \"discountAmount\": 10,\n    \"status\": \"draft\",\n    \"removedFiles\": [\n        \"images/product/OLY7mfD8O7743RRsR0EoujvgbpcrQJedd7U0AlAK.jpg\"\n    ],\n    \"newFiles\": [\n        \"products/new_image1.jpg\",\n        \"products/new_image2.jpg\"\n    ],\n    \"details\": [\n        {\n            \"id\": 1,\n            \"details\": \"Updated detail 1\",\n            \"detailsAr\": \"Updated detail 1\",\n            \"description\": \"Updated description for detail 1\"\n        },\n        {\n            \"details\": \"New detail 2\",\n            \"detailsAr\": \"New detail 2\",\n            \"description\": \"Description for new detail 2\"\n        }\n    ]\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -2600,6 +2595,40 @@
                   "value": null,
                   "disabled": true
                 }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "product categories",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{url}}/api/product-categories",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "product-categories"
               ]
             }
           },

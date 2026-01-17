@@ -36,7 +36,7 @@ class ProductRepository implements ProductRepositoryInterface
 
     public function paginateProducts(int $perPage = 10, int $page = 1): LengthAwarePaginator
     {
-        return Product::with(['details', 'files'])
+        return Product::with(['details', 'files', 'productCategory'])
             ->orderByDesc('created_at')
             ->paginate($perPage, ['*'], 'page', $page);
     }

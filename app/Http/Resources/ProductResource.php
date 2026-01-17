@@ -20,6 +20,14 @@ class ProductResource extends BaseResource
             'id' => $data['id'] ?? null,
             'name' => $data['name'] ?? null,
             'description' => $data['description'] ?? null,
+            'skuId' => $data['sku_id'] ?? null,
+            'productCategoryId' => $data['product_category_id'] ?? null,
+            'productCategory' => $this->whenLoaded('productCategory', function () {
+                return [
+                    'id' => $this->productCategory?->id,
+                    'name' => $this->productCategory?->name,
+                ];
+            }),
             'maxQuantity' => $data['max_quantity'] ?? null,
             'currentQuantity' => $data['max_quantity'] ?? null,
             'price' => $data['price'] ?? null,

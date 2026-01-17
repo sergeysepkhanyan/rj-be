@@ -8,18 +8,24 @@ use App\Http\Requests\UpdateProductRequest;
 use App\Http\Resources\ProductResource;
 use App\Models\Product;
 use App\Services\ProductService;
+use App\Services\ProductCategoryService;
 use App\Services\ApiResponse;
 use Illuminate\Http\JsonResponse;
 
 class ProductsController extends Controller
 {
-    public function __construct(protected ProductService $productService) {}
+    public function __construct(
+        protected ProductService $productService,
+        protected ProductCategoryService $productCategoryService
+    ) {}
 
     public function store(StoreProductRequest $request): JsonResponse
     {
         $productData = $request->only([
             'name', 'name_ar',
             'description', 'description_ar',
+            'sku_id',
+            'product_category_id',
             'max_quantity',
             'price',
             'currency',
@@ -30,6 +36,14 @@ class ProductsController extends Controller
             'discount_amount',
             'status',
         ]);
+
+        if (empty($productData['product_category_id'])) {
+            $name = trim((string) ($request->input('product_category') ?? $request->input('productCategory') ?? ''));
+            if ($name !== '') {
+                $category = $this->productCategoryService->firstOrCreateByName($name);
+                $productData['product_category_id'] = $category->id;
+            }
+        }
 
         $productFilePaths = $request->input('images', []);
         $detailsData = $request->input('details', []);
@@ -52,6 +66,8 @@ class ProductsController extends Controller
         $productData = $request->only([
             'name', 'name_ar',
             'description', 'description_ar',
+            'sku_id',
+            'product_category_id',
             'max_quantity',
             'price',
             'currency',
@@ -62,6 +78,14 @@ class ProductsController extends Controller
             'discount_amount',
             'status',
         ]);
+
+        if (empty($productData['product_category_id'])) {
+            $name = trim((string) ($request->input('product_category') ?? $request->input('productCategory') ?? ''));
+            if ($name !== '') {
+                $category = $this->productCategoryService->firstOrCreateByName($name);
+                $productData['product_category_id'] = $category->id;
+            }
+        }
 
         $removedFiles = $request->input('removed_files', []);
         $newFiles = $request->input('new_files', []);

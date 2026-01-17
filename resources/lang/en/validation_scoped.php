@@ -92,6 +92,22 @@ return [
             'required' => 'Arabic description is required.',
             'string' => 'Arabic description must be text.',
         ],
+        'skuId' => [
+            'required' => 'SKU/ID is required.',
+            'string' => 'SKU/ID must be text.',
+            'max' => 'SKU/ID cannot exceed :max characters.',
+            'unique' => 'SKU/ID must be unique.',
+        ],
+        'productCategoryId' => [
+            'required_without' => 'Product category is required.',
+            'integer' => 'Product category must be a valid number.',
+            'exists' => 'The selected product category does not exist.',
+        ],
+        'productCategory' => [
+            'required_without' => 'Product category is required.',
+            'string' => 'Product category must be text.',
+            'max' => 'Product category cannot exceed :max characters.',
+        ],
         'price' => [
             'required' => 'Price is required.',
             'numeric' => 'Price must be a number.',

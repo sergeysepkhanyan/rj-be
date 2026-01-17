@@ -7,6 +7,9 @@ class StoreProductRequest extends BaseFormRequest
     protected array $fieldMap = [
         'nameAr' => 'name_ar',
         'descriptionAr' => 'description_ar',
+        'skuId' => 'sku_id',
+        'productCategoryId' => 'product_category_id',
+        'productCategory' => 'product_category',
         'maxQuantity' => 'max_quantity',
         'mainImage' => 'main_image',
         'referralId' => 'referral_id',
@@ -21,6 +24,9 @@ class StoreProductRequest extends BaseFormRequest
             'nameAr' => 'required|string|max:255',
             'description' => 'required|string',
             'descriptionAr' => 'required|string',
+            'skuId' => 'required|string|max:64|unique:products,sku_id',
+            'productCategoryId' => 'nullable|integer|exists:product_categories,id|required_without:productCategory',
+            'productCategory' => 'nullable|string|max:255|required_without:productCategoryId',
             'maxQuantity' => 'nullable|integer',
             'price' => 'required|numeric',
             'currency' => 'required|string|max:10',
@@ -29,7 +35,7 @@ class StoreProductRequest extends BaseFormRequest
             'discount' => 'nullable|boolean',
             'discountType' => 'nullable|string|in:percentage,amount',
             'discountAmount' => 'nullable|numeric',
-            'status' => 'nullable|in:active,draft',
+            'status' => 'nullable|in:active,draft,publish',
             'images' => 'required|array|min:1',
             'images.*' => 'string',
             'details' => 'nullable|array',
@@ -56,6 +62,18 @@ class StoreProductRequest extends BaseFormRequest
 
             'descriptionAr.required' => __('validation_scoped.product.descriptionAr.required'),
             'descriptionAr.string'   => __('validation_scoped.product.descriptionAr.string'),
+
+            'skuId.required' => __('validation_scoped.product.skuId.required'),
+            'skuId.string'   => __('validation_scoped.product.skuId.string'),
+            'skuId.max'      => __('validation_scoped.product.skuId.max'),
+            'skuId.unique'   => __('validation_scoped.product.skuId.unique'),
+
+            'productCategoryId.required_without' => __('validation_scoped.product.productCategoryId.required_without'),
+            'productCategoryId.integer' => __('validation_scoped.product.productCategoryId.integer'),
+            'productCategoryId.exists' => __('validation_scoped.product.productCategoryId.exists'),
+            'productCategory.required_without' => __('validation_scoped.product.productCategory.required_without'),
+            'productCategory.string' => __('validation_scoped.product.productCategory.string'),
+            'productCategory.max' => __('validation_scoped.product.productCategory.max'),
 
             'price.required' => __('validation_scoped.product.price.required'),
             'price.numeric'  => __('validation_scoped.product.price.numeric'),
