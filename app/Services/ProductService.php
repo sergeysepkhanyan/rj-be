@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Filters\ProductFilter;
+use App\Models\Product;
 use App\Repositories\FileRepository;
 use App\Repositories\Interfaces\ProductDetailRepositoryInterface;
 use App\Repositories\Interfaces\ProductRepositoryInterface;
@@ -70,13 +72,39 @@ class ProductService
 
 
 
-    public function getPaginatedProducts(int $perPage = 15, int $page = 1): LengthAwarePaginator
+    public function getPaginatedProducts(?ProductFilter $filter = null, int $perPage = 15, int $page = 1): LengthAwarePaginator
     {
-        return $this->productRepository->paginateProducts($perPage, $page);
+        return $this->productRepository->paginateProducts($filter, $perPage, $page);
     }
 
     public function getProductById($id)
     {
         return $this->productRepository->find($id);
+    }
+
+    public function getProductsForExport(?array $ids = null)
+    {
+        return $this->productRepository->allForExport($ids);
+    }
+
+    public function deleteProductsByIds(array $ids): int
+    {
+        if (empty($ids)) {
+            return 0;
+        }
+
+        return DB::transaction(function () use ($ids) {
+            $products = Product::with(['details', 'files'])
+                ->whereIn('id', $ids)
+                ->get();
+
+            foreach ($products as $product) {
+                $product->details()->delete();
+                $product->files()->delete();
+                $this->productRepository->delete($product);
+            }
+
+            return $products->count();
+        });
     }
 }

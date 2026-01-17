@@ -1267,6 +1267,134 @@
                 }
               },
               "response": []
+            },
+            {
+              "name": "import products (excel)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{jwt_token}}",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": ""
+                    },
+                    {
+                      "key": "dryRun",
+                      "value": "false",
+                      "type": "text"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{url}}/api/admin/product/import",
+                  "host": [
+                    "{{url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "product",
+                    "import"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "download inventory",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{jwt_token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{url}}/api/admin/product/download-inventory?ids=1,2,3",
+                  "host": [
+                    "{{url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "product",
+                    "download-inventory"
+                  ],
+                  "query": [
+                    {
+                      "key": "ids",
+                      "value": "1,2,3"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "bulk delete",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{jwt_token}}",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"ids\": [1, 2, 3]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{url}}/api/admin/product/bulk-delete",
+                  "host": [
+                    "{{url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "product",
+                    "bulk-delete"
+                  ]
+                }
+              },
+              "response": []
             }
           ]
         },
@@ -2577,7 +2705,7 @@
               }
             ],
             "url": {
-              "raw": "{{url}}/api/products?search=",
+              "raw": "{{url}}/api/products?availability=On%20Stock&status=publish&month=august&year=2025&page=1&per_page=15",
               "host": [
                 "{{url}}"
               ],
@@ -2587,13 +2715,28 @@
               ],
               "query": [
                 {
-                  "key": "search",
-                  "value": ""
+                  "key": "availability",
+                  "value": "On Stock"
+                },
+                {
+                  "key": "status",
+                  "value": "publish"
+                },
+                {
+                  "key": "month",
+                  "value": "august"
+                },
+                {
+                  "key": "year",
+                  "value": "2025"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
                 },
                 {
                   "key": "per_page",
-                  "value": null,
-                  "disabled": true
+                  "value": "15"
                 }
               ]
             }

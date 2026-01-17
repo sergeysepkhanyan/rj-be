@@ -8,17 +8,18 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use App\Services\ProductService;
 use App\Services\ApiResponse;
+use App\Filters\ProductFilter;
 
 class ProductsController extends Controller
 {
     public function __construct(protected ProductService $productService) {}
 
-    public function index(Request $request): JsonResponse
+    public function index(Request $request, ProductFilter $filter): JsonResponse
     {
         $perPage = (int) $request->get('per_page', 15);
         $page    = (int) $request->get('page', 1);
 
-        $products = $this->productService->getPaginatedProducts($perPage, $page);
+        $products = $this->productService->getPaginatedProducts($filter, $perPage, $page);
 
         return ApiResponse::success([
             'products' => ProductResource::collection($products),

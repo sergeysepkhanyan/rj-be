@@ -3,20 +3,24 @@
 namespace App\Http\Controllers\API\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\BulkDeleteProductsRequest;
 use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateProductRequest;
 use App\Http\Resources\ProductResource;
 use App\Models\Product;
+use App\Services\ProductExportService;
 use App\Services\ProductService;
 use App\Services\ProductCategoryService;
 use App\Services\ApiResponse;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class ProductsController extends Controller
 {
     public function __construct(
         protected ProductService $productService,
-        protected ProductCategoryService $productCategoryService
+        protected ProductCategoryService $productCategoryService,
+        protected ProductExportService $productExportService
     ) {}
 
     public function store(StoreProductRequest $request): JsonResponse
@@ -102,6 +106,65 @@ class ProductsController extends Controller
         return ApiResponse::success([
             'product' => new ProductResource($updated),
         ], __('success.product.updated'));
+    }
+
+    public function downloadInventory(Request $request)
+    {
+        $ids = $request->input('ids');
+
+        if (is_string($ids)) {
+            $ids = trim($ids);
+            if ($ids !== '' && str_starts_with($ids, '[')) {
+                $decoded = json_decode($ids, true);
+                if (is_array($decoded)) {
+                    $ids = $decoded;
+                }
+            }
+            if (is_string($ids)) {
+                $ids = array_map('trim', explode(',', $ids));
+            }
+        }
+
+        if (!is_array($ids)) {
+            $ids = null;
+        } else {
+            $flattened = [];
+            foreach ($ids as $value) {
+                if (is_string($value) && str_contains($value, ',')) {
+                    foreach (array_map('trim', explode(',', $value)) as $part) {
+                        $flattened[] = $part;
+                    }
+                } else {
+                    $flattened[] = $value;
+                }
+            }
+            $ids = array_values(array_unique(array_filter(array_map(function ($value) {
+                $intVal = (int) $value;
+                return $intVal > 0 ? $intVal : null;
+            }, $flattened))));
+            if (count($ids) === 0) {
+                $ids = null;
+            }
+        }
+
+        return $this->productExportService->streamInventoryCsv($ids);
+    }
+
+    public function bulkDelete(BulkDeleteProductsRequest $request): JsonResponse
+    {
+        $ids = $request->input('ids', []);
+
+        if (!is_array($ids) || count($ids) === 0) {
+            return ApiResponse::success([
+                'deleted' => 0,
+            ], __('success.product.deleted'));
+        }
+
+        $deleted = $this->productService->deleteProductsByIds($ids);
+
+        return ApiResponse::success([
+            'deleted' => $deleted,
+        ], __('success.product.deleted'));
     }
 }
 

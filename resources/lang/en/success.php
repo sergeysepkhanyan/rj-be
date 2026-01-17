@@ -28,6 +28,8 @@ return [
     'product' => [
         'created' => 'Product created successfully.',
         'updated' => 'Product updated successfully.',
+        'imported' => 'Products imported successfully.',
+        'deleted' => 'Products deleted successfully.',
     ],
     'service' => [
         'listed'  => 'Services retrieved successfully.',

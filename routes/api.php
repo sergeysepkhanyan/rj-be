@@ -15,6 +15,7 @@ use App\Http\Controllers\API\PostsController;
 use App\Http\Controllers\API\Admin\PostsController as AdminPostsController;
 use App\Http\Controllers\API\ProductsController;
 use App\Http\Controllers\API\Admin\ProductsController as AdminProductsController;
+use App\Http\Controllers\API\Admin\ProductImportsController;
 use App\Http\Controllers\API\ProductCategoriesController;
 use App\Http\Controllers\API\Admin\ServicesController as AdminServicesController;
 use App\Http\Controllers\API\Admin\CategoriesController as AdminCategoriesController;
@@ -162,6 +163,9 @@ Route::middleware(['set.locale'])->group(function () {
         Route::get('/admin/services', [AdminServicesController::class, 'index']);
         Route::post('/admin/product/create', [AdminProductsController::class, 'store']);
         Route::put('/admin/product/update/{product}', [AdminProductsController::class, 'update']);
+        Route::post('/admin/product/import', [ProductImportsController::class, 'import']);
+        Route::get('/admin/product/download-inventory', [AdminProductsController::class, 'downloadInventory']);
+        Route::post('/admin/product/bulk-delete', [AdminProductsController::class, 'bulkDelete']);
 
         Route::post('/admin/post/create', [AdminPostsController::class, 'store']);
         Route::put('/admin/post/update/{post}', [AdminPostsController::class, 'update']);

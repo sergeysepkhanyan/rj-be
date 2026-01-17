@@ -16,6 +16,9 @@ class ProductResource extends BaseResource
     {
         $data = parent::toArray($request);
 
+        $quantity = (int) ($data['max_quantity'] ?? 0);
+        $availability = $quantity > 0 ? 'On Stock' : 'Out';
+
         return [
             'id' => $data['id'] ?? null,
             'name' => $data['name'] ?? null,
@@ -30,6 +33,8 @@ class ProductResource extends BaseResource
             }),
             'maxQuantity' => $data['max_quantity'] ?? null,
             'currentQuantity' => $data['max_quantity'] ?? null,
+            'quantity' => $quantity,
+            'availability' => $availability,
             'price' => $data['price'] ?? null,
             'currency' => $data['currency'] ?? null,
             'mainImage' => $this->main_image ? asset('storage/' . $this->main_image) : null,
@@ -38,6 +43,7 @@ class ProductResource extends BaseResource
             'discountType' => $data['discount_type'] ?? null,
             'discountAmount' => $data['discount_amount'] ?? null,
             'status' => $data['status'] ?? null,
+            'createdAt' => $this->created_at ?? null,
             'images' => FileResource::collection($this->files),
             'details' => ProductDetailResource::collection($this->details),
         ];
