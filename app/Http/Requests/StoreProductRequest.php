@@ -21,9 +21,9 @@ class StoreProductRequest extends BaseFormRequest
     {
         return [
             'name' => 'required|string|max:255',
-            'nameAr' => 'required|string|max:255',
+            'nameAr' => 'nullable|string|max:255',
             'description' => 'required|string',
-            'descriptionAr' => 'required|string',
+            'descriptionAr' => 'nullable|string',
             'skuId' => 'required|string|max:64|unique:products,sku_id',
             'productCategoryId' => 'nullable|integer|exists:product_categories,id|required_without:productCategory',
             'productCategory' => 'nullable|string|max:255|required_without:productCategoryId',
