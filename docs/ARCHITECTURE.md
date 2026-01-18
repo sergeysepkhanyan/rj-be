@@ -162,3 +162,10 @@ These confirm the module structure and `ApiResponse` usage are consistent across
 - `POST /bookings` with `paymentMode=pay_now` starts a Stripe PaymentIntent and returns `clientSecret`.
 - Card data is collected by the frontend via Stripe SDK; the backend never receives card details.
 - Stripe webhooks update payment, order, and booking status.
+
+## Operational notes
+
+- Booking auto-cancel is handled by the scheduled command `bookings:expire-pending`.
+  - It cancels `pending_payment` bookings with `payment_mode=pay_now` after the hold window.
+  - Hold window is controlled by `BOOKING_HOLD_MINUTES` (defaults to 10 via `config/payment.php`).
+  - Scheduler must be running in production (e.g. `php artisan schedule:work` or a cron running `schedule:run`).
