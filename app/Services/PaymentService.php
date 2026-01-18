@@ -8,6 +8,7 @@ use App\Models\Booking;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Repositories\Interfaces\PaymentRepositoryInterface;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Support\Str;
 
 class PaymentService
@@ -169,6 +170,52 @@ class PaymentService
             'status' => $mappedStatus,
             'raw' => $res,
         ]);
+    }
+
+    public function refundOrderPayment(Order $order, array $meta = []): array
+    {
+        $payment = $order->latestPayment;
+        if (!$payment) {
+            throw new HttpResponseException(
+                ApiResponse::error(['payment' => ['Payment not found']], 'Payment not found', 404)
+            );
+        }
+
+        return match ($payment->provider) {
+            'stripe' => $this->refundStripePayment($payment, $meta),
+            default => throw new HttpResponseException(
+                ApiResponse::error(['payment' => ['Refund not supported']], 'Refund not supported', 400)
+            ),
+        };
+    }
+
+    protected function refundStripePayment(Payment $payment, array $meta = []): array
+    {
+        $paymentIntentId = $payment->external_id;
+        if (!$paymentIntentId) {
+            throw new HttpResponseException(
+                ApiResponse::error(['payment' => ['Missing payment intent id']], 'Missing payment intent id', 400)
+            );
+        }
+
+        $payload = [
+            'payment_intent' => $paymentIntentId,
+        ];
+
+        foreach ($meta as $key => $value) {
+            $payload["metadata[{$key}]"] = (string) $value;
+        }
+
+        $refund = $this->stripeClient->createRefund($payload, (string) Str::uuid());
+
+        $raw = $payment->raw ?? [];
+        $raw['refund'] = $refund;
+
+        $this->paymentRepository->update($payment, [
+            'raw' => $raw,
+        ]);
+
+        return $refund;
     }
 }
 

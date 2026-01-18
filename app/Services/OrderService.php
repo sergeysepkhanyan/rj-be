@@ -57,6 +57,15 @@ class OrderService
         ]);
     }
 
+    public function refund(Order $order, array $meta = []): Order
+    {
+        return $this->orderRepository->update($order, [
+            'status' => OrderStatus::Refunded,
+            'refunded_at' => now(),
+            'meta'   => array_merge($order->meta ?? [], $meta),
+        ]);
+    }
+
     protected function makeReference(): string
     {
         return 'ORD-' . now()->format('Ymd') . '-' . Str::upper(Str::random(6));

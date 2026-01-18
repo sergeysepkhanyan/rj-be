@@ -780,8 +780,19 @@ class BookingService
             }
         }
 
+        $order = $booking->order?->load('latestPayment');
+        if ($booking->payment_status === 'paid' && $order) {
+            $this->paymentService->refundOrderPayment($order, [
+                'booking_id' => (string) $booking->id,
+                'reason' => 'booking_cancelled',
+            ]);
+            $this->orderService->refund($order, ['reason' => 'booking_cancelled']);
+            $booking->payment_status = 'refunded';
+        }
+
         $booking->update([
             'status' => 'cancelled',
+            'payment_status' => $booking->payment_status,
             'cancelled_at' => now(),
             'cancelled_by_user_id' => $user?->id,
             'cancel_reason' => $data['reason'] ?? null,
