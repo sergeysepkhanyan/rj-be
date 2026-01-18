@@ -223,7 +223,7 @@ class ProductImportService
     {
         $value = strtolower(trim((string) $status));
         return match (true) {
-            $value === 'publish' || $value === 'published' => 'publish',
+            $value === 'publish' || $value === 'published' => 'active',
             $value === 'active' => 'active',
             default => 'draft',
         };

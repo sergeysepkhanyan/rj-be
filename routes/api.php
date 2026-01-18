@@ -166,6 +166,7 @@ Route::middleware(['set.locale'])->group(function () {
         Route::post('/admin/product/import', [ProductImportsController::class, 'import']);
         Route::get('/admin/product/download-inventory', [AdminProductsController::class, 'downloadInventory']);
         Route::post('/admin/product/bulk-delete', [AdminProductsController::class, 'bulkDelete']);
+        Route::post('/admin/product/bulk-status', [AdminProductsController::class, 'bulkStatus']);
 
         Route::post('/admin/post/create', [AdminPostsController::class, 'store']);
         Route::put('/admin/post/update/{post}', [AdminPostsController::class, 'update']);

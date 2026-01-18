@@ -57,7 +57,7 @@ class ProductFilter
     protected function filterByStatus(): void
     {
         $status = strtolower(trim((string) $this->request->status));
-        if (in_array($status, ['draft', 'active', 'publish'], true)) {
+        if (in_array($status, ['draft', 'active'], true)) {
             $this->query->where('status', $status);
         }
     }

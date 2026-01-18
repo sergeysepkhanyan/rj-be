@@ -1395,6 +1395,51 @@
                 }
               },
               "response": []
+            },
+            {
+              "name": "bulk status",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{jwt_token}}",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"ids\": [1, 2, 3],\n  \"status\": \"active\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{url}}/api/admin/product/bulk-status",
+                  "host": [
+                    "{{url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "product",
+                    "bulk-status"
+                  ]
+                }
+              },
+              "response": []
             }
           ]
         },
@@ -2705,7 +2750,7 @@
               }
             ],
             "url": {
-              "raw": "{{url}}/api/products?availability=On%20Stock&status=publish&month=august&year=2025&page=1&per_page=15",
+              "raw": "{{url}}/api/products?availability=On%20Stock&status=active&month=august&year=2025&page=1&per_page=15",
               "host": [
                 "{{url}}"
               ],
@@ -2720,7 +2765,7 @@
                 },
                 {
                   "key": "status",
-                  "value": "publish"
+                  "value": "active"
                 },
                 {
                   "key": "month",

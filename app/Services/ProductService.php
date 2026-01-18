@@ -107,4 +107,15 @@ class ProductService
             return $products->count();
         });
     }
+
+    public function bulkUpdateStatus(array $ids, string $status): int
+    {
+        if (empty($ids)) {
+            return 0;
+        }
+
+        return Product::whereIn('id', $ids)->update([
+            'status' => $status,
+        ]);
+    }
 }

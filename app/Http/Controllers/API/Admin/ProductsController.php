@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\BulkDeleteProductsRequest;
+use App\Http\Requests\BulkUpdateProductStatusRequest;
 use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateProductRequest;
 use App\Http\Resources\ProductResource;
@@ -165,6 +166,24 @@ class ProductsController extends Controller
         return ApiResponse::success([
             'deleted' => $deleted,
         ], __('success.product.deleted'));
+    }
+
+    public function bulkStatus(BulkUpdateProductStatusRequest $request): JsonResponse
+    {
+        $ids = $request->input('ids', []);
+        $status = $request->input('status');
+
+        if (!is_array($ids) || count($ids) === 0) {
+            return ApiResponse::success([
+                'updated' => 0,
+            ], __('success.product.updated'));
+        }
+
+        $updated = $this->productService->bulkUpdateStatus($ids, $status);
+
+        return ApiResponse::success([
+            'updated' => $updated,
+        ], __('success.product.updated'));
     }
 }
 

@@ -35,7 +35,7 @@ class StoreProductRequest extends BaseFormRequest
             'discount' => 'nullable|boolean',
             'discountType' => 'nullable|string|in:percentage,amount',
             'discountAmount' => 'nullable|numeric',
-            'status' => 'nullable|in:active,draft,publish',
+            'status' => 'nullable|in:active,draft',
             'images' => 'required|array|min:1',
             'images.*' => 'string',
             'details' => 'nullable|array',

@@ -37,7 +37,7 @@ class UpdateProductRequest extends BaseFormRequest
             'discount' => 'nullable|boolean',
             'discountType' => 'nullable|string|in:percentage,amount',
             'discountAmount' => 'nullable|numeric',
-            'status' => 'nullable|in:active,draft,publish',
+            'status' => 'nullable|in:active,draft',
             'removedFiles' => 'nullable|array',
             'removedFiles.*' => 'string',
             'newFiles' => 'nullable|array',
