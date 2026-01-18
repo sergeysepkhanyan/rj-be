@@ -122,5 +122,53 @@ class PaymentService
             'raw' => $res,
         ]);
     }
+
+    public function startStripePaymentIntentForOrder(Order $order, ?string $customerEmail = null, array $metadata = []): Payment
+    {
+        $idempotencyKey = (string) Str::uuid();
+        $payment = $this->paymentRepository->create([
+            'order_id' => $order->id,
+            'provider' => 'stripe',
+            'flow' => 'token_charge',
+            'amount' => $order->amount,
+            'currency' => $order->currency,
+            'status' => 'created',
+            'idempotency_key' => $idempotencyKey,
+        ]);
+
+        $amountMinor = (int) round(((float) $order->amount) * 100);
+        $payload = [
+            'amount' => $amountMinor,
+            'currency' => strtolower($order->currency ?? 'AED'),
+            'description' => "Order #{$order->id}",
+            'payment_method_types[]' => 'card',
+            'metadata[order_id]' => (string) $order->id,
+            'metadata[reference]' => (string) ($order->reference ?? $order->id),
+        ];
+
+        if ($customerEmail) {
+            $payload['receipt_email'] = $customerEmail;
+        }
+
+        foreach ($metadata as $key => $value) {
+            $payload["metadata[{$key}]"] = (string) $value;
+        }
+
+        $res = $this->stripeClient->createPaymentIntent($payload, $idempotencyKey);
+        $paymentIntentId = data_get($res, 'id');
+        $status = (string) data_get($res, 'status', 'requires_payment_method');
+
+        $mappedStatus = match ($status) {
+            'succeeded' => 'paid',
+            'canceled' => 'cancelled',
+            default => 'pending',
+        };
+
+        return $this->paymentRepository->update($payment, [
+            'external_id' => $paymentIntentId,
+            'status' => $mappedStatus,
+            'raw' => $res,
+        ]);
+    }
 }
 

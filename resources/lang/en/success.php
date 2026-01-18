@@ -102,6 +102,9 @@ return [
     'products' => [
         'listed' => 'Products retrieved successfully.',
     ],
+    'orders' => [
+        'listed' => 'Orders retrieved successfully.',
+    ],
 
     'user' => [
         'updated' => 'Profile updated successfully.',

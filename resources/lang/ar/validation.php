@@ -2,6 +2,15 @@
 
 return [
     'failed' => 'فشل التحقق من البيانات.',
+    'insufficient_stock' => 'المخزون غير كافٍ. المتاح: :available.',
+    'cart' => [
+        'guest_session_required' => 'معرّف جلسة الضيف مطلوب.',
+        'empty' => 'السلة فارغة.',
+        'customer_email_required' => 'البريد الإلكتروني للعميل مطلوب.',
+        'mixed_currency' => 'عناصر السلة بعملات مختلفة.',
+        'address_required' => 'عنوان التوصيل مطلوب.',
+        'address_id_required' => 'العنوان مطلوب.',
+    ],
 
     'custom' => [
 

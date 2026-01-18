@@ -2865,6 +2865,382 @@
       ]
     },
     {
+      "name": "cart",
+      "item": [
+        {
+          "name": "get cart",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Guest-Session-Id",
+                "value": "guest-session-id",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{url}}/api/cart",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "cart"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "add to cart",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Guest-Session-Id",
+                "value": "guest-session-id",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": 1,\n  \"quantity\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{url}}/api/cart/items",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "cart",
+                "items"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "increment cart item",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Guest-Session-Id",
+                "value": "guest-session-id",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{url}}/api/cart/items/1/increment",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "cart",
+                "items",
+                "1",
+                "increment"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "decrement cart item",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Guest-Session-Id",
+                "value": "guest-session-id",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{url}}/api/cart/items/1/decrement",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "cart",
+                "items",
+                "1",
+                "decrement"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "update cart item",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Guest-Session-Id",
+                "value": "guest-session-id",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{url}}/api/cart/items/1",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "cart",
+                "items",
+                "1"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "remove cart item",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Guest-Session-Id",
+                "value": "guest-session-id",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{url}}/api/cart/items/1",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "cart",
+                "items",
+                "1"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "clear cart",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Guest-Session-Id",
+                "value": "guest-session-id",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{url}}/api/cart",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "cart"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "checkout cart",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Guest-Session-Id",
+                "value": "guest-session-id",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerEmail\": \"guest@example.com\",\n  \"shippingAddress\": {\n    \"name\": \"Jane\",\n    \"lastName\": \"Doe\",\n    \"mobile\": \"+971500000000\",\n    \"address\": \"Business Bay\",\n    \"additionalAddress\": \"Tower A, Apt 101\",\n    \"city\": \"Dubai\",\n    \"state\": \"Dubai\",\n    \"zipCode\": \"00000\"\n  },\n  \"billingSameAsShipping\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{url}}/api/cart/checkout",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "cart",
+                "checkout"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "orders",
+      "item": [
+        {
+          "name": "get my orders",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{url}}/api/orders?search=&status=paid&month=august&year=2025&page=1&per_page=10",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "orders"
+              ],
+              "query": [
+                {
+                  "key": "search",
+                  "value": ""
+                },
+                {
+                  "key": "status",
+                  "value": "paid"
+                },
+                {
+                  "key": "month",
+                  "value": "august"
+                },
+                {
+                  "key": "year",
+                  "value": "2025"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "per_page",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
       "name": "staff",
       "item": [
         {

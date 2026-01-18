@@ -52,9 +52,29 @@ class Order extends Model
         return $this->hasMany(Payment::class);
     }
 
+    public function items(): HasMany
+    {
+        return $this->hasMany(OrderItem::class);
+    }
+
     public function latestPayment(): HasOne
     {
         return $this->hasOne(Payment::class)->latestOfMany();
+    }
+
+    public function deliveryAddress(): HasOne
+    {
+        return $this->hasOne(Address::class, 'order_id');
+    }
+
+    public function shippingAddress(): HasOne
+    {
+        return $this->hasOne(Address::class, 'order_id')->where('type', 'shipping');
+    }
+
+    public function billingAddress(): HasOne
+    {
+        return $this->hasOne(Address::class, 'order_id')->where('type', 'billing');
     }
 
 }

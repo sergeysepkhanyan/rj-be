@@ -6,6 +6,8 @@ use App\Http\Controllers\API\BookingsController;
 use App\Http\Controllers\API\Client\AddressController;
 use App\Http\Controllers\API\Client\PaymentMethodsController;
 use App\Http\Controllers\API\ContactController;
+use App\Http\Controllers\API\CartController;
+use App\Http\Controllers\API\OrdersController;
 use App\Http\Controllers\API\EmailVerificationController;
 use App\Http\Controllers\API\SubServiceMastersController;
 use App\Http\Controllers\API\PagesController;
@@ -63,6 +65,14 @@ Route::middleware(['set.locale'])->group(function () {
 
     Route::get('/products', [ProductsController::class, 'index']);
     Route::get('/product-categories', [ProductCategoriesController::class, 'index']);
+    Route::get('/cart', [CartController::class, 'index']);
+    Route::post('/cart/items', [CartController::class, 'store']);
+    Route::post('/cart/items/{product}/increment', [CartController::class, 'increment']);
+    Route::post('/cart/items/{product}/decrement', [CartController::class, 'decrement']);
+    Route::patch('/cart/items/{product}', [CartController::class, 'update']);
+    Route::delete('/cart/items/{product}', [CartController::class, 'destroy']);
+    Route::delete('/cart', [CartController::class, 'clear']);
+    Route::post('/cart/checkout', [CartController::class, 'checkout']);
 
     Route::prefix('auth')->group(function () {
         Route::post('signup', [AuthController::class, 'signup']);
@@ -102,6 +112,8 @@ Route::middleware(['set.locale'])->group(function () {
         Route::get('/bookings', [BookingsController::class, 'index']);
         Route::put('/bookings/{booking}', [BookingsController::class, 'update']);
         Route::patch('/bookings/cancel/{booking}', [BookingsController::class, 'cancel']);
+
+        Route::get('/orders', [OrdersController::class, 'index']);
 
 
 

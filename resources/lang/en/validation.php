@@ -2,6 +2,15 @@
 
 return [
     'failed' => 'Validation failed.',
+    'insufficient_stock' => 'Insufficient stock. Available: :available.',
+    'cart' => [
+        'guest_session_required' => 'Guest session id is required.',
+        'empty' => 'Cart is empty.',
+        'customer_email_required' => 'Customer email is required.',
+        'mixed_currency' => 'Cart items have different currencies.',
+        'address_required' => 'Delivery address is required.',
+        'address_id_required' => 'Address is required.',
+    ],
 
     'custom' => [
 

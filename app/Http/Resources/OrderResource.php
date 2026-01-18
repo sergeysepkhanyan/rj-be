@@ -15,6 +15,9 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * @property mixed $meta
  * @property mixed $created_at
  * @property mixed $latestPayment
+ * @property mixed $deliveryAddress
+ * @property mixed $shippingAddress
+ * @property mixed $billingAddress
  */
 class OrderResource extends JsonResource
 {
@@ -44,6 +47,15 @@ class OrderResource extends JsonResource
                     'clientSecret' => $clientSecret,
                     'createdAt'    => $this->latestPayment->created_at,
                 ];
+            }),
+            'deliveryAddress' => $this->whenLoaded('deliveryAddress', function () {
+                return new AddressResource($this->deliveryAddress);
+            }),
+            'shippingAddress' => $this->whenLoaded('shippingAddress', function () {
+                return new AddressResource($this->shippingAddress);
+            }),
+            'billingAddress' => $this->whenLoaded('billingAddress', function () {
+                return new AddressResource($this->billingAddress);
             }),
         ];
     }

@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Models\UserRole;
 use App\Services\ApiResponse;
 use App\Services\BookingSelectionService;
+use App\Services\CartService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
@@ -40,7 +41,11 @@ class AuthController extends Controller
         ], __('success.auth.register_verify_email'));
     }
 
-    public function login(LoginRequest $request, BookingSelectionService $bookingSelectionService): JsonResponse
+    public function login(
+        LoginRequest $request,
+        BookingSelectionService $bookingSelectionService,
+        CartService $cartService
+    ): JsonResponse
     {
         $credentials = $request->only(['email', 'password']);
 
@@ -79,6 +84,7 @@ class AuthController extends Controller
             ?? $request->cookie('guest_session_id');
         if ($guestSessionId) {
             $bookingSelectionService->attachGuestSelectionsToUser($guestSessionId, $user->id);
+            $cartService->mergeGuestCartToUser($guestSessionId, $user->id);
         }
 
         return ApiResponse::success([
