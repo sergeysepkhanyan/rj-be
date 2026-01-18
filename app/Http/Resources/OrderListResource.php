@@ -32,6 +32,7 @@ class OrderListResource extends JsonResource
             return [
                 'id' => $item->product_id,
                 'name' => $item->product?->name,
+                'skuId' => $item->product?->sku_id,
                 'quantity' => (int) $item->quantity,
                 'unitPrice' => (string) $item->unit_price,
                 'subtotal' => (string) $item->subtotal,
