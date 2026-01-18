@@ -3241,6 +3241,104 @@
       ]
     },
     {
+      "name": "reports",
+      "item": [
+        {
+          "name": "today turnover",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{url}}/api/admin/reports/today-turnover",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "reports",
+                "today-turnover"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "top services",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{url}}/api/admin/reports/top-services",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "reports",
+                "top-services"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "top products",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{url}}/api/admin/reports/top-products",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "reports",
+                "top-products"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
       "name": "staff",
       "item": [
         {

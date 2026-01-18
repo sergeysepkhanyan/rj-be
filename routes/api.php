@@ -22,6 +22,7 @@ use App\Http\Controllers\API\ProductCategoriesController;
 use App\Http\Controllers\API\Admin\ServicesController as AdminServicesController;
 use App\Http\Controllers\API\Admin\CategoriesController as AdminCategoriesController;
 use App\Http\Controllers\API\Admin\SubServicesController as AdminSubServicesController;
+use App\Http\Controllers\API\Admin\ReportsController as AdminReportsController;
 use App\Http\Controllers\API\ServicesController as ServicesController;
 use App\Http\Controllers\API\CategoriesController as CategoriesController;
 use App\Http\Controllers\API\Auth\AuthController;
@@ -167,6 +168,10 @@ Route::middleware(['set.locale'])->group(function () {
         Route::post('/admin/staff/create-many', [AdminStaffController::class, 'createMany']);
         Route::post('/admin/staff/update-many', [AdminStaffController::class, 'updateMany']);
         Route::patch('/admin/staff/{id}/restore', [AdminStaffController::class, 'restore']);
+
+        Route::get('/admin/reports/today-turnover', [AdminReportsController::class, 'todaysTurnover']);
+        Route::get('/admin/reports/top-services', [AdminReportsController::class, 'topServices']);
+        Route::get('/admin/reports/top-products', [AdminReportsController::class, 'topProducts']);
     });
 
     Route::middleware(['jwt.custom', 'verified', 'role:superadmin,admin'])->group(function () {
