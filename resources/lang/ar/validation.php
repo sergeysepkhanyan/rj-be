@@ -10,6 +10,8 @@ return [
         'mixed_currency' => 'عناصر السلة بعملات مختلفة.',
         'address_required' => 'عنوان التوصيل مطلوب.',
         'address_id_required' => 'العنوان مطلوب.',
+        'payment_method_required' => 'طريقة الدفع مطلوبة.',
+        'payment_method_invalid' => 'طريقة الدفع غير صالحة.',
     ],
 
     'custom' => [

@@ -104,6 +104,7 @@ class CartController extends Controller
         $billingSameAsShipping = (bool) $request->input('billing_same_as_shipping', false);
         $shippingAddress = $request->input('shipping_address', []);
         $billingAddress = $request->input('billing_address', []);
+        $paymentMethodId = $request->input('payment_method_id');
 
         $order = $this->cartService->checkout(
             $guestSessionId,
@@ -112,7 +113,8 @@ class CartController extends Controller
             $shippingAddress,
             $billingSameAsShipping,
             $billingAddressId,
-            $billingAddress
+            $billingAddress,
+            $paymentMethodId
         );
 
         return ApiResponse::success([

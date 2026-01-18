@@ -8,7 +8,9 @@ use App\Models\Address;
 use App\Models\CartItem;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\PaymentMethod;
 use App\Models\Product;
+use App\Models\User;
 use App\Repositories\Interfaces\CartItemRepositoryInterface;
 use App\Repositories\Interfaces\OrderRepositoryInterface;
 use Illuminate\Http\Exceptions\HttpResponseException;
@@ -154,7 +156,8 @@ class CartService
         array $shippingAddress = [],
         bool $billingSameAsShipping = false,
         ?int $billingAddressId = null,
-        array $billingAddress = []
+        array $billingAddress = [],
+        ?int $paymentMethodId = null
     ): Order
     {
         [$userId, $guestSessionId] = $this->resolveSession($guestSessionId);
@@ -234,9 +237,17 @@ class CartService
             ]);
         }
 
-        $email = $customerEmail ?: auth()->user()?->email;
+        $user = $userId ? User::find($userId) : null;
+        $email = $customerEmail ?: $user?->email;
         $meta = $guestSessionId ? ['guest_session_id' => $guestSessionId] : [];
-        $this->paymentService->startStripePaymentIntentForOrder($order, $email, $meta);
+        [$stripeCustomerId, $stripePaymentMethodId] = $this->resolveSavedPaymentMethod($user, $paymentMethodId);
+        $this->paymentService->startStripePaymentIntentForOrder(
+            $order,
+            $email,
+            $meta,
+            $stripeCustomerId,
+            $stripePaymentMethodId
+        );
 
         $this->cartRepository->deleteBySession($userId, $guestSessionId);
 
@@ -402,6 +413,32 @@ class CartService
             'state' => $data['state'],
             'zip_code' => $data['zip_code'],
         ]);
+    }
+
+    protected function resolveSavedPaymentMethod(?User $user, ?int $paymentMethodId): array
+    {
+        if (!$paymentMethodId) {
+            return [null, null];
+        }
+
+        if (!$user) {
+            $this->throwValidation(['paymentMethodId' => __('validation.cart.payment_method_required')]);
+        }
+
+        $method = PaymentMethod::query()
+            ->where('id', $paymentMethodId)
+            ->where('user_id', $user->id)
+            ->first();
+
+        if (!$method || $method->provider !== 'stripe') {
+            $this->throwValidation(['paymentMethodId' => __('validation.cart.payment_method_invalid')]);
+        }
+
+        if (!$user->stripe_customer_id) {
+            $this->throwValidation(['paymentMethodId' => __('validation.cart.payment_method_invalid')]);
+        }
+
+        return [$user->stripe_customer_id, $method->token];
     }
 
     protected function throwValidation(array $errors, int $status = 422): void

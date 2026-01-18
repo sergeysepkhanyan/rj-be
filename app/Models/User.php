@@ -37,6 +37,7 @@ class User extends Authenticatable implements JWTSubject, CanResetPasswordContra
         'name',
         'name_ar',
         'email',
+        'stripe_customer_id',
         'mobile',
         'password',
         'user_role_id',

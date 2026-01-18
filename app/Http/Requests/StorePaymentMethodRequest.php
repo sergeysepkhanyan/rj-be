@@ -13,8 +13,8 @@ class StorePaymentMethodRequest extends BaseFormRequest
     public function rules(): array
     {
         return [
-            'type' => 'required|string|in:card,apple_pay,google_pay,paypal',
-            'brand' => 'required|string',
+            'type' => 'required_unless:provider,stripe|string|in:card,apple_pay,google_pay,paypal',
+            'brand' => 'required_unless:provider,stripe|string',
             'provider' => 'required|string',
             'token' => 'required|string',
             'last4' => 'nullable|string|max:4',

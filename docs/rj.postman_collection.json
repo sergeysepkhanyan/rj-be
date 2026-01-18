@@ -3157,7 +3157,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"customerEmail\": \"guest@example.com\",\n  \"shippingAddress\": {\n    \"name\": \"Jane\",\n    \"lastName\": \"Doe\",\n    \"mobile\": \"+971500000000\",\n    \"address\": \"Business Bay\",\n    \"additionalAddress\": \"Tower A, Apt 101\",\n    \"city\": \"Dubai\",\n    \"state\": \"Dubai\",\n    \"zipCode\": \"00000\"\n  },\n  \"billingSameAsShipping\": true\n}",
+              "raw": "{\n  \"customerEmail\": \"guest@example.com\",\n  \"shippingAddress\": {\n    \"name\": \"Jane\",\n    \"lastName\": \"Doe\",\n    \"mobile\": \"+971500000000\",\n    \"address\": \"Business Bay\",\n    \"additionalAddress\": \"Tower A, Apt 101\",\n    \"city\": \"Dubai\",\n    \"state\": \"Dubai\",\n    \"zipCode\": \"00000\"\n  },\n  \"billingSameAsShipping\": true,\n  \"paymentMethodId\": 1\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -3565,7 +3565,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n    \"type\": \"card\",\n    \"brand\": \"visa\",\n    \"provider\": \"stripe\",\n    \"token\": \"pm_1Qb9cX2eZvKYlo2C8D6aXabc\",\n    \"last4\": \"4242\",\n    \"is_default\": true,\n    \"meta\": {\n        \"exp_month\": 12,\n        \"exp_year\": 2030,\n        \"name_on_card\": \"John Doe\"\n    }\n}",
+                  "raw": "{\n  \"provider\": \"stripe\",\n  \"token\": \"pm_1Qb9cX2eZvKYlo2C8D6aXabc\",\n  \"isDefault\": true\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -3608,7 +3608,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n    \"name\": \"Updated Product Name\",\n    \"nameAr\": \"Updated Product Name\",\n    \"description\": \"Updated description for the product\",\n    \"descriptionAr\": \"Updated description for the product\",\n    \"maxQuantity\": 100,\n    \"price\": 49.99,\n    \"currency\": \"AED\",\n    \"referralId\": 1,\n    \"discount\": true,\n    \"discountType\": \"percentage\",\n    \"discountAmount\": 10,\n    \"status\": \"active\",\n    \"removedFiles\": [\n        \"images/product/OLY7mfD8O7743RRsR0EoujvgbpcrQJedd7U0AlAK.jpg\"\n    ],\n    \"newFiles\": [\n        \"products/new_image1.jpg\",\n        \"products/new_image2.jpg\"\n    ],\n    \"details\": [\n        {\n            \"id\": 1,\n            \"details\": \"Updated detail 1\",\n            \"detailsAr\": \"Updated detail 1\",\n            \"description\": \"Updated description for detail 1\"\n        },\n        {\n            \"details\": \"New detail 2\",\n            \"detailsAr\": \"New detail 2\",\n            \"description\": \"Description for new detail 2\"\n        }\n    ]\n}",
+                  "raw": "{\n  \"isDefault\": true\n}",
                   "options": {
                     "raw": {
                       "language": "json"

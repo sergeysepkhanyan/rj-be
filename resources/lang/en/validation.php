@@ -10,6 +10,8 @@ return [
         'mixed_currency' => 'Cart items have different currencies.',
         'address_required' => 'Delivery address is required.',
         'address_id_required' => 'Address is required.',
+        'payment_method_required' => 'Payment method is required.',
+        'payment_method_invalid' => 'Payment method is invalid.',
     ],
 
     'custom' => [

@@ -124,7 +124,13 @@ class PaymentService
         ]);
     }
 
-    public function startStripePaymentIntentForOrder(Order $order, ?string $customerEmail = null, array $metadata = []): Payment
+    public function startStripePaymentIntentForOrder(
+        Order $order,
+        ?string $customerEmail = null,
+        array $metadata = [],
+        ?string $customerId = null,
+        ?string $paymentMethodId = null
+    ): Payment
     {
         $idempotencyKey = (string) Str::uuid();
         $payment = $this->paymentRepository->create([
@@ -149,6 +155,14 @@ class PaymentService
 
         if ($customerEmail) {
             $payload['receipt_email'] = $customerEmail;
+        }
+
+        if ($customerId) {
+            $payload['customer'] = $customerId;
+        }
+
+        if ($paymentMethodId) {
+            $payload['payment_method'] = $paymentMethodId;
         }
 
         foreach ($metadata as $key => $value) {

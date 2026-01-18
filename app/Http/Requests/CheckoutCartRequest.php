@@ -10,6 +10,7 @@ class CheckoutCartRequest extends BaseFormRequest
         'shippingAddressId' => 'shipping_address_id',
         'billingAddressId' => 'billing_address_id',
         'billingSameAsShipping' => 'billing_same_as_shipping',
+        'paymentMethodId' => 'payment_method_id',
     ];
 
     public function rules(): array
@@ -20,6 +21,7 @@ class CheckoutCartRequest extends BaseFormRequest
             'shippingAddressId' => ['nullable', 'integer'],
             'billingAddressId' => ['nullable', 'integer'],
             'billingSameAsShipping' => ['sometimes', 'boolean'],
+            'paymentMethodId' => ['nullable', 'integer'],
             'shippingAddress' => ['nullable', 'array'],
             'shippingAddress.name' => ['required_without:shippingAddressId', 'string', 'max:255'],
             'shippingAddress.lastName' => ['nullable', 'string', 'max:255'],
