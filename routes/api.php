@@ -158,6 +158,7 @@ Route::middleware(['set.locale'])->group(function () {
     });
 
     Route::middleware(['jwt.custom', 'verified', 'role:superadmin,admin'])->group(function () {
+        Route::get('/admin/products', [AdminProductsController::class, 'index']);
         Route::get('/admin/categories', [AdminCategoriesController::class, 'index']);
         Route::get('/admin/staff', [AdminStaffController::class, 'index']);
         Route::get('/admin/services', [AdminServicesController::class, 'index']);

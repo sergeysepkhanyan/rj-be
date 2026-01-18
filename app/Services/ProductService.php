@@ -77,6 +77,14 @@ class ProductService
         return $this->productRepository->paginateProducts($filter, $perPage, $page);
     }
 
+    public function getPublicPaginatedProducts(int $perPage = 15, int $page = 1): LengthAwarePaginator
+    {
+        return Product::with(['details', 'files', 'productCategory'])
+            ->where('status', 'active')
+            ->orderByDesc('created_at')
+            ->paginate($perPage, ['*'], 'page', $page);
+    }
+
     public function getProductById($id)
     {
         return $this->productRepository->find($id);

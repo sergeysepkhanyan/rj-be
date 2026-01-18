@@ -9,6 +9,7 @@ use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateProductRequest;
 use App\Http\Resources\ProductResource;
 use App\Models\Product;
+use App\Filters\ProductFilter;
 use App\Services\ProductExportService;
 use App\Services\ProductService;
 use App\Services\ProductCategoryService;
@@ -23,6 +24,30 @@ class ProductsController extends Controller
         protected ProductCategoryService $productCategoryService,
         protected ProductExportService $productExportService
     ) {}
+
+    public function index(Request $request, ProductFilter $filter): JsonResponse
+    {
+        $perPage = (int) $request->get('per_page', 15);
+        $page    = (int) $request->get('page', 1);
+
+        $products = $this->productService->getPaginatedProducts($filter, $perPage, $page);
+
+        return ApiResponse::success([
+            'products' => ProductResource::collection($products),
+            'meta' => [
+                'current_page' => $products->currentPage(),
+                'last_page'    => $products->lastPage(),
+                'per_page'     => $products->perPage(),
+                'total'        => $products->total(),
+            ],
+            'links' => [
+                'first' => $products->url(1),
+                'last'  => $products->url($products->lastPage()),
+                'prev'  => $products->previousPageUrl(),
+                'next'  => $products->nextPageUrl(),
+            ],
+        ], __('success.products.listed'));
+    }
 
     public function store(StoreProductRequest $request): JsonResponse
     {
