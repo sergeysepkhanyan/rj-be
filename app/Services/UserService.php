@@ -145,9 +145,9 @@ class UserService
         return $this->userRepository->update($user, $data);
     }
 
-    public function deleteUser($id)
+    public function deleteUser($user)
     {
-        return $this->userRepository->delete($id);
+        return $this->userRepository->delete($user);
     }
 
     public function changePassword($userId, array $data): array

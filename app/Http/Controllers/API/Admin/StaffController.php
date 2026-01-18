@@ -79,7 +79,7 @@ class StaffController extends Controller
             );
         }
 
-        $this->userService->deleteUser($user->id);
+        $this->userService->deleteUser($user);
 
         return ApiResponse::success([], __('success.staff.deleted'));
     }
