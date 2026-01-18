@@ -377,7 +377,7 @@ class BookingService
                 'payment_status' => $pricing['payment_status'],
                 'status' => $pricing['payment_mode'] === 'pay_now' ? 'pending_payment' : 'confirmed',
                 'expires_at' => $pricing['payment_mode'] === 'pay_now'
-                    ? now()->addMinutes((int) config('payment.booking_hold_minutes', 15))
+                    ? now()->addMinutes((int) config('payment.booking_hold_minutes', 10))
                     : null,
                 'customer_name'  => $data['customer_name']  ?? $data['customerName']  ?? ($user->name ?? null),
                 'customer_phone' => $data['customer_phone'] ?? $data['customerPhone'] ?? ($user->mobile ?? null),
