@@ -81,6 +81,7 @@ class ProductService
     {
         return Product::with(['details', 'files', 'productCategory'])
             ->where('status', 'active')
+            ->where('max_quantity', '>', 0)
             ->orderByDesc('created_at')
             ->paginate($perPage, ['*'], 'page', $page);
     }
