@@ -61,6 +61,20 @@ class PaymentMethodService
 
     public function delete(PaymentMethod $paymentMethod): bool
     {
+        // Delete from Stripe if provider is stripe
+        if ($paymentMethod->provider === 'stripe' && $paymentMethod->token) {
+            try {
+                $this->stripeClient->detachPaymentMethod($paymentMethod->token);
+            } catch (\Exception $e) {
+                // Log error but continue with local deletion
+                // Payment method might already be deleted in Stripe
+                \Log::warning("Failed to detach Stripe payment method: {$e->getMessage()}", [
+                    'payment_method_id' => $paymentMethod->id,
+                    'stripe_payment_method_id' => $paymentMethod->token,
+                ]);
+            }
+        }
+
         return $this->paymentMethodRepository->delete($paymentMethod);
     }
 

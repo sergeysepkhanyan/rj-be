@@ -119,4 +119,18 @@ class StripeClient
                 ->json();
         });
     }
+
+    public function detachPaymentMethod(string $paymentMethodId): array
+    {
+        $request = ['payment_method_id' => $paymentMethodId];
+        return ExternalRequestLogger::log('stripe', 'detach_payment_method', $request, function () use ($paymentMethodId) {
+            return Http::baseUrl(config('stripe.base_url'))
+                ->acceptJson()
+                ->withToken(config('stripe.secret_key'))
+                ->asForm()
+                ->post("/v1/payment_methods/{$paymentMethodId}/detach")
+                ->throw()
+                ->json();
+        });
+    }
 }

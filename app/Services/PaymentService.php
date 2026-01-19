@@ -107,6 +107,18 @@ class PaymentService
             'metadata[reference]' => (string) ($order->reference ?? $order->id),
         ];
 
+        // Include customer if user has stripe_customer_id (allows using saved payment methods)
+        if ($booking->user_id) {
+            // Load the client (user) relationship if not already loaded
+            if (!$booking->relationLoaded('client')) {
+                $booking->load('client');
+            }
+            $user = $booking->client;
+            if ($user && $user->stripe_customer_id) {
+                $payload['customer'] = $user->stripe_customer_id;
+            }
+        }
+
         $res = $this->stripeClient->createPaymentIntent($payload, $idempotencyKey);
         $paymentIntentId = data_get($res, 'id');
         $status = (string) data_get($res, 'status', 'requires_payment_method');
