@@ -61,7 +61,9 @@ class UserRepository implements UserRepositoryInterface
     {
         return User::whereHas('role', function($q) {
             $q->where('slug', 'master');
-        })->get();
+        })
+            ->with(['role', 'subservices.items', 'masterBookings'])
+            ->get();
     }
 
     public function paginateClients(int $perPage = 10, int $page = 1)

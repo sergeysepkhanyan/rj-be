@@ -32,8 +32,11 @@ abstract class BaseFormRequest extends FormRequest
         $mapped = [];
 
         foreach ($data as $key => $value) {
-
-            $newKey = $this->fieldMap[$key] ?? Str::snake($key);
+            if (is_int($key)) {
+                $newKey = $key;
+            } else {
+                $newKey = $this->fieldMap[$key] ?? Str::snake($key);
+            }
 
             if (is_array($value)) {
                 $mapped[$newKey] = $this->mapKeysRecursively($value);
