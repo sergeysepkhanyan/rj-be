@@ -56,6 +56,9 @@ class StripeWebhookController extends Controller
                             'status' => 'confirmed',
                             'payment_status' => 'paid',
                         ]);
+                    } elseif ($order->type === 'ecommerce') {
+                        // Send order confirmation email for ecommerce orders
+                        $this->orderService->sendOrderConfirmation($order);
                     }
                 }
                 break;

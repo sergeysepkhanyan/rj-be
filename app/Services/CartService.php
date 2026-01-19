@@ -196,6 +196,9 @@ class CartService
             $total += ((float) $product->price) * (int) $item->quantity;
         }
 
+        $user = $userId ? User::find($userId) : null;
+        $email = $customerEmail ?: $user?->email;
+
         $order = $this->orderRepository->create([
             'user_id' => $userId,
             'type' => OrderType::Ecommerce,
@@ -207,6 +210,7 @@ class CartService
             'reference' => $this->makeReference(),
             'meta' => [
                 'guest_session_id' => $guestSessionId,
+                'customer_email' => $email,
             ],
         ]);
 
@@ -237,8 +241,6 @@ class CartService
             ]);
         }
 
-        $user = $userId ? User::find($userId) : null;
-        $email = $customerEmail ?: $user?->email;
         $meta = $guestSessionId ? ['guest_session_id' => $guestSessionId] : [];
         [$stripeCustomerId, $stripePaymentMethodId] = $this->resolveSavedPaymentMethod($user, $paymentMethodId);
         $this->paymentService->startStripePaymentIntentForOrder(

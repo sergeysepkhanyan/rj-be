@@ -1,0 +1,87 @@
+<?php
+
+namespace App\Mail;
+
+use App\Models\Order;
+use App\Support\StripsMissingValues;
+use Illuminate\Bus\Queueable;
+use Illuminate\Mail\Mailable;
+use Illuminate\Queue\SerializesModels;
+
+class OrderConfirmedMail extends Mailable
+{
+    use Queueable, SerializesModels, StripsMissingValues;
+
+    public function __construct(public Order $order) {}
+
+    public function build(): OrderConfirmedMail
+    {
+        $order = $this->order->load([
+            'items.product',
+            'shippingAddress',
+            'billingAddress',
+            'latestPayment.paymentMethod',
+            'user',
+        ]);
+
+        // Build order data for email
+        $orderData = [
+            'id' => $order->id,
+            'reference' => $order->reference,
+            'type' => $order->type,
+            'status' => $order->status,
+            'amount' => (string) $order->amount,
+            'currency' => $order->currency ?? 'AED',
+            'createdAt' => $order->created_at?->format('Y-m-d H:i:s'),
+            'paidAt' => $order->paid_at?->format('Y-m-d H:i:s'),
+            'items' => $order->items->map(function ($item) {
+                return [
+                    'id' => $item->id,
+                    'productId' => $item->product_id,
+                    'productName' => $item->product?->name,
+                    'skuId' => $item->product?->sku_id,
+                    'quantity' => (int) $item->quantity,
+                    'unitPrice' => (string) $item->unit_price,
+                    'subtotal' => (string) $item->subtotal,
+                    'currency' => $item->currency,
+                ];
+            })->all(),
+            'shippingAddress' => $order->shippingAddress ? [
+                'name' => $order->shippingAddress->name,
+                'lastName' => $order->shippingAddress->last_name,
+                'mobile' => $order->shippingAddress->mobile,
+                'address' => $order->shippingAddress->address,
+                'additionalAddress' => $order->shippingAddress->additional_address,
+                'city' => $order->shippingAddress->city,
+                'state' => $order->shippingAddress->state,
+                'zipCode' => $order->shippingAddress->zip_code,
+            ] : null,
+            'billingAddress' => $order->billingAddress ? [
+                'name' => $order->billingAddress->name,
+                'lastName' => $order->billingAddress->last_name,
+                'mobile' => $order->billingAddress->mobile,
+                'address' => $order->billingAddress->address,
+                'additionalAddress' => $order->billingAddress->additional_address,
+                'city' => $order->billingAddress->city,
+                'state' => $order->billingAddress->state,
+                'zipCode' => $order->billingAddress->zip_code,
+            ] : null,
+            'paymentMethod' => $order->latestPayment?->paymentMethod ? [
+                'type' => $order->latestPayment->paymentMethod->type,
+                'brand' => $order->latestPayment->paymentMethod->brand,
+                'last4' => $order->latestPayment->paymentMethod->last4,
+            ] : ($order->latestPayment ? [
+                'provider' => $order->latestPayment->provider,
+                'type' => 'card', // Default assumption
+            ] : null),
+        ];
+
+        $orderData = $this->stripMissingValues($orderData);
+
+        return $this->subject('Order Confirmed #' . ($orderData['reference'] ?? $order->reference ?? $order->id))
+            ->from(config('mail.from.address'), config('mail.from.name'))
+            ->view('emails.order-confirmed')
+            ->text('emails.order-confirmed-text')
+            ->with(['order' => $orderData]);
+    }
+}
