@@ -297,7 +297,6 @@ class CartService
             ->whereHas('order', function ($q) {
                 $q->whereIn('status', [
                     OrderStatus::Pending->value,
-                    OrderStatus::PendingPayment->value,
                     OrderStatus::Paid->value,
                     OrderStatus::Fulfilled->value,
                 ]);
