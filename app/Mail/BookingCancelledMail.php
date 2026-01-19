@@ -6,11 +6,12 @@ use App\Models\Booking;
 use App\Http\Resources\BookingResource;
 use App\Support\StripsMissingValues;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Http\Resources\MissingValue;
 
-class BookingCancelledMail extends Mailable
+class BookingCancelledMail extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels, StripsMissingValues;
 
