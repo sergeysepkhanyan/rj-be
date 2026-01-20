@@ -21,12 +21,15 @@ class UpdateProductRequest extends BaseFormRequest
 
     public function rules(): array
     {
-        return [
+        $product = $this->route('product');
+        $productId = $product instanceof \App\Models\Product ? $product->id : $product;
+
+        $rules = [
             'name' => 'required|string|max:255',
             'nameAr' => 'nullable|string|max:255',
             'description' => 'required|string',
             'descriptionAr' => 'nullable|string',
-            'skuId' => 'required|string|max:64|unique:products,sku_id,' . $this->route('product'),
+            'skuId' => 'required|string|max:64|unique:products,sku_id,' . $productId,
             'productCategoryId' => 'nullable|integer|exists:product_categories,id|required_without:productCategory',
             'productCategory' => 'nullable|string|max:255|required_without:productCategoryId',
             'maxQuantity' => 'nullable|integer',
@@ -39,16 +42,23 @@ class UpdateProductRequest extends BaseFormRequest
             'discountAmount' => 'nullable|numeric',
             'status' => 'nullable|in:active,draft',
             'removedFiles' => 'nullable|array',
-            'removedFiles.*' => 'string',
+            'removedFiles.*' => 'nullable|string',
             'newFiles' => 'nullable|array',
-            'newFiles.*' => 'string',
+            'newFiles.*' => 'nullable|string',
             'details' => 'nullable|array',
-            'details.*.id' => 'nullable|integer',
-            'details.*.details' => 'required|string',
-            'details.*.detailsAr' => 'required|string',
-            'details.*.description' => 'nullable|string',
-            'details.*.descriptionAr' => 'nullable|string',
         ];
+
+        $details = $this->input('details', []);
+        if (!empty($details) && is_array($details) && count($details) > 0) {
+            $rules['details.*'] = 'required|array';
+            $rules['details.*.id'] = 'nullable|integer';
+            $rules['details.*.details'] = 'required|string';
+            $rules['details.*.detailsAr'] = 'required|string';
+            $rules['details.*.description'] = 'nullable|string';
+            $rules['details.*.descriptionAr'] = 'nullable|string';
+        }
+
+        return $rules;
     }
 
     public function messages(): array

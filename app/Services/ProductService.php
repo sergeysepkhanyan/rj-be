@@ -56,7 +56,12 @@ class ProductService
             $existingDetailIds = $product->details()->pluck('id')->toArray();
             $incomingDetailIds = [];
             if (!empty($detailsData) && is_array($detailsData)) {
-                $incomingDetailIds = array_filter(array_column($detailsData, 'id'));
+                $detailsData = array_values($detailsData);
+                foreach ($detailsData as $detail) {
+                    if (is_array($detail) && isset($detail['id']) && !empty($detail['id'])) {
+                        $incomingDetailIds[] = (int) $detail['id'];
+                    }
+                }
             }
             $detailsToDelete = array_diff($existingDetailIds, $incomingDetailIds);
             if (!empty($detailsToDelete)) {
@@ -67,8 +72,9 @@ class ProductService
                     if (!is_array($detail)) {
                         continue;
                     }
-                    if (!empty($detail['id']) && in_array($detail['id'], $existingDetailIds)) {
-                        $this->productDetailRepository->updateForProduct($product, $detail['id'], $detail);
+                    $detailId = isset($detail['id']) ? (int) $detail['id'] : null;
+                    if ($detailId && in_array($detailId, $existingDetailIds)) {
+                        $this->productDetailRepository->updateForProduct($product, $detailId, $detail);
                     } else {
                         $this->productDetailRepository->createForProduct($product, $detail);
                     }
