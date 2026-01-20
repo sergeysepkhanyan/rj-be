@@ -3260,7 +3260,7 @@
               }
             ],
             "url": {
-              "raw": "{{url}}/api/admin/reports/today-turnover",
+              "raw": "{{url}}/api/admin/reports/today-turnover?date=2026-01-20",
               "host": [
                 "{{url}}"
               ],
@@ -3269,6 +3269,13 @@
                 "admin",
                 "reports",
                 "today-turnover"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "2026-01-20",
+                  "description": "Optional date parameter (YYYY-MM-DD). If not provided, returns today's turnover."
+                }
               ]
             }
           },
@@ -3476,9 +3483,54 @@
             "description": "Update delivery status for an ecommerce order. Valid values: 'ordered', 'out_for_delivery', 'arriving', 'delivered'. When status is set to 'delivered', the order status is automatically updated to 'fulfilled'."
           },
           "response": []
+        },
+        {
+          "name": "update order status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"status\": \"shipped\",\n    \"note\": \"Shipped via DHL\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{url}}/api/admin/orders/1/status",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "orders",
+                "1",
+                "status"
+              ]
+            },
+            "description": "Update order status. Valid statuses: 'pending', 'pending_payment', 'processing', 'shipped', 'paid', 'refunded', 'cancelled', 'fulfilled'. Status flow: pending → processing → shipped → out_for_delivery → delivered. 'cancelled' and 'refunded' can be set from any stage. Optional 'note' field can be included."
+          },
+          "response": []
         }
-      ]
-    }
       ]
     },
     {
