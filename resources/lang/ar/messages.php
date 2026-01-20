@@ -20,5 +20,7 @@ return [
         'only_bookings_can_be_cancelled' => 'يمكن إلغاء الحجوزات فقط.',
         'completed_cannot_be_cancelled' => 'لا يمكن إلغاء الحجز بعد اكتماله.',
         'cancel_only_own' => 'يمكنك إلغاء حجوزاتك الخاصة فقط.',
+        'only_bookings_can_be_marked_paid' => 'يمكن تعيين الحجوزات فقط كمُدفوعة.',
+        'cancelled_cannot_be_marked_paid' => 'لا يمكن تعيين الحجوزات الملغاة كمُدفوعة.',
     ],
 ];

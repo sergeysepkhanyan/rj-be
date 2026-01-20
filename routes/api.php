@@ -209,6 +209,7 @@ Route::middleware(['set.locale'])->group(function () {
         Route::delete('/admin/booking/break/{booking}', [AdminBookingsController::class, 'deleteBreak']);
         Route::put('/admin/booking/break/{booking}', [AdminBookingsController::class, 'updateBreak']);
         Route::get('/admin/bookings', [AdminBookingsController::class, 'index']);
+        Route::patch('/admin/bookings/{booking}/mark-paid', [AdminBookingsController::class, 'markPaid']);
 
         Route::get('/admin/orders', [AdminOrdersController::class, 'index']);
         Route::get('/admin/orders/{order}', [AdminOrdersController::class, 'show']);

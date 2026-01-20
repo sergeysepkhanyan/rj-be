@@ -87,4 +87,21 @@ class BookingsController extends Controller
         ], __('success.break.deleted'));
     }
 
+    public function markPaid(Booking $booking): JsonResponse
+    {
+        if ($booking->type !== 'booking') {
+            return ApiResponse::error(
+                ['type' => __('messages.booking.only_bookings_can_be_marked_paid')],
+                __('validation.failed'),
+                422
+            );
+        }
+
+        $booking = $this->bookingService->markBookingPaid($booking);
+
+        return ApiResponse::success([
+            'booking' => new BookingResource($booking),
+        ], __('success.booking.marked_paid'));
+    }
+
 }

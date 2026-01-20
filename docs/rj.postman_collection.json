@@ -1608,6 +1608,44 @@
                 }
               },
               "response": []
+            },
+            {
+              "name": "mark booking as paid",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{jwt_token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{url}}/api/admin/bookings/1/mark-paid",
+                  "host": [
+                    "{{url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "bookings",
+                    "1",
+                    "mark-paid"
+                  ]
+                },
+                "description": "Mark a booking as paid. This endpoint performs the same logic as the Stripe webhook when payment succeeds: updates booking status to 'confirmed', payment_status to 'paid', marks the associated order as 'paid', and updates payment status if a payment exists. Use this when a customer pays in cash/at salon for 'pay_later' bookings."
+              },
+              "response": []
             }
           ]
         },

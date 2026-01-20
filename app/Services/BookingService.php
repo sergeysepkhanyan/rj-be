@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\Weekday;
 use App\Repositories\Interfaces\BookingRepositoryInterface;
 use App\Repositories\Interfaces\BookingSelectionRepositoryInterface;
+use App\Repositories\Interfaces\PaymentRepositoryInterface;
 use App\Repositories\Interfaces\SubServiceItemRepositoryInterface;
 use App\Repositories\Interfaces\SubServiceRepositoryInterface;
 use App\Repositories\Interfaces\WorkingHourRepositoryInterface;
@@ -34,6 +35,7 @@ class BookingService
         protected MasterAssignmentService $masterAssignmentService,
         protected OrderService $orderService,
         protected PaymentService $paymentService,
+        protected PaymentRepositoryInterface $paymentRepository,
     ) {}
 
     public function getAllBooking()
@@ -427,7 +429,7 @@ class BookingService
 
             $uniqueMasters = collect($segments)->pluck('master_id')->unique()->values();
 
-            $booking->update([
+            $updateData = [
                 'date'           => $date,
                 'timezone'       => $tz,
                 'start_time'     => $bookingStart,
@@ -441,7 +443,6 @@ class BookingService
                 'discount_label' => $pricing['discount_label'],
                 'final_price'    => $pricing['final_price'],
                 'payment_mode'   => $pricing['payment_mode'],
-                'payment_status' => $pricing['payment_status'],
 
                 'customer_name'  => $data['customer_name']  ?? $data['customerName']  ?? $booking->customer_name,
                 'customer_phone' => $data['customer_phone'] ?? $data['customerPhone'] ?? $booking->customer_phone,
@@ -449,7 +450,13 @@ class BookingService
                 'notes'          => $data['notes'] ?? $booking->notes,
 
                 'master_id'      => $uniqueMasters->count() === 1 ? (int)$uniqueMasters->first() : null,
-            ]);
+            ];
+
+            if ($booking->payment_status === 'unpaid' || $booking->payment_status === null) {
+                $updateData['payment_status'] = $pricing['payment_status'];
+            }
+
+            $booking->update($updateData);
 
             $booking->services()->delete();
 
@@ -692,6 +699,7 @@ class BookingService
         }
 
         $visitCount = Booking::where('user_id', $user->id)
+            ->where('type', 'booking')
             ->where('status', '!=', 'cancelled')
             ->where('payment_status', 'paid')
             ->count();
@@ -864,6 +872,38 @@ class BookingService
         ]);
 
         return $booking->load(['services.bookable', 'services.master', 'master', 'cancelledBy'])->refresh();
+    }
+
+    public function markBookingPaid(Booking $booking): Booking
+    {
+        if ($booking->type !== 'booking') {
+            $this->throwValidation([], 'messages.booking.only_bookings_can_be_marked_paid');
+        }
+
+        if ($booking->status === 'cancelled') {
+            $this->throwValidation([], 'messages.booking.cancelled_cannot_be_marked_paid');
+        }
+
+        $booking->load('order.latestPayment');
+
+        $booking->update([
+            'status' => 'confirmed',
+            'payment_status' => 'paid',
+        ]);
+
+        if ($booking->order) {
+            $this->orderService->markPaid($booking->order, ['marked_paid_manually' => true]);
+
+            if ($booking->order->latestPayment) {
+                $payment = $booking->order->latestPayment;
+                $this->paymentRepository->update($payment, [
+                    'status' => 'paid',
+                    'paid_at' => now(),
+                ]);
+            }
+        }
+
+        return $booking->fresh()->load(['services.bookable', 'services.master', 'master', 'order.latestPayment']);
     }
 
     protected function validateSegmentsBasic(array $segments, string $tz): void

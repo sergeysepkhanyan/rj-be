@@ -87,6 +87,7 @@ return [
         'updated'       => 'Booking updated successfully.',
         'cancelled'     => 'Booking cancelled successfully.',
         'list'          => 'Bookings retrieved successfully.',
+        'marked_paid'   => 'Booking marked as paid successfully.',
     ],
     'contact' => [
         'sent' => 'Message sent successfully.',
