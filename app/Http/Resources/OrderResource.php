@@ -60,15 +60,52 @@ class OrderResource extends JsonResource
                 $tax += $itemTax;
                 $quantity += $itemQuantity; // Sum quantities
 
+                $product = $item->product;
+                $mainImage = null;
+                $images = [];
+
+                if ($product) {
+                    // Main image
+                    if ($product->main_image) {
+                        $mainImage = asset('storage/' . $product->main_image);
+                    }
+
+                    // Product images (files)
+                    if ($product->relationLoaded('files') && $product->files) {
+                        $images = $product->files->map(function ($file) {
+                            return asset('storage/' . $file->path);
+                        })->all();
+                    }
+                }
+
+                // Get discount info from product
+                $discount = null;
+                $discountType = null;
+                $discountAmount = null;
+                $originalPrice = null;
+                
+                if ($product) {
+                    $discount = (bool) $product->discount;
+                    $discountType = $product->discount_type;
+                    $discountAmount = $product->discount_amount;
+                    $originalPrice = $product->price;
+                }
+
                 $items[] = [
                     'id' => $item->id,
                     'productId' => $item->product_id,
-                    'name' => $item->product?->name ?? 'Unknown Product',
-                    'skuId' => $item->product?->sku_id,
+                    'name' => $product?->name ?? 'Unknown Product',
+                    'skuId' => $product?->sku_id,
                     'quantity' => $itemQuantity,
                     'unitPrice' => (string) $itemUnitPrice,
                     'subtotal' => (string) $itemSubtotal,
                     'currency' => $item->currency ?? $this->currency,
+                    'mainImage' => $mainImage,
+                    'images' => $images,
+                    'discount' => $discount,
+                    'discountType' => $discountType,
+                    'discountAmount' => $discountAmount ? (string) $discountAmount : null,
+                    'originalPrice' => $originalPrice ? (string) $originalPrice : null,
                 ];
             }
         } elseif ($this->type === 'booking' && $this->relationLoaded('orderable')) {

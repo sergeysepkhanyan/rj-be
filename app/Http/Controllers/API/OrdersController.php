@@ -4,7 +4,7 @@ namespace App\Http\Controllers\API;
 
 use App\Filters\OrderFilter;
 use App\Http\Controllers\Controller;
-use App\Http\Resources\OrderListResource;
+use App\Http\Resources\OrderResource;
 use App\Models\Booking;
 use App\Models\Order;
 use App\Services\ApiResponse;
@@ -20,7 +20,7 @@ class OrdersController extends Controller
 
         $query = Order::query()
             ->where('user_id', auth()->id())
-            ->with(['items.product', 'shippingAddress', 'billingAddress', 'orderable']);
+            ->with(['items.product.files', 'shippingAddress', 'billingAddress', 'orderable']);
 
         $orders = $filter->apply($query)->orderByDesc('created_at')
             ->paginate($perPage, ['*'], 'page', $page);
@@ -32,7 +32,7 @@ class OrdersController extends Controller
         });
 
         return ApiResponse::success([
-            'orders' => OrderListResource::collection($orders),
+            'orders' => OrderResource::collection($orders),
             'meta' => [
                 'current_page' => $orders->currentPage(),
                 'last_page'    => $orders->lastPage(),
