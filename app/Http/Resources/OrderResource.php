@@ -32,12 +32,17 @@ class OrderResource extends JsonResource
     {
         $shippingAddress = $this->whenLoaded('shippingAddress') ? $this->shippingAddress : null;
         $customerName = null;
+        $customerFullName = null;
         $customerEmail = null;
         if ($this->whenLoaded('user') && $this->user) {
-            $customerName = trim(($this->user->name ?? '') . ' ' . ($this->user->last_name ?? ''));
+            $firstName = $this->user->name ?? '';
+            $lastName = $this->user->last_name ?? '';
+            $customerName = trim("{$firstName} {$lastName}");
+            $customerFullName = trim("{$firstName} {$lastName}");
             $customerEmail = $this->user->email;
         } else {
             $customerName = $this->meta['customer_name'] ?? null;
+            $customerFullName = $customerName;
             $customerEmail = $this->meta['customer_email'] ?? null;
         }
         $subtotal = 0;
@@ -51,26 +56,23 @@ class OrderResource extends JsonResource
                 $itemUnitPrice = (float) $item->unit_price;
                 $itemQuantity = (int) $item->quantity;
 
-                // Calculate tax (assuming 5% VAT rate)
                 $vatRate = 0.05;
                 $itemBasePrice = $itemSubtotal / (1 + $vatRate);
                 $itemTax = $itemSubtotal - $itemBasePrice;
 
                 $subtotal += $itemBasePrice;
                 $tax += $itemTax;
-                $quantity += $itemQuantity; // Sum quantities
+                $quantity += $itemQuantity;
 
                 $product = $item->product;
                 $mainImage = null;
                 $images = [];
 
                 if ($product) {
-                    // Main image
                     if ($product->main_image) {
                         $mainImage = asset('storage/' . $product->main_image);
                     }
 
-                    // Product images (files)
                     if ($product->relationLoaded('files') && $product->files) {
                         $images = $product->files->map(function ($file) {
                             return asset('storage/' . $file->path);
@@ -78,7 +80,6 @@ class OrderResource extends JsonResource
                     }
                 }
 
-                // Get discount info from product
                 $discount = null;
                 $discountType = null;
                 $discountAmount = null;
@@ -91,15 +92,20 @@ class OrderResource extends JsonResource
                     $originalPrice = $product->price;
                 }
 
+                $itemTaxAmount = $itemTax;
+                $itemFinalPrice = $itemSubtotal;
+
                 $items[] = [
-                    'id' => $item->product_id,
+                    'id' => $item->id,
+                    'productId' => $item->product_id,
                     'name' => $product?->name ?? 'Unknown Product',
-                    'image' => $mainImage, // Use mainImage as image for frontend
+                    'image' => $mainImage,
                     'quantity' => $itemQuantity,
                     'unitPrice' => (string) $itemUnitPrice,
                     'subtotal' => (string) $itemSubtotal,
+                    'finalPrice' => (string) $itemFinalPrice,
+                    'tax' => (string) round($itemTaxAmount, 2),
                     'type' => 'product',
-                    // Additional product info (can be used if needed)
                     'skuId' => $product?->sku_id,
                     'images' => $images,
                     'discount' => $discount,
@@ -120,7 +126,6 @@ class OrderResource extends JsonResource
                     $subtotal += $basePrice;
                     $tax += $serviceTax;
 
-                    // Get service image
                     $serviceImage = null;
                     $bookable = $service->bookable;
                     if ($bookable) {
@@ -130,19 +135,21 @@ class OrderResource extends JsonResource
                     }
 
                     $items[] = [
-                        'id' => $service->bookable_id ?? $service->id,
+                        'id' => $service->id,
+                        'productId' => $service->bookable_id ?? $service->id,
                         'name' => $bookable?->name ?? 'Unknown Service',
                         'image' => $serviceImage,
                         'quantity' => 1,
                         'unitPrice' => (string) $servicePrice,
                         'subtotal' => (string) $servicePrice,
+                        'finalPrice' => (string) $servicePrice,
+                        'tax' => (string) round($serviceTax, 2),
                         'type' => 'service',
                     ];
                 }
             }
         }
 
-        // Format address string
         $addressString = null;
         if ($shippingAddress) {
             $parts = array_filter([
@@ -155,7 +162,6 @@ class OrderResource extends JsonResource
             $addressString = $parts ? implode(', ', $parts) : null;
         }
 
-        // Delivery status timeline (for ecommerce orders)
         $deliveryStatuses = [];
         if ($this->type === 'ecommerce') {
             $statuses = [
@@ -165,7 +171,6 @@ class OrderResource extends JsonResource
                 'delivered' => null,
             ];
 
-            // If delivery_status is set, mark it and previous ones
             if ($this->delivery_status) {
                 $found = false;
                 foreach (['ordered', 'out_for_delivery', 'arriving', 'delivered'] as $status) {
@@ -175,7 +180,7 @@ class OrderResource extends JsonResource
                     } elseif ($found) {
                         break;
                     } else {
-                        $statuses[$status] = $this->created_at; // Mark as completed
+                        $statuses[$status] = $this->created_at;
                     }
                 }
             }
@@ -208,7 +213,6 @@ class OrderResource extends JsonResource
             ];
         }
 
-        // Get order-level discount info (from booking for booking orders)
         $orderDiscountType = null;
         $orderDiscountValue = null;
         $orderDiscountLabel = null;
@@ -220,7 +224,6 @@ class OrderResource extends JsonResource
                 $orderDiscountType = $booking->discount_type;
                 $orderDiscountValue = $booking->discount_value;
                 $orderDiscountLabel = $booking->discount_label;
-                // Calculate discount amount (price - final_price)
                 if ($booking->price && $booking->final_price) {
                     $orderDiscountAmount = (float) $booking->price - (float) $booking->final_price;
                 }
@@ -240,25 +243,41 @@ class OrderResource extends JsonResource
             'discount_label' => $orderDiscountLabel,
             'discount_amount' => $orderDiscountAmount ? (float) $orderDiscountAmount : null,
             'items' => $items,
-            // Additional fields for detailed views
             'meta' => $this->meta,
             'createdAt' => $this->created_at,
             'paidAt' => $this->paid_at,
             'customer' => [
                 'id' => $this->user_id,
                 'name' => $customerName,
+                'fullName' => $customerFullName,
                 'email' => $customerEmail,
             ],
+            'purchaseDate' => $this->created_at?->format('Y-m-d'),
+            'purchaseTime' => $this->created_at?->format('H:i:s'),
+            'purchaseDateTime' => $this->created_at?->format('Y-m-d H:i:s'),
             'date' => $this->created_at?->format('D, d F Y'),
             'time' => $this->created_at?->format('h:i A'),
             'address' => $addressString,
+            'addressInfo' => $this->whenLoaded('shippingAddress', function () {
+                if (!$this->shippingAddress) {
+                    return null;
+                }
+                return [
+                    'name' => $this->shippingAddress->name,
+                    'lastName' => $this->shippingAddress->last_name,
+                    'mobile' => $this->shippingAddress->mobile,
+                    'address' => $this->shippingAddress->address,
+                    'additionalAddress' => $this->shippingAddress->additional_address,
+                    'city' => $this->shippingAddress->city,
+                    'state' => $this->shippingAddress->state,
+                    'zipCode' => $this->shippingAddress->zip_code,
+                ];
+            }),
             'quantity' => $quantity > 0 ? $quantity : 1,
             'price' => (string) round($subtotal, 2),
             'tax' => (string) round($tax, 2),
             'total' => (string) $this->amount,
             'deliveryStatuses' => $deliveryStatuses,
-
-            // Payment information
             'latestPayment' => $this->whenLoaded('latestPayment', function () {
                 $clientSecret = null;
                 if ($this->latestPayment->provider === 'stripe') {
