@@ -17,7 +17,7 @@ class OrderExportService
         protected OrderRepositoryInterface $orderRepository
     ) {}
 
-    public function downloadInvoicePdf(Order $order): StreamedResponse
+    public function downloadInvoicePdf(Order $order)
     {
         $order->load([
             'user',
@@ -108,7 +108,7 @@ class OrderExportService
         ]);
     }
 
-    public function exportOrdersPdf(?OrderFilter $filter = null, ?array $ids = null): StreamedResponse
+    public function exportOrdersPdf(?OrderFilter $filter = null, ?array $ids = null)
     {
         $query = Order::query();
 
