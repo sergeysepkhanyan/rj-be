@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Services\ApiResponse;
 use App\Services\ReportsService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class ReportsController extends Controller
 {
@@ -13,9 +14,10 @@ class ReportsController extends Controller
         protected ReportsService $reportsService
     ) {}
 
-    public function todaysTurnover(): JsonResponse
+    public function todaysTurnover(Request $request): JsonResponse
     {
-        $totals = $this->reportsService->todaysTurnover();
+        $date = $request->input('date');
+        $totals = $this->reportsService->todaysTurnover($date);
 
         return ApiResponse::success([
             'totals' => $totals,

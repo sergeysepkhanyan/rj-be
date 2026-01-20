@@ -25,8 +25,14 @@ class BookingsController extends Controller
 
         $bookings = $this->bookingService->getPaginatedBookings($filter, $perPage, $page);
 
+        $items = $bookings->getCollection()->map(function ($item) {
+            return $item->type === 'break' 
+                ? new BreakResource($item)
+                : new BookingResource($item);
+        });
+
         return ApiResponse::success([
-            'bookings' => BookingResource::collection($bookings),
+            'bookings' => $items,
             'meta' => [
                 'current_page' => $bookings->currentPage(),
                 'last_page' => $bookings->lastPage(),

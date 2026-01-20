@@ -11,9 +11,9 @@ class ReportsService
         protected ReportsRepositoryInterface $reportsRepository
     ) {}
 
-    public function todaysTurnover(): Collection
+    public function todaysTurnover(?string $date = null): Collection
     {
-        return $this->reportsRepository->getTodaysTurnover();
+        return $this->reportsRepository->getTodaysTurnover($date);
     }
 
     public function topServices(int $limit = 5): Collection

@@ -15,13 +15,13 @@ use Illuminate\Support\Facades\DB;
 
 class ReportsRepository implements ReportsRepositoryInterface
 {
-    public function getTodaysTurnover(): Collection
+    public function getTodaysTurnover(?string $date = null): Collection
     {
-        $today = Carbon::today();
+        $targetDate = $date ? Carbon::parse($date) : Carbon::today();
 
         return Payment::query()
             ->where('status', 'paid')
-            ->whereDate('paid_at', $today)
+            ->whereDate('paid_at', $targetDate)
             ->selectRaw('currency, SUM(amount) as total')
             ->groupBy('currency')
             ->get()
@@ -108,15 +108,20 @@ class ReportsRepository implements ReportsRepositoryInterface
             ->keyBy('product_id');
 
         $products = Product::query()
-            ->select('id', 'name', 'sku_id', 'currency')
+            ->select('id', 'name', 'sku_id', 'currency', 'main_image')
             ->get()
             ->map(function ($row) use ($counts) {
                 $count = $counts->get($row->id);
+                $image = null;
+                if ($row->main_image) {
+                    $image = asset('storage/' . $row->main_image);
+                }
 
                 return [
                     'id' => $row->id,
                     'name' => $row->name,
                     'skuId' => $row->sku_id,
+                    'image' => $image,
                     'totalQuantity' => (int) ($count->total_quantity ?? 0),
                     'totalAmount' => (string) ((float) ($count->total_amount ?? 0)),
                     'currency' => $row->currency ?? config('payment.default_currency', 'AED'),
