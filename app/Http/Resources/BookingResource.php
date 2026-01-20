@@ -59,7 +59,7 @@ class BookingResource extends BaseResource
             
             if ($services->isNotEmpty()) {
                 $firstService = $services->sortBy('start_time')->first();
-                $date = $this->date;
+                $date = $this->date instanceof \Carbon\Carbon ? $this->date->format('Y-m-d') : (string) $this->date;
                 $startTime = $firstService->start_time ?? $this->start_time;
                 $timezone = $firstService->timezone ?? $this->timezone ?? 'UTC';
                 
@@ -74,7 +74,7 @@ class BookingResource extends BaseResource
                 
                 $canRefund = $hoursUntilAppointment >= 24 && $this->payment_status === 'paid';
             } elseif ($this->start_time) {
-                $date = $this->date;
+                $date = $this->date instanceof \Carbon\Carbon ? $this->date->format('Y-m-d') : (string) $this->date;
                 $startTime = $this->start_time;
                 $timezone = $this->timezone ?? 'UTC';
                 
