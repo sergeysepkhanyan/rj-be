@@ -23,11 +23,13 @@ class Order extends Model
         'amount',
         'currency',
         'status',
+        'delivery_status',
         'reference',
         'meta',
         'paid_at',
         'cancelled_at',
         'refunded_at',
+        'delivery_status_updated_at',
     ];
 
     protected $casts = [
@@ -35,6 +37,7 @@ class Order extends Model
         'paid_at' => 'datetime',
         'cancelled_at' => 'datetime',
         'refunded_at' => 'datetime',
+        'delivery_status_updated_at' => 'datetime',
     ];
 
     public function user(): BelongsTo

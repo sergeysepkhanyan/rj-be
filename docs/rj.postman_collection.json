@@ -3339,7 +3339,93 @@
       ]
     },
     {
-      "name": "staff",
+      "name": "orders",
+      "item": [
+        {
+          "name": "get order details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{url}}/api/admin/orders/1",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "orders",
+                "1"
+              ]
+            },
+            "description": "Get detailed information for a specific order. Returns order details including customer info, items, addresses, payment info, and delivery status timeline (for ecommerce orders)."
+          },
+          "response": []
+        },
+        {
+          "name": "update delivery status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"deliveryStatus\": \"out_for_delivery\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{url}}/api/admin/orders/1/delivery-status",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "orders",
+                "1",
+                "delivery-status"
+              ]
+            },
+            "description": "Update delivery status for an ecommerce order. Valid values: 'ordered', 'out_for_delivery', 'arriving', 'delivered'. When status is set to 'delivered', the order status is automatically updated to 'fulfilled'."
+          },
+          "response": []
+        }
+      ]
+    }
+      ]
+    },
+    {
+      "name": "reports",
       "item": [
         {
           "name": "get masters",

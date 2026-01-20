@@ -35,6 +35,7 @@ use App\Http\Controllers\API\UsersController;
 use App\Http\Controllers\API\Admin\StaffController as AdminStaffController;
 use App\Http\Controllers\API\Admin\BookingsController as AdminBookingsController;
 use App\Http\Controllers\API\Admin\ContactMessageController as AdminContactMessageController;
+use App\Http\Controllers\API\Admin\OrdersController as AdminOrdersController;
 use App\Http\Controllers\API\Webhook\StripeWebhookController;
 use App\Http\Controllers\API\Webhook\TabbyWebhookController;
 use App\Http\Controllers\API\WeekdaysController;
@@ -208,6 +209,9 @@ Route::middleware(['set.locale'])->group(function () {
         Route::delete('/admin/booking/break/{booking}', [AdminBookingsController::class, 'deleteBreak']);
         Route::put('/admin/booking/break/{booking}', [AdminBookingsController::class, 'updateBreak']);
         Route::get('/admin/bookings', [AdminBookingsController::class, 'index']);
+
+        Route::get('/admin/orders/{order}', [AdminOrdersController::class, 'show']);
+        Route::patch('/admin/orders/{order}/delivery-status', [AdminOrdersController::class, 'updateDeliveryStatus']);
 
         Route::post('/admin/post/create', [AdminPostsController::class, 'store']);
         Route::put('/admin/post/update/{post}', [AdminPostsController::class, 'update']);

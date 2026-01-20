@@ -2,12 +2,15 @@
 
 namespace App\Services;
 
+use App\Enums\DeliveryStatus;
 use App\Enums\OrderStatus;
 use App\Enums\OrderType;
 use App\Mail\OrderConfirmedMail;
 use App\Models\Booking;
 use App\Models\Order;
 use App\Repositories\Interfaces\OrderRepositoryInterface;
+use App\Services\ApiResponse;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
@@ -72,7 +75,7 @@ class OrderService
     {
         // Get customer email from order
         $email = null;
-        
+
         // First try to get from user relationship
         if ($order->user_id) {
             $order->load('user');
@@ -80,7 +83,7 @@ class OrderService
                 $email = $order->user->email;
             }
         }
-        
+
         // Fallback to meta if user email not available
         if (!$email && $order->meta && isset($order->meta['customer_email'])) {
             $email = $order->meta['customer_email'];
@@ -89,6 +92,30 @@ class OrderService
         if ($email) {
             Mail::to($email)->send(new OrderConfirmedMail($order));
         }
+    }
+
+    public function updateDeliveryStatus(Order $order, string $deliveryStatus): Order
+    {
+        if ($order->type !== OrderType::Ecommerce->value) {
+            throw new \Illuminate\Http\Exceptions\HttpResponseException(
+                ApiResponse::error(
+                    ['delivery_status' => ['Delivery status can only be updated for ecommerce orders']],
+                    'Invalid order type',
+                    Response::HTTP_UNPROCESSABLE_ENTITY
+                )
+            );
+        }
+
+        $updateData = [
+            'delivery_status' => $deliveryStatus,
+            'delivery_status_updated_at' => now(),
+        ];
+
+        if ($deliveryStatus === DeliveryStatus::Delivered->value) {
+            $updateData['status'] = OrderStatus::Fulfilled;
+        }
+
+        return $this->orderRepository->update($order, $updateData);
     }
 
     protected function makeReference(): string

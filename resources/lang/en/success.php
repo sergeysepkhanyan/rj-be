@@ -105,6 +105,9 @@ return [
     'orders' => [
         'listed' => 'Orders retrieved successfully.',
     ],
+    'order' => [
+        'updated' => 'Order updated successfully.',
+    ],
 
     'user' => [
         'updated' => 'Profile updated successfully.',

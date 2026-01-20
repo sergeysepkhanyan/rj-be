@@ -207,6 +207,8 @@ class CartService
             'amount' => $total,
             'currency' => $currency ?: 'AED',
             'status' => OrderStatus::PendingPayment,
+            'delivery_status' => 'ordered',
+            'delivery_status_updated_at' => now(),
             'reference' => $this->makeReference(),
             'meta' => [
                 'guest_session_id' => $guestSessionId,

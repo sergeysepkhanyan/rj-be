@@ -53,4 +53,6 @@ return [
     'nameAr' => 'Arabic name',
     'gender' => 'Gender',
     'last4' => 'Last 4 digits',
+    'deliveryStatus' => 'Delivery status',
+    'delivery_status' => 'Delivery status',
 ];
