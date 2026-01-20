@@ -50,7 +50,7 @@ class UserService
             $user->weekends()->sync($weekends);
         }
         if ($role->slug === 'admin') {
-            Mail::to($user->email)->send(new AdminAccessEmail($user, $generatedPassword));
+            Mail::to($user->email)->queue(new AdminAccessEmail($user, $generatedPassword));
         }
         return $user->load('role', 'subservices.items');
     }
@@ -124,7 +124,7 @@ class UserService
                 $fields['is_temporary_password'] = true;
 
                 $accessLink = config('app.url') . '/admin/login';
-                Mail::to($user->email)->send(new AdminAccessEmail($user, $generatedPassword, $accessLink));
+                Mail::to($user->email)->queue(new AdminAccessEmail($user, $generatedPassword, $accessLink));
             }
 
             $this->updateUser($user, $fields);

@@ -25,7 +25,7 @@ class ContactService
             'user_agent' => $userAgent ? substr($userAgent, 0, 500) : null,
         ]);
 
-        Mail::to(env('MAIL_FROM_ADDRESS'))->send(new ContactMessageReceived($message));
+        Mail::to(env('MAIL_FROM_ADDRESS'))->queue(new ContactMessageReceived($message));
 
         return $this->repo->markEmailed($message);
     }

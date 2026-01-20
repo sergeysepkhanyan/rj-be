@@ -7,6 +7,7 @@ use App\Enums\OrderStatus;
 use App\Enums\OrderType;
 use App\Filters\OrderFilter;
 use App\Mail\OrderConfirmedMail;
+use App\Mail\OrderDeliveryStatusUpdatedMail;
 use App\Models\Booking;
 use App\Models\Order;
 use App\Models\OrderStatusHistory;
@@ -18,6 +19,7 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\Response as ResponseAlias;
 
 class OrderService
 {
@@ -98,7 +100,7 @@ class OrderService
         }
 
         if ($email) {
-            Mail::to($email)->send(new OrderConfirmedMail($order));
+            Mail::to($email)->queue(new OrderConfirmedMail($order));
         }
     }
 
@@ -114,6 +116,8 @@ class OrderService
             );
         }
 
+        $previousStatus = $order->delivery_status;
+
         $updateData = [
             'delivery_status' => $deliveryStatus,
             'delivery_status_updated_at' => now(),
@@ -123,7 +127,13 @@ class OrderService
             $updateData['status'] = OrderStatus::Fulfilled;
         }
 
-        return $this->orderRepository->update($order, $updateData);
+        $order = $this->orderRepository->update($order, $updateData);
+
+        if ($previousStatus !== $deliveryStatus) {
+            $this->sendDeliveryStatusUpdateEmail($order, $deliveryStatus);
+        }
+
+        return $order;
     }
 
     public function updateStatus(Order $order, string $status, ?string $note = null, ?int $createdBy = null): Order
@@ -145,6 +155,26 @@ class OrderService
     public function getPaginatedOrders(?OrderFilter $filter = null, int $perPage = 15, int $page = 1): LengthAwarePaginator
     {
         return $this->orderRepository->paginateWithFilter($filter, $perPage, $page);
+    }
+
+    protected function sendDeliveryStatusUpdateEmail(Order $order, string $deliveryStatus): void
+    {
+        $email = null;
+
+        if ($order->user_id) {
+            $order->load('user');
+            if ($order->user) {
+                $email = $order->user->email;
+            }
+        }
+
+        if (!$email && $order->meta && isset($order->meta['customer_email'])) {
+            $email = $order->meta['customer_email'];
+        }
+
+        if ($email) {
+            Mail::to($email)->queue(new OrderDeliveryStatusUpdatedMail($order, $deliveryStatus));
+        }
     }
 
     protected function makeReference(): string

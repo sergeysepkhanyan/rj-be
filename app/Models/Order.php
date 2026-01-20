@@ -12,6 +12,10 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  * @property mixed $id
  * @property mixed $amount
  * @property mixed $currency
+ * @property mixed $type
+ * @property mixed $delivery_status
+ * @property mixed $user_id
+ * @property mixed $user
  */
 class Order extends Model
 {

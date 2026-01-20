@@ -34,7 +34,7 @@ class AuthController extends Controller
             'password' => Hash::make($data['password']),
         ]);
 
-        Mail::to($user->email)->send(new VerifyEmailMail($user));
+        Mail::to($user->email)->queue(new VerifyEmailMail($user));
 
         return ApiResponse::success([
             'success' => true,

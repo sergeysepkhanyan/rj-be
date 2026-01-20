@@ -1053,7 +1053,7 @@ class BookingService
         $email = $booking->customer_email;
 
         if ($email) {
-            Mail::to($email)->send(new BookingConfirmedMail($booking));
+            Mail::to($email)->queue(new BookingConfirmedMail($booking));
         }
     }
 
@@ -1062,7 +1062,7 @@ class BookingService
         $email = $booking->customer_email;
 
         if ($email) {
-            Mail::to($email)->send(new BookingCancelledMail($booking));
+            Mail::to($email)->queue(new BookingCancelledMail($booking));
         }
     }
 }
