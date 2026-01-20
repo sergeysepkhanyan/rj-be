@@ -813,7 +813,7 @@ class BookingService
             $booking->loadMissing('services');
             if ($booking->services->isNotEmpty()) {
                 $firstService = $booking->services->sortBy('start_time')->first();
-                $date = $booking->date;
+                $date = $booking->date instanceof \Carbon\Carbon ? $booking->date->format('Y-m-d') : (string) $booking->date;
                 $startTime = $firstService->start_time ?? $booking->start_time;
                 $timezone = $firstService->timezone ?? $booking->timezone ?? 'UTC';
                 
@@ -827,7 +827,7 @@ class BookingService
                 
                 $canRefund = $hoursUntilAppointment >= 24;
             } else {
-                $date = $booking->date;
+                $date = $booking->date instanceof \Carbon\Carbon ? $booking->date->format('Y-m-d') : (string) $booking->date;
                 $startTime = $booking->start_time;
                 $timezone = $booking->timezone ?? 'UTC';
                 
