@@ -5,6 +5,7 @@ namespace App\Http\Resources;
 use App\Models\SubService;
 use App\Models\SubServiceItem;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Carbon;
 
 /**
  * @property mixed $master
@@ -48,6 +49,47 @@ class BookingResource extends BaseResource
         $baseTotal = (float) $services->sum(fn ($s) => (float) ($s->base_price ?? 0));
         $vatTotal  = (float) $services->sum(fn ($s) => (float) ($s->vat_amount ?? 0));
         $finalTotalFromLines = (float) $services->sum(fn ($s) => (float) ($s->final_price ?? $s->price ?? 0));
+
+        $canCancel = false;
+        $canRefund = false;
+        $refundDeadline = null;
+
+        if ($this->status !== 'cancelled' && $this->status !== 'completed') {
+            $canCancel = true;
+            
+            if ($services->isNotEmpty()) {
+                $firstService = $services->sortBy('start_time')->first();
+                $date = $this->date;
+                $startTime = $firstService->start_time ?? $this->start_time;
+                $timezone = $firstService->timezone ?? $this->timezone ?? 'UTC';
+                
+                $timeStr = (string) $startTime;
+                if (strlen($timeStr) === 5) {
+                    $timeStr .= ':00';
+                }
+                
+                $appointmentDateTime = Carbon::createFromFormat('Y-m-d H:i:s', "{$date} {$timeStr}", $timezone);
+                $refundDeadline = $appointmentDateTime->copy()->subHours(24);
+                $hoursUntilAppointment = now($timezone)->diffInHours($appointmentDateTime, false);
+                
+                $canRefund = $hoursUntilAppointment >= 24 && $this->payment_status === 'paid';
+            } elseif ($this->start_time) {
+                $date = $this->date;
+                $startTime = $this->start_time;
+                $timezone = $this->timezone ?? 'UTC';
+                
+                $timeStr = (string) $startTime;
+                if (strlen($timeStr) === 5) {
+                    $timeStr .= ':00';
+                }
+                
+                $appointmentDateTime = Carbon::createFromFormat('Y-m-d H:i:s', "{$date} {$timeStr}", $timezone);
+                $refundDeadline = $appointmentDateTime->copy()->subHours(24);
+                $hoursUntilAppointment = now($timezone)->diffInHours($appointmentDateTime, false);
+                
+                $canRefund = $hoursUntilAppointment >= 24 && $this->payment_status === 'paid';
+            }
+        }
 
         return [
             'id'            => $data['id'] ?? null,
@@ -125,6 +167,16 @@ class BookingResource extends BaseResource
                 $isAdmin && $this->relationLoaded('master') && $this->master,
                 new StaffResource($this->master)
             ),
+            'cancellation' => [
+                'canCancel' => $canCancel,
+                'canRefund' => $canRefund,
+                'refundDeadline' => $refundDeadline?->toIso8601String(),
+                'message' => $canRefund 
+                    ? 'Cancellation with refund is available up to 24 hours before the appointment.'
+                    : ($canCancel && $this->payment_status === 'paid'
+                        ? 'Cancellation is available, but refund is only available if cancelled at least 24 hours before the appointment.'
+                        : null),
+            ],
         ];
     }
 }

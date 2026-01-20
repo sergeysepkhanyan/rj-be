@@ -56,9 +56,6 @@ class BookingService
         return $this->bookingRepository->paginateWithFilter($filter, $perPage, $page);
     }
 
-    /**
-     * Create a break (single master range).
-     */
     public function createBreak(array $data): Booking | null
     {
         $tz = $data['timezone'] ?? 'UTC';
@@ -178,9 +175,6 @@ class BookingService
         return $this->bookingRepository->update($booking, $updateData);
     }
 
-    /**
-     * Available slots for ONE master and ONE chosen service duration.
-     */
     public function getAvailableSlots(array $data): array
     {
         $tz = $data['timezone'] ?? 'UTC';
@@ -234,11 +228,6 @@ class BookingService
         return 30;
     }
 
-    /**
-     * Build free slots between workStart/workEnd skipping busy intervals.
-     *
-     * @return array<array{start:string,end:string}>
-     */
     protected function buildSlots(
         string $date,
         string $workStart,
@@ -387,7 +376,6 @@ class BookingService
                 'master_id'      => $uniqueMasters->count() === 1 ? (int)$uniqueMasters->first() : null,
             ];
 
-            /** @var Booking $booking */
             $booking = $this->bookingRepository->create($bookingData);
 
             foreach ($segments as $i => $seg) {
@@ -411,7 +399,6 @@ class BookingService
         $tz   = $data['timezone'] ?? $booking->timezone ?? 'UTC';
         $date = trim($data['date'] ?? ($booking->date?->format('Y-m-d') ?? ''));
 
-        // Keep payment mode unchanged on update; status changes go through admin flow.
         $data['payment_mode'] = $booking->payment_mode;
         $data['paymentMode'] = $booking->payment_mode;
 
@@ -643,9 +630,6 @@ class BookingService
         ]);
     }
 
-    /**
-     * Accepts segments; we pass segments from create/update.
-     */
     protected function normalizeServicesForPricing(array $services): array
     {
         return collect($services)->values()->map(function ($s) {
@@ -663,6 +647,15 @@ class BookingService
         $discountType  = $data['discount_type']  ?? $data['discountType']  ?? 'none';
         $discountValue = $data['discount_value'] ?? $data['discountValue'] ?? null;
         $discountLabel = $data['discount_label'] ?? $data['discountLabel'] ?? null;
+
+        if ($discountType === 'none' || !$discountValue) {
+            $autoDiscount = $this->calculateAutomaticDiscount();
+            if ($autoDiscount['discount_percent'] > 0) {
+                $discountType = 'percent';
+                $discountValue = $autoDiscount['discount_percent'];
+                $discountLabel = $autoDiscount['discount_label'];
+            }
+        }
 
         $discountAmount = $this->calculateDiscountAmount(
             totalPrice: $totalPrice,
@@ -685,6 +678,41 @@ class BookingService
             'final_price'     => $finalPrice,
             'payment_mode'    => $paymentMode,
             'payment_status'  => $paymentStatus,
+        ];
+    }
+
+    protected function calculateAutomaticDiscount(): array
+    {
+        $user = auth()->user();
+        if (!$user || !$user->id) {
+            return [
+                'discount_percent' => 0,
+                'discount_label' => null,
+            ];
+        }
+
+        $visitCount = Booking::where('user_id', $user->id)
+            ->where('status', '!=', 'cancelled')
+            ->where('payment_status', 'paid')
+            ->count();
+
+        $discountPercent = 0;
+        $discountLabel = null;
+
+        if ($visitCount >= 50) {
+            $discountPercent = 20;
+            $discountLabel = 'Loyalty Discount (50+ visits)';
+        } elseif ($visitCount >= 25) {
+            $discountPercent = 15;
+            $discountLabel = 'Loyalty Discount (25+ visits)';
+        } elseif ($visitCount >= 11) {
+            $discountPercent = 10;
+            $discountLabel = 'Loyalty Discount (11+ visits)';
+        }
+
+        return [
+            'discount_percent' => $discountPercent,
+            'discount_label' => $discountLabel,
         ];
     }
 
@@ -780,14 +808,51 @@ class BookingService
             }
         }
 
+        $canRefund = false;
+        if ($booking->payment_status === 'paid') {
+            $booking->loadMissing('services');
+            if ($booking->services->isNotEmpty()) {
+                $firstService = $booking->services->sortBy('start_time')->first();
+                $date = $booking->date;
+                $startTime = $firstService->start_time ?? $booking->start_time;
+                $timezone = $firstService->timezone ?? $booking->timezone ?? 'UTC';
+                
+                $timeStr = (string) $startTime;
+                if (strlen($timeStr) === 5) {
+                    $timeStr .= ':00';
+                }
+                
+                $appointmentDateTime = Carbon::createFromFormat('Y-m-d H:i:s', "{$date} {$timeStr}", $timezone);
+                $hoursUntilAppointment = now($timezone)->diffInHours($appointmentDateTime, false);
+                
+                $canRefund = $hoursUntilAppointment >= 24;
+            } else {
+                $date = $booking->date;
+                $startTime = $booking->start_time;
+                $timezone = $booking->timezone ?? 'UTC';
+                
+                $timeStr = (string) $startTime;
+                if (strlen($timeStr) === 5) {
+                    $timeStr .= ':00';
+                }
+                
+                $appointmentDateTime = Carbon::createFromFormat('Y-m-d H:i:s', "{$date} {$timeStr}", $timezone);
+                $hoursUntilAppointment = now($timezone)->diffInHours($appointmentDateTime, false);
+                
+                $canRefund = $hoursUntilAppointment >= 24;
+            }
+        }
+
         $order = $booking->order?->load('latestPayment');
-        if ($booking->payment_status === 'paid' && $order) {
+        if ($booking->payment_status === 'paid' && $order && $canRefund) {
             $this->paymentService->refundOrderPayment($order, [
                 'booking_id' => (string) $booking->id,
                 'reason' => 'booking_cancelled',
             ]);
             $this->orderService->refund($order, ['reason' => 'booking_cancelled']);
             $booking->payment_status = 'refunded';
+        } elseif ($booking->payment_status === 'paid' && !$canRefund) {
+            $booking->payment_status = 'unpaid';
         }
 
         $booking->update([
