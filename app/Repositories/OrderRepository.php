@@ -41,6 +41,7 @@ class OrderRepository implements OrderRepositoryInterface
     {
         $query = Order::query()
             ->with([
+                'user',
                 'items.product.files',
                 'shippingAddress',
                 'billingAddress',

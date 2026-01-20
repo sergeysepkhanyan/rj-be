@@ -111,6 +111,27 @@ class OrdersController extends Controller
                 $address = $parts ? implode(', ', $parts) : null;
             }
 
+            // Get customer information
+            $customerName = null;
+            $customerEmail = null;
+            $customerPhone = null;
+
+            if ($order->relationLoaded('user') && $order->user) {
+                $customerName = trim(($order->user->name ?? '') . ' ' . ($order->user->last_name ?? ''));
+                $customerEmail = $order->user->email ?? null;
+                $customerPhone = $order->user->mobile ?? null;
+            }
+
+            if (!$customerName && $order->meta && isset($order->meta['customer_name'])) {
+                $customerName = $order->meta['customer_name'];
+            }
+            if (!$customerEmail && $order->meta && isset($order->meta['customer_email'])) {
+                $customerEmail = $order->meta['customer_email'];
+            }
+            if (!$customerPhone && $order->meta && isset($order->meta['customer_phone'])) {
+                $customerPhone = $order->meta['customer_phone'];
+            }
+
             // Get payment information
             $paymentId = null;
             $paymentMethod = null;
