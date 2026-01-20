@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\API\Admin;
 
+use App\Filters\OrderFilter;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\UpdateOrderDeliveryStatusRequest;
 use App\Http\Requests\UpdateOrderStatusRequest;

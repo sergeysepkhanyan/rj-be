@@ -26,4 +26,9 @@ return [
         'payment' => [
             'no_order' => 'Payment does not have an associated order.',
         ],
+        'payment_method' => [
+            'already_exists' => 'This payment method is already saved.',
+            'already_attached' => 'This payment method is already attached to another customer.',
+            'cannot_be_reused' => 'This payment method was previously used or detached and cannot be reused. Please use a new payment method.',
+        ],
     ];

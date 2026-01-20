@@ -291,8 +291,8 @@ class CartService
 
     protected function getAvailableQuantity(Product $product, ?int $userId, ?string $guestSessionId, ?int $excludeCartItemId = null): int
     {
-        $base = (int) ($product->max_quantity ?? 0);
-        if ($base <= 0) {
+        $maxQuantity = (int) ($product->max_quantity ?? 0);
+        if ($maxQuantity <= 0) {
             return 0;
         }
 
@@ -300,30 +300,15 @@ class CartService
             ->where('product_id', $product->id)
             ->whereHas('order', function ($q) {
                 $q->whereIn('status', [
-                    OrderStatus::Pending->value,
                     OrderStatus::Paid->value,
                     OrderStatus::Fulfilled->value,
                 ]);
             })
             ->sum('quantity');
 
-        $available = max(0, $base - (int) $orderedQty);
+        $currentQuantity = max(0, $maxQuantity - (int) $orderedQty);
 
-        if ($excludeCartItemId) {
-            return $available;
-        }
-
-        if ($userId || $guestSessionId) {
-            $currentCartQty = CartItem::query()
-                ->when($userId, fn ($q) => $q->where('user_id', $userId))
-                ->when(!$userId && $guestSessionId, fn ($q) => $q->where('guest_session_id', $guestSessionId))
-                ->where('product_id', $product->id)
-                ->sum('quantity');
-
-            $available = max(0, $available - (int) $currentCartQty);
-        }
-
-        return $available;
+        return $currentQuantity;
     }
 
     protected function makeReference(): string

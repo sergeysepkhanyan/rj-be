@@ -16,8 +16,9 @@ class ProductResource extends BaseResource
     {
         $data = parent::toArray($request);
 
-        $quantity = (int) ($data['max_quantity'] ?? 0);
-        $availability = $quantity > 0 ? 'On Stock' : 'Out';
+        $maxQuantity = (int) ($data['max_quantity'] ?? 0);
+        $currentQuantity = $this->calculateCurrentQuantity($maxQuantity);
+        $availability = $currentQuantity > 0 ? 'On Stock' : 'Out';
 
         return [
             'id' => $data['id'] ?? null,
@@ -31,9 +32,9 @@ class ProductResource extends BaseResource
                     'name' => $this->productCategory?->name,
                 ];
             }),
-            'maxQuantity' => $data['max_quantity'] ?? null,
-            'currentQuantity' => $data['max_quantity'] ?? null,
-            'quantity' => $quantity,
+            'maxQuantity' => $maxQuantity,
+            'currentQuantity' => $currentQuantity,
+            'quantity' => $currentQuantity,
             'availability' => $availability,
             'price' => $data['price'] ?? null,
             'currency' => $data['currency'] ?? null,
@@ -47,6 +48,30 @@ class ProductResource extends BaseResource
             'images' => FileResource::collection($this->files),
             'details' => ProductDetailResource::collection($this->details),
         ];
+    }
+
+    protected function calculateCurrentQuantity(int $maxQuantity): int
+    {
+        if ($maxQuantity <= 0) {
+            return 0;
+        }
+
+        $productId = $this->id ?? $this->resource->id ?? null;
+        if (!$productId) {
+            return $maxQuantity;
+        }
+
+        $orderedQty = \App\Models\OrderItem::query()
+            ->where('product_id', $productId)
+            ->whereHas('order', function ($q) {
+                $q->whereIn('status', [
+                    \App\Enums\OrderStatus::Paid->value,
+                    \App\Enums\OrderStatus::Fulfilled->value,
+                ]);
+            })
+            ->sum('quantity');
+
+        return max(0, $maxQuantity - (int) $orderedQty);
     }
 }
 

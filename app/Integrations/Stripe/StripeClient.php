@@ -92,15 +92,19 @@ class StripeClient
     {
         $payload = ['customer' => $customerId];
         return ExternalRequestLogger::log('stripe', 'attach_payment_method', $payload, function () use ($paymentMethodId, $customerId) {
-            return Http::baseUrl(config('stripe.base_url'))
+            $response = Http::baseUrl(config('stripe.base_url'))
                 ->acceptJson()
                 ->withToken(config('stripe.secret_key'))
                 ->asForm()
                 ->post("/v1/payment_methods/{$paymentMethodId}/attach", [
                     'customer' => $customerId,
-                ])
-                ->throw()
-                ->json();
+                ]);
+
+            if ($response->failed()) {
+                throw new \Illuminate\Http\Client\RequestException($response);
+            }
+
+            return $response->json();
         });
     }
 

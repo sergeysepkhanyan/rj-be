@@ -345,4 +345,10 @@ return [
         ],
     ],
 
+    'payment_method' => [
+        'already_exists' => 'This payment method is already saved to your account.',
+        'already_attached_to_another_customer' => 'This payment method is already attached to another account.',
+        'cannot_be_reused' => 'This payment method was previously used or detached and cannot be reused. Please use a new payment method.',
+    ],
+
 ];

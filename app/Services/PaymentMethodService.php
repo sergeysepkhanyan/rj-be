@@ -99,8 +99,49 @@ class PaymentMethodService
         $customerId = $user->stripe_customer_id;
         $paymentMethodId = $data['token'] ?? null;
         if ($customerId && $paymentMethodId) {
-            $this->stripeClient->attachPaymentMethod($paymentMethodId, $customerId);
-            $pm = $this->stripeClient->retrievePaymentMethod($paymentMethodId);
+            $existing = PaymentMethod::query()
+                ->where('user_id', $user->id)
+                ->where('provider', 'stripe')
+                ->where('token', $paymentMethodId)
+                ->first();
+
+            if ($existing) {
+                throw new \Illuminate\Http\Exceptions\HttpResponseException(
+                    \App\Services\ApiResponse::error(
+                        ['token' => __('validation.payment_method.already_exists')],
+                        __('messages.payment_method.already_exists'),
+                        422
+                    )
+                );
+            }
+
+            try {
+                $pm = $this->stripeClient->retrievePaymentMethod($paymentMethodId);
+                
+                if (isset($pm['customer']) && $pm['customer']) {
+                    if ($pm['customer'] !== $customerId) {
+                        throw new \Illuminate\Http\Exceptions\HttpResponseException(
+                            \App\Services\ApiResponse::error(
+                                ['token' => __('validation.payment_method.already_attached_to_another_customer')],
+                                __('messages.payment_method.already_attached'),
+                                422
+                            )
+                        );
+                    }
+                } else {
+                    try {
+                        $this->stripeClient->attachPaymentMethod($paymentMethodId, $customerId);
+                    } catch (\Illuminate\Http\Client\RequestException $attachException) {
+                        $this->handlePaymentMethodError($attachException, 'attach');
+                    }
+                }
+
+                $pm = $this->stripeClient->retrievePaymentMethod($paymentMethodId);
+            } catch (\Illuminate\Http\Exceptions\HttpResponseException $e) {
+                throw $e;
+            } catch (\Illuminate\Http\Client\RequestException $e) {
+                $this->handlePaymentMethodError($e, 'retrieve');
+            }
 
             $data['type'] = $pm['type'] ?? ($data['type'] ?? 'card');
             $data['brand'] = $pm['card']['brand'] ?? ($data['brand'] ?? null);
