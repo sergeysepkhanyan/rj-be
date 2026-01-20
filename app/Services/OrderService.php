@@ -9,6 +9,7 @@ use App\Filters\OrderFilter;
 use App\Mail\OrderConfirmedMail;
 use App\Models\Booking;
 use App\Models\Order;
+use App\Models\OrderStatusHistory;
 use App\Repositories\Interfaces\OrderRepositoryInterface;
 use App\Services\ApiResponse;
 use Illuminate\Http\Response;
@@ -118,6 +119,22 @@ class OrderService
         }
 
         return $this->orderRepository->update($order, $updateData);
+    }
+
+    public function updateStatus(Order $order, string $status, ?string $note = null, ?int $createdBy = null): Order
+    {
+        $order = $this->orderRepository->update($order, [
+            'status' => $status,
+        ]);
+
+        OrderStatusHistory::create([
+            'order_id' => $order->id,
+            'status' => $status,
+            'note' => $note,
+            'created_by' => $createdBy ?? auth()->id(),
+        ]);
+
+        return $order;
     }
 
     public function getPaginatedOrders(?OrderFilter $filter = null, int $perPage = 15, int $page = 1): LengthAwarePaginator

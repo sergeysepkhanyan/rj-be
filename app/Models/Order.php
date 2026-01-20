@@ -80,4 +80,8 @@ class Order extends Model
         return $this->hasOne(Address::class, 'order_id')->where('type', 'billing');
     }
 
+    public function statusHistory(): HasMany
+    {
+        return $this->hasMany(OrderStatusHistory::class, 'order_id')->orderBy('created_at');
+    }
 }

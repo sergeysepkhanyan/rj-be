@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API\Admin;
 use App\Filters\OrderFilter;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\UpdateOrderDeliveryStatusRequest;
+use App\Http\Requests\UpdateOrderStatusRequest;
 use App\Http\Resources\OrderResource;
 use App\Models\Booking;
 use App\Models\Order;
@@ -172,9 +173,9 @@ class OrdersController extends Controller
             'shippingAddress',
             'billingAddress',
             'latestPayment',
+            'statusHistory.createdBy',
         ]);
 
-        // For booking orders, load booking services
         if ($order->type === 'booking' && $order->orderable) {
             $order->load('orderable.services.bookable');
         }
@@ -186,7 +187,7 @@ class OrdersController extends Controller
 
     public function updateDeliveryStatus(UpdateOrderDeliveryStatusRequest $request, Order $order): JsonResponse
     {
-        $deliveryStatus = $request->input('delivery_status'); // Mapped from deliveryStatus
+        $deliveryStatus = $request->input('delivery_status');
 
         $order = $this->orderService->updateDeliveryStatus($order, $deliveryStatus);
 
@@ -196,6 +197,32 @@ class OrdersController extends Controller
             'shippingAddress',
             'billingAddress',
             'latestPayment',
+            'statusHistory.createdBy',
+        ]);
+
+        if ($order->type === 'booking' && $order->orderable) {
+            $order->load('orderable.services.bookable');
+        }
+
+        return ApiResponse::success([
+            'order' => new OrderResource($order),
+        ], __('success.order.updated'));
+    }
+
+    public function updateStatus(UpdateOrderStatusRequest $request, Order $order): JsonResponse
+    {
+        $status = $request->input('status');
+        $note = $request->input('note');
+
+        $order = $this->orderService->updateStatus($order, $status, $note);
+
+        $order->load([
+            'user',
+            'items.product',
+            'shippingAddress',
+            'billingAddress',
+            'latestPayment',
+            'statusHistory.createdBy',
         ]);
 
         if ($order->type === 'booking' && $order->orderable) {

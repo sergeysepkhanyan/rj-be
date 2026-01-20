@@ -6,8 +6,10 @@ enum OrderStatus: string
 {
     case Pending = 'pending';
     case PendingPayment = 'pending_payment';
+    case Processing = 'processing';
+    case Shipped = 'shipped';
     case Paid = 'paid';
-    case Canceled = 'canceled';
+    case Canceled = 'cancelled';
     case Refunded = 'refunded';
     case Fulfilled = 'fulfilled';
 }

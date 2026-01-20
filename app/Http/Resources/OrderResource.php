@@ -304,6 +304,15 @@ class OrderResource extends JsonResource
             'billingAddress' => $this->whenLoaded('billingAddress', function () {
                 return new AddressResource($this->billingAddress);
             }),
+            'statusHistory' => $this->whenLoaded('statusHistory', function () {
+                return $this->statusHistory->map(function ($history) {
+                    return [
+                        'status' => $history->status,
+                        'timestamp' => $history->created_at?->toIso8601String(),
+                        'note' => $history->note,
+                    ];
+                })->all();
+            }),
         ];
     }
 }

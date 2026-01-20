@@ -213,6 +213,7 @@ Route::middleware(['set.locale'])->group(function () {
         Route::get('/admin/orders', [AdminOrdersController::class, 'index']);
         Route::get('/admin/orders/{order}', [AdminOrdersController::class, 'show']);
         Route::patch('/admin/orders/{order}/delivery-status', [AdminOrdersController::class, 'updateDeliveryStatus']);
+        Route::patch('/admin/orders/{order}/status', [AdminOrdersController::class, 'updateStatus']);
 
         Route::post('/admin/post/create', [AdminPostsController::class, 'store']);
         Route::put('/admin/post/update/{post}', [AdminPostsController::class, 'update']);
