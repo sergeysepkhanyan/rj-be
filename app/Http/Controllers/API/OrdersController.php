@@ -4,15 +4,21 @@ namespace App\Http\Controllers\API;
 
 use App\Filters\OrderFilter;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\CancelOrderRequest;
 use App\Http\Resources\OrderResource;
 use App\Models\Booking;
 use App\Models\Order;
 use App\Services\ApiResponse;
+use App\Services\OrderService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class OrdersController extends Controller
 {
+    public function __construct(
+        protected OrderService $orderService
+    ) {}
+
     public function index(Request $request, OrderFilter $filter): JsonResponse
     {
         $perPage = (int) $request->input('per_page', 10);
@@ -46,5 +52,29 @@ class OrdersController extends Controller
                 'next'  => $orders->nextPageUrl(),
             ],
         ], __('success.orders.listed'));
+    }
+
+    public function cancel(CancelOrderRequest $request, Order $order): JsonResponse
+    {
+        $reason = $request->input('reason');
+
+        $order = $this->orderService->cancelOrder($order, $reason);
+
+        $order->load([
+            'user',
+            'items.product.files',
+            'shippingAddress',
+            'billingAddress',
+            'latestPayment.paymentMethod',
+            'statusHistory.createdBy',
+        ]);
+
+        if ($order->type === 'booking' && $order->orderable) {
+            $order->load('orderable.services.bookable');
+        }
+
+        return ApiResponse::success([
+            'order' => new OrderResource($order),
+        ], __('success.order.cancelled'));
     }
 }
