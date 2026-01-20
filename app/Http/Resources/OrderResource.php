@@ -92,15 +92,15 @@ class OrderResource extends JsonResource
                 }
 
                 $items[] = [
-                    'id' => $item->id,
-                    'productId' => $item->product_id,
+                    'id' => $item->product_id,
                     'name' => $product?->name ?? 'Unknown Product',
-                    'skuId' => $product?->sku_id,
+                    'image' => $mainImage, // Use mainImage as image for frontend
                     'quantity' => $itemQuantity,
                     'unitPrice' => (string) $itemUnitPrice,
                     'subtotal' => (string) $itemSubtotal,
-                    'currency' => $item->currency ?? $this->currency,
-                    'mainImage' => $mainImage,
+                    'type' => 'product',
+                    // Additional product info (can be used if needed)
+                    'skuId' => $product?->sku_id,
                     'images' => $images,
                     'discount' => $discount,
                     'discountType' => $discountType,
@@ -120,14 +120,23 @@ class OrderResource extends JsonResource
                     $subtotal += $basePrice;
                     $tax += $serviceTax;
 
+                    // Get service image
+                    $serviceImage = null;
+                    $bookable = $service->bookable;
+                    if ($bookable) {
+                        if (isset($bookable->image) && $bookable->image) {
+                            $serviceImage = asset('storage/' . $bookable->image);
+                        }
+                    }
+
                     $items[] = [
-                        'id' => $service->id,
-                        'serviceId' => $service->bookable_id,
-                        'name' => $service->bookable?->name ?? 'Unknown Service',
+                        'id' => $service->bookable_id ?? $service->id,
+                        'name' => $bookable?->name ?? 'Unknown Service',
+                        'image' => $serviceImage,
                         'quantity' => 1,
                         'unitPrice' => (string) $servicePrice,
                         'subtotal' => (string) $servicePrice,
-                        'currency' => $this->currency,
+                        'type' => 'service',
                     ];
                 }
             }
@@ -199,6 +208,25 @@ class OrderResource extends JsonResource
             ];
         }
 
+        // Get order-level discount info (from booking for booking orders)
+        $orderDiscountType = null;
+        $orderDiscountValue = null;
+        $orderDiscountLabel = null;
+        $orderDiscountAmount = null;
+
+        if ($this->type === 'booking' && $this->relationLoaded('orderable')) {
+            $booking = $this->orderable;
+            if ($booking instanceof Booking) {
+                $orderDiscountType = $booking->discount_type;
+                $orderDiscountValue = $booking->discount_value;
+                $orderDiscountLabel = $booking->discount_label;
+                // Calculate discount amount (price - final_price)
+                if ($booking->price && $booking->final_price) {
+                    $orderDiscountAmount = (float) $booking->price - (float) $booking->final_price;
+                }
+            }
+        }
+
         return [
             'id'        => $this->id,
             'reference' => $this->reference ?? "#{$this->id}",
@@ -207,11 +235,15 @@ class OrderResource extends JsonResource
             'deliveryStatus' => $this->delivery_status,
             'amount'   => (string) $this->amount,
             'currency' => $this->currency ?? 'AED',
+            'discount_type' => $orderDiscountType,
+            'discount_value' => $orderDiscountValue ? (float) $orderDiscountValue : null,
+            'discount_label' => $orderDiscountLabel,
+            'discount_amount' => $orderDiscountAmount ? (float) $orderDiscountAmount : null,
+            'items' => $items,
+            // Additional fields for detailed views
             'meta' => $this->meta,
             'createdAt' => $this->created_at,
             'paidAt' => $this->paid_at,
-
-            // Detailed fields for admin view
             'customer' => [
                 'id' => $this->user_id,
                 'name' => $customerName,
@@ -224,7 +256,6 @@ class OrderResource extends JsonResource
             'price' => (string) round($subtotal, 2),
             'tax' => (string) round($tax, 2),
             'total' => (string) $this->amount,
-            'items' => $items,
             'deliveryStatuses' => $deliveryStatuses,
 
             // Payment information

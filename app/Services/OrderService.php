@@ -5,12 +5,14 @@ namespace App\Services;
 use App\Enums\DeliveryStatus;
 use App\Enums\OrderStatus;
 use App\Enums\OrderType;
+use App\Filters\OrderFilter;
 use App\Mail\OrderConfirmedMail;
 use App\Models\Booking;
 use App\Models\Order;
 use App\Repositories\Interfaces\OrderRepositoryInterface;
 use App\Services\ApiResponse;
 use Illuminate\Http\Response;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
@@ -116,6 +118,11 @@ class OrderService
         }
 
         return $this->orderRepository->update($order, $updateData);
+    }
+
+    public function getPaginatedOrders(?OrderFilter $filter = null, int $perPage = 15, int $page = 1): LengthAwarePaginator
+    {
+        return $this->orderRepository->paginateWithFilter($filter, $perPage, $page);
     }
 
     protected function makeReference(): string

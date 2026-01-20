@@ -2,8 +2,10 @@
 
 namespace App\Repositories;
 
+use App\Filters\OrderFilter;
 use App\Models\Order;
 use App\Repositories\Interfaces\OrderRepositoryInterface;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class OrderRepository implements OrderRepositoryInterface
 {
@@ -33,5 +35,23 @@ class OrderRepository implements OrderRepositoryInterface
     {
         $order->update($data);
         return $order;
+    }
+
+    public function paginateWithFilter(?OrderFilter $filter = null, int $perPage = 15, int $page = 1): LengthAwarePaginator
+    {
+        $query = Order::query()
+            ->with([
+                'items.product',
+                'shippingAddress',
+                'orderable',
+                'latestPayment.paymentMethod',
+            ]);
+
+        if ($filter) {
+            $query = $filter->apply($query);
+        }
+
+        return $query->orderByDesc('created_at')
+            ->paginate($perPage, ['*'], 'page', $page);
     }
 }

@@ -3342,6 +3342,63 @@
       "name": "orders",
       "item": [
         {
+          "name": "list orders",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{url}}/api/admin/orders?search=&status=paid&month=august&year=2025&page=1&per_page=15",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "orders"
+              ],
+              "query": [
+                {
+                  "key": "search",
+                  "value": ""
+                },
+                {
+                  "key": "status",
+                  "value": "paid"
+                },
+                {
+                  "key": "month",
+                  "value": "august"
+                },
+                {
+                  "key": "year",
+                  "value": "2025"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "per_page",
+                  "value": "15"
+                }
+              ]
+            },
+            "description": "Get paginated list of all orders for admin. Returns simplified format with: productName, productId, price, quantity, address, date, status. Supports filtering by status, search, month, year."
+          },
+          "response": []
+        },
+        {
           "name": "get order details",
           "request": {
             "method": "GET",

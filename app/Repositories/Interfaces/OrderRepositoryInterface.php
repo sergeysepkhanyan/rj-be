@@ -2,7 +2,9 @@
 
 namespace App\Repositories\Interfaces;
 
+use App\Filters\OrderFilter;
 use App\Models\Order;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 interface OrderRepositoryInterface
 {
@@ -11,4 +13,5 @@ interface OrderRepositoryInterface
     public function findByOrderable(string $orderableType, int $orderableId): ?Order;
     public function create(array $data): Order;
     public function update(Order $order, array $data): Order;
+    public function paginateWithFilter(?OrderFilter $filter = null, int $perPage = 15, int $page = 1): LengthAwarePaginator;
 }
