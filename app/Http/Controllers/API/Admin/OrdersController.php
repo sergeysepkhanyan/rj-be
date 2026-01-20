@@ -49,23 +49,53 @@ class OrdersController extends Controller
                 default => ucfirst(str_replace('_', ' ', $status)),
             };
 
-            if ($order->type === 'ecommerce' && $order->relationLoaded('items')) {
+            if ($order->type === 'ecommerce') {
                 // Get first product for ecommerce orders
-                $firstItem = $order->items->first();
-                if ($firstItem && $firstItem->product) {
-                    $productName = $firstItem->product->name;
-                    $productId = $firstItem->product_id;
-                }
-                $quantity = (int) $order->items->sum('quantity');
-            } elseif ($order->type === 'booking' && $order->relationLoaded('orderable')) {
-                $booking = $order->orderable;
-                if ($booking instanceof Booking && $booking->relationLoaded('services')) {
-                    $firstService = $booking->services->first();
-                    if ($firstService && $firstService->bookable) {
-                        $productName = $firstService->bookable->name;
-                        $productId = $firstService->bookable_id;
+                if ($order->relationLoaded('items') && $order->items->isNotEmpty()) {
+                    $firstItem = $order->items->first();
+                    if ($firstItem && $firstItem->relationLoaded('product') && $firstItem->product) {
+                        $productName = $firstItem->product->name;
+                        $productId = $firstItem->product_id;
+                    } else {
+                        $productId = $firstItem->product_id ?? null;
                     }
-                    $quantity = $booking->services->count();
+                    $quantity = (int) $order->items->sum('quantity');
+                } else {
+                    // If items not loaded, try to load them
+                    $order->load('items.product');
+                    if ($order->items->isNotEmpty()) {
+                        $firstItem = $order->items->first();
+                        if ($firstItem && $firstItem->product) {
+                            $productName = $firstItem->product->name;
+                            $productId = $firstItem->product_id;
+                        }
+                        $quantity = (int) $order->items->sum('quantity');
+                    }
+                }
+            } elseif ($order->type === 'booking') {
+                if ($order->relationLoaded('orderable') && $order->orderable instanceof Booking) {
+                    $booking = $order->orderable;
+                    if ($booking->relationLoaded('services') && $booking->services->isNotEmpty()) {
+                        $firstService = $booking->services->first();
+                        if ($firstService && $firstService->relationLoaded('bookable') && $firstService->bookable) {
+                            $productName = $firstService->bookable->name;
+                            $productId = $firstService->bookable_id;
+                        } else {
+                            $productId = $firstService->bookable_id ?? null;
+                        }
+                        $quantity = $booking->services->count();
+                    } else {
+                        // If services not loaded, try to load them
+                        $booking->load('services.bookable');
+                        if ($booking->services->isNotEmpty()) {
+                            $firstService = $booking->services->first();
+                            if ($firstService && $firstService->bookable) {
+                                $productName = $firstService->bookable->name;
+                                $productId = $firstService->bookable_id;
+                            }
+                            $quantity = $booking->services->count();
+                        }
+                    }
                 }
             }
 
