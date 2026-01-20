@@ -3568,6 +3568,154 @@
             "description": "Update order status. Valid statuses: 'pending', 'pending_payment', 'processing', 'shipped', 'paid', 'refunded', 'cancelled', 'fulfilled'. Status flow: pending → processing → shipped → out_for_delivery → delivered. 'cancelled' and 'refunded' can be set from any stage. Optional 'note' field can be included."
           },
           "response": []
+        },
+        {
+          "name": "download invoice pdf",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{url}}/api/admin/orders/1/invoice/pdf",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "orders",
+                "1",
+                "invoice",
+                "pdf"
+              ]
+            },
+            "description": "Download invoice for a single order as PDF file. Returns a PDF file named 'invoice-{reference}.pdf' with order details, customer information, items, pricing, and payment method."
+          },
+          "response": []
+        },
+        {
+          "name": "download invoice xlsx",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{url}}/api/admin/orders/1/invoice/xlsx",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "orders",
+                "1",
+                "invoice",
+                "xlsx"
+              ]
+            },
+            "description": "Download invoice for a single order as Excel (XLSX) file. Returns an Excel file named 'invoice-{reference}.xlsx' with order details, customer information, items, pricing, and payment method."
+          },
+          "response": []
+        },
+        {
+          "name": "export orders pdf",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{url}}/api/admin/orders/export/pdf?ids=1,2,3",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "orders",
+                "export",
+                "pdf"
+              ],
+              "query": [
+                {
+                  "key": "ids",
+                  "value": "1,2,3",
+                  "description": "Optional comma-separated order IDs. If not provided, uses filters (search, status, month, year)."
+                }
+              ]
+            },
+            "description": "Export multiple orders as PDF invoices. Can filter by 'ids' parameter (comma-separated) or use filters (search, status, month, year). Returns a PDF file with all selected orders named 'orders-invoice-{date}.pdf'."
+          },
+          "response": []
+        },
+        {
+          "name": "export orders xlsx",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{url}}/api/admin/orders/export/xlsx?ids=1,2,3",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "orders",
+                "export",
+                "xlsx"
+              ],
+              "query": [
+                {
+                  "key": "ids",
+                  "value": "1,2,3",
+                  "description": "Optional comma-separated order IDs. If not provided, uses filters (search, status, month, year)."
+                }
+              ]
+            },
+            "description": "Export multiple orders as Excel (XLSX) file. Can filter by 'ids' parameter (comma-separated) or use filters (search, status, month, year). Returns an Excel file with a table of all selected orders named 'orders-export-{date}.xlsx'."
+          },
+          "response": []
         }
       ]
     },

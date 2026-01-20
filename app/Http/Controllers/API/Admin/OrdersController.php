@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\API\Admin;
 
-use App\Filters\OrderFilter;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\UpdateOrderDeliveryStatusRequest;
 use App\Http\Requests\UpdateOrderStatusRequest;
@@ -10,6 +9,7 @@ use App\Http\Resources\OrderResource;
 use App\Models\Booking;
 use App\Models\Order;
 use App\Services\ApiResponse;
+use App\Services\OrderExportService;
 use App\Services\OrderService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -17,7 +17,8 @@ use Illuminate\Http\Request;
 class OrdersController extends Controller
 {
     public function __construct(
-        protected OrderService $orderService
+        protected OrderService $orderService,
+        protected OrderExportService $orderExportService
     ) {}
 
     public function index(Request $request, OrderFilter $filter): JsonResponse
@@ -171,10 +172,13 @@ class OrdersController extends Controller
                 'price' => (string) $order->amount,
                 'quantity' => $quantity,
                 'address' => $address,
-                'date' => $order->created_at?->format('d, M Y'),
+                'date' => $order->created_at?->format('d. M Y'),
                 'status' => $displayStatus,
                 'type' => $order->type,
                 'reference' => $order->reference,
+                'customerName' => $customerName,
+                'customerEmail' => $customerEmail,
+                'customerPhone' => $customerPhone,
             ];
         });
 
@@ -262,5 +266,47 @@ class OrdersController extends Controller
         return ApiResponse::success([
             'order' => new OrderResource($order),
         ], __('success.order.updated'));
+    }
+
+    public function downloadInvoicePdf(Order $order)
+    {
+        return $this->orderExportService->downloadInvoicePdf($order);
+    }
+
+    public function downloadInvoiceXlsx(Order $order)
+    {
+        return $this->orderExportService->downloadInvoiceXlsx($order);
+    }
+
+    public function exportOrdersPdf(Request $request, OrderFilter $filter)
+    {
+        $ids = $request->input('ids');
+        if ($ids) {
+            if (is_string($ids)) {
+                $ids = explode(',', $ids);
+            }
+            $ids = array_filter(array_map('intval', $ids));
+        }
+
+        return $this->orderExportService->exportOrdersPdf(
+            $ids ? null : $filter,
+            $ids ?: null
+        );
+    }
+
+    public function exportOrdersXlsx(Request $request, OrderFilter $filter)
+    {
+        $ids = $request->input('ids');
+        if ($ids) {
+            if (is_string($ids)) {
+                $ids = explode(',', $ids);
+            }
+            $ids = array_filter(array_map('intval', $ids));
+        }
+
+        return $this->orderExportService->exportOrdersXlsx(
+            $ids ? null : $filter,
+            $ids ?: null
+        );
     }
 }

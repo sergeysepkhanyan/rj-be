@@ -16,11 +16,14 @@ return [
         'unauthorized' => 'You must be logged in to perform this action.',
     ],
 
-    'booking' => [
-        'only_bookings_can_be_cancelled' => 'Only bookings can be cancelled.',
-        'completed_cannot_be_cancelled' => 'Completed bookings cannot be cancelled.',
-        'cancel_only_own' => 'You can only cancel your own bookings.',
-        'only_bookings_can_be_marked_paid' => 'Only bookings can be marked as paid.',
-        'cancelled_cannot_be_marked_paid' => 'Cancelled bookings cannot be marked as paid.',
-    ],
-];
+        'booking' => [
+            'only_bookings_can_be_cancelled' => 'Only bookings can be cancelled.',
+            'completed_cannot_be_cancelled' => 'Completed bookings cannot be cancelled.',
+            'cancel_only_own' => 'You can only cancel your own bookings.',
+            'only_bookings_can_be_marked_paid' => 'Only bookings can be marked as paid.',
+            'cancelled_cannot_be_marked_paid' => 'Cancelled bookings cannot be marked as paid.',
+        ],
+        'payment' => [
+            'no_order' => 'Payment does not have an associated order.',
+        ],
+    ];
