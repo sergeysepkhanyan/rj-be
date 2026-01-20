@@ -93,8 +93,13 @@ class BookingRepository implements BookingRepositoryInterface
         ?string $timezone = null
     ): bool {
         $tz = $timezone ?: 'UTC';
-        $reqStart = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$startTime}", $tz);
-        $reqEnd   = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$endTime}", $tz);
+        $startTimeStr = (string) $startTime;
+        $endTimeStr = (string) $endTime;
+        if (strlen($startTimeStr) === 5) $startTimeStr .= ':00';
+        if (strlen($endTimeStr) === 5) $endTimeStr .= ':00';
+        
+        $reqStart = Carbon::createFromFormat('Y-m-d H:i:s', "{$date} {$startTimeStr}", $tz);
+        $reqEnd   = Carbon::createFromFormat('Y-m-d H:i:s', "{$date} {$endTimeStr}", $tz);
 
         $dateObj = Carbon::createFromFormat('Y-m-d', $date);
         $dateRange = [
