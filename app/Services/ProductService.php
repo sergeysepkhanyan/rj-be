@@ -54,16 +54,24 @@ class ProductService
                 $this->fileRepository->createMultipleForFileable($product, $newFiles);
             }
             $existingDetailIds = $product->details()->pluck('id')->toArray();
-            $incomingDetailIds = array_filter(array_column($detailsData, 'id'));
+            $incomingDetailIds = [];
+            if (!empty($detailsData) && is_array($detailsData)) {
+                $incomingDetailIds = array_filter(array_column($detailsData, 'id'));
+            }
             $detailsToDelete = array_diff($existingDetailIds, $incomingDetailIds);
-            if ($detailsToDelete) {
+            if (!empty($detailsToDelete)) {
                 $this->productDetailRepository->deleteByIds($detailsToDelete);
             }
-            foreach ($detailsData as $detail) {
-                if (!empty($detail['id']) && in_array($detail['id'], $existingDetailIds)) {
-                    $this->productDetailRepository->updateForProduct($product, $detail['id'], $detail);
-                } else {
-                    $this->productDetailRepository->createForProduct($product, $detail);
+            if (!empty($detailsData) && is_array($detailsData)) {
+                foreach ($detailsData as $detail) {
+                    if (!is_array($detail)) {
+                        continue;
+                    }
+                    if (!empty($detail['id']) && in_array($detail['id'], $existingDetailIds)) {
+                        $this->productDetailRepository->updateForProduct($product, $detail['id'], $detail);
+                    } else {
+                        $this->productDetailRepository->createForProduct($product, $detail);
+                    }
                 }
             }
             return $product->load('details', 'files', 'productCategory');

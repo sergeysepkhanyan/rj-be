@@ -117,9 +117,19 @@ class ProductsController extends Controller
             }
         }
 
-        $removedFiles = $request->input('removed_files', []);
-        $newFiles = $request->input('new_files', []);
-        $detailsData = $request->input('details', []);
+        $removedFiles = $request->input('removed_files', []) ?: [];
+        $newFiles = $request->input('new_files', []) ?: [];
+        $detailsData = $request->input('details', []) ?: [];
+        
+        if (!is_array($removedFiles)) {
+            $removedFiles = [];
+        }
+        if (!is_array($newFiles)) {
+            $newFiles = [];
+        }
+        if (!is_array($detailsData)) {
+            $detailsData = [];
+        }
 
         $updated = $this->productService->updateProduct(
             $product->id,
