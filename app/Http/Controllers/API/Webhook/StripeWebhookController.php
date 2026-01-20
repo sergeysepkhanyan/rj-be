@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Repositories\Interfaces\BookingRepositoryInterface;
 use App\Repositories\Interfaces\PaymentRepositoryInterface;
 use App\Services\OrderService;
+use App\Services\PaymentMethodService;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -15,6 +16,7 @@ class StripeWebhookController extends Controller
         protected PaymentRepositoryInterface $paymentRepo,
         protected OrderService $orderService,
         protected BookingRepositoryInterface $bookingRepo,
+        protected PaymentMethodService $paymentMethodService,
     ) {}
 
     public function handle(Request $request)
@@ -50,6 +52,15 @@ class StripeWebhookController extends Controller
                 $paymentUpdate['paid_at'] = now();
                 if ($order) {
                     $this->orderService->markPaid($order, ['stripe_payment_intent_id' => $paymentIntentId]);
+
+                    // Auto-save payment method for logged-in users (if not already saved)
+                    if ($order->user_id) {
+                        $this->paymentMethodService->ensureStripePaymentMethodSaved(
+                            (int) $order->user_id,
+                            (string) data_get($object, 'payment_method')
+                        );
+                    }
+
                     if ($order->orderable && $order->type === 'booking') {
                         $booking = $order->orderable;
                         $this->bookingRepo->update($booking, [

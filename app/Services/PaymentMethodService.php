@@ -7,6 +7,7 @@ use App\Integrations\Stripe\StripeClient;
 use App\Models\PaymentMethod;
 use App\Models\User;
 use App\Repositories\Interfaces\PaymentMethodRepositoryInterface;
+use Illuminate\Support\Facades\Log;
 
 class PaymentMethodService
 {
@@ -115,6 +116,102 @@ class PaymentMethodService
         }
 
         return $data;
+    }
+
+    /**
+     * After a successful Stripe payment, store the payment method locally for the user (if not already stored).
+     * This is used by the Stripe webhook flow.
+     */
+    public function ensureStripePaymentMethodSaved(int $userId, ?string $stripePaymentMethodId): ?PaymentMethod
+    {
+        $stripePaymentMethodId = $stripePaymentMethodId ? trim($stripePaymentMethodId) : null;
+        if (!$stripePaymentMethodId) {
+            return null;
+        }
+
+        $existing = PaymentMethod::query()
+            ->where('user_id', $userId)
+            ->where('provider', 'stripe')
+            ->where('token', $stripePaymentMethodId)
+            ->first();
+
+        if ($existing) {
+            return $existing;
+        }
+
+        $user = User::find($userId);
+        if (!$user) {
+            return null;
+        }
+
+        // Ensure Stripe customer exists so the method can be reused later.
+        if (!$user->stripe_customer_id) {
+            $customer = $this->stripeClient->createCustomer([
+                'name' => $user->name,
+                'email' => $user->email,
+                'phone' => $user->mobile,
+                'metadata[user_id]' => (string) $user->id,
+            ]);
+            $user->update(['stripe_customer_id' => $customer['id'] ?? null]);
+        }
+
+        $customerId = $user->stripe_customer_id;
+
+        // Attach to customer (safe to try; Stripe may respond with "already attached" in some cases).
+        if ($customerId) {
+            try {
+                $this->stripeClient->attachPaymentMethod($stripePaymentMethodId, $customerId);
+            } catch (\Throwable $e) {
+                Log::warning('Stripe attachPaymentMethod failed (continuing)', [
+                    'user_id' => $userId,
+                    'stripe_customer_id' => $customerId,
+                    'stripe_payment_method_id' => $stripePaymentMethodId,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        $pm = $this->stripeClient->retrievePaymentMethod($stripePaymentMethodId);
+
+        $isDefault = !PaymentMethod::query()
+            ->where('user_id', $userId)
+            ->whereNull('deleted_at')
+            ->exists();
+
+        if ($isDefault) {
+            PaymentMethod::where('user_id', $userId)->update(['is_default' => false]);
+        }
+
+        $created = $this->paymentMethodRepository->create([
+            'user_id' => $userId,
+            'provider' => 'stripe',
+            'token' => $stripePaymentMethodId,
+            'type' => data_get($pm, 'type', 'card'),
+            'brand' => data_get($pm, 'card.brand', ''),
+            'last4' => data_get($pm, 'card.last4'),
+            'is_default' => $isDefault,
+            'meta' => [
+                'stripe_payment_method_id' => $stripePaymentMethodId,
+                'stripe_customer_id' => $customerId,
+                'exp_month' => data_get($pm, 'card.exp_month'),
+                'exp_year' => data_get($pm, 'card.exp_year'),
+            ],
+        ]);
+
+        if ($isDefault && $customerId) {
+            try {
+                $this->stripeClient->updateCustomerDefaultPaymentMethod($customerId, $stripePaymentMethodId);
+            } catch (\Throwable $e) {
+                Log::warning('Stripe updateCustomerDefaultPaymentMethod failed (continuing)', [
+                    'user_id' => $userId,
+                    'stripe_customer_id' => $customerId,
+                    'stripe_payment_method_id' => $stripePaymentMethodId,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return $created;
     }
 }
 
