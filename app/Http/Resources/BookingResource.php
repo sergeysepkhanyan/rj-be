@@ -60,6 +60,7 @@ class BookingResource extends BaseResource
             'endTime'       => $overallEnd,
             'type'          => $this->type,
             'status'        => $this->status,
+            'paymentStatus' => $data['payment_status'] ?? null,
             'cancelledBy'   => $this->when($this->cancelledBy, new UserResource($this->cancelledBy)),
             'cancelledAt'   => $this->cancelled_at,
             'cancelReason'  => $this->cancel_reason,
