@@ -17,7 +17,7 @@
                             Romeo &amp; Juliet Beauty Lounge
                         </div>
                         <div style="font-size:13px;opacity:.85;margin-top:4px;">
-                            Password Reset Request
+                            Account Access Update
                         </div>
                     </td>
                 </tr>
@@ -30,7 +30,7 @@
                         </div>
 
                         <div style="font-size:14px;line-height:22px;color:#374151;margin-bottom:16px;">
-                            You are receiving this email because we received a password reset request for your account.
+                            We received a request to update your account access. Click the button below to continue.
                         </div>
 
                         <table cellpadding="0" cellspacing="0" style="margin:18px 0;">
@@ -39,7 +39,7 @@
                                     <a href="{{ $resetUrl }}"
                                        style="display:inline-block;padding:12px 18px;color:#ffffff;
                                                   text-decoration:none;font-size:14px;font-weight:700;">
-                                        Reset Password
+                                        Update Access
                                     </a>
                                 </td>
                             </tr>
@@ -59,7 +59,7 @@
                         </div>
 
                         <div style="font-size:12.5px;color:#6b7280;margin-top:18px;">
-                            If you did not request a password reset, no further action is required.
+                            If you didn't request this change, you can safely ignore this email.
                         </div>
                     </td>
                 </tr>

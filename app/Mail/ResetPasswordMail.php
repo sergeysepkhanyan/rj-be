@@ -24,9 +24,11 @@ class ResetPasswordMail extends Mailable implements ShouldQueue
             'user_id' => $this->user->id,
             'email' => $this->user->email,
             'token_preview' => substr($this->token, 0, 10) . '...',
+            'reset_url' => $resetUrl,
+            'from_address' => config('mail.from.address'),
         ]);
 
-        return $this->subject('Reset Your Password')
+        return $this->subject('Update your account access')
             ->from(config('mail.from.address'), config('mail.from.name'))
             ->view('emails.reset-password')
             ->text('emails.reset-password-text')
