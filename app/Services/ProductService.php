@@ -22,6 +22,16 @@ class ProductService
     public function createProduct(array $productData, array $detailsData = [], array $productFilePaths = [])
     {
         return DB::transaction(function () use ($productData, $detailsData, $productFilePaths) {
+            if (!empty($productData['sku_id'])) {
+                $existingProduct = Product::where('sku_id', $productData['sku_id'])->first();
+                if ($existingProduct) {
+                    throw new \Illuminate\Validation\ValidationException(
+                        \Illuminate\Support\Facades\Validator::make([], []),
+                        ['skuId' => [__('validation_scoped.product.skuId.unique')]]
+                    );
+                }
+            }
+            
             $product = $this->productRepository->create($productData);
 
             if ($productFilePaths) {
