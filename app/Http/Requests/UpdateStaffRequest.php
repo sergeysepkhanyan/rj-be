@@ -22,8 +22,7 @@ class UpdateStaffRequest extends BaseFormRequest
                 'required_if:role,admin',
                 'email',
                 Rule::unique('users', 'email')
-                    ->ignore($id)
-                    ->whereNull('deleted_at'),
+                    ->ignore($id),
             ],
 
             'mobile' => [
@@ -31,8 +30,7 @@ class UpdateStaffRequest extends BaseFormRequest
                 'string',
                 'regex:/^[+\-0-9]+$/',
                 Rule::unique('users', 'mobile')
-                    ->ignore($id)
-                    ->whereNull('deleted_at'),
+                    ->ignore($id),
             ],
             'subservices' => 'nullable|array',
             'subservices.*' => 'exists:sub_services,id',

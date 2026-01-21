@@ -19,14 +19,14 @@ class StoreStaffRequest extends BaseFormRequest
             'email' => [
                 'required',
                 'email',
-                Rule::unique('users', 'email')->whereNull('deleted_at'),
+                Rule::unique('users', 'email'),
             ],
 
             'mobile' => [
                 'required',
                 'string',
                 'regex:/^[+\-0-9]+$/',
-                Rule::unique('users', 'mobile')->whereNull('deleted_at'),
+                Rule::unique('users', 'mobile'),
             ],
             'subservices' => 'nullable|array',
             'subservices.*' => 'exists:sub_services,id',
