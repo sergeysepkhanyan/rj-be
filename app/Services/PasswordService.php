@@ -2,8 +2,10 @@
 
 namespace App\Services;
 
+use App\Mail\ResetPasswordMail;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
@@ -31,7 +33,7 @@ class PasswordService
         );
 
         if (filter_var($identifier, FILTER_VALIDATE_EMAIL)) {
-            $user->sendPasswordResetNotification($token);
+            Mail::to($user->email)->queue(new ResetPasswordMail($user, $token));
         }
 
         return [
@@ -43,9 +45,13 @@ class PasswordService
 
     public function resetPassword(string $identifier, string $token, string $newPassword): array
     {
+        $expirationMinutes = 60;
+        $expirationTime = now()->subMinutes($expirationMinutes);
+
         $record = DB::table('password_resets')
             ->where('identifier', $identifier)
             ->where('token', $token)
+            ->where('created_at', '>=', $expirationTime)
             ->first();
 
         if (!$record) {
