@@ -44,7 +44,7 @@ class ProductImportService
             ];
         }
 
-        $requiredHeaders = ['name', 'sku', 'category', 'price', 'quantity', 'status'];
+        $requiredHeaders = ['name', 'sku', 'category', 'price', 'quantity'];
         $missingHeaders = [];
         foreach ($requiredHeaders as $required) {
             if (!in_array($required, $headerMap, true)) {
@@ -197,9 +197,6 @@ class ProductImportService
         if ($payload['quantity'] === null || $payload['quantity'] === '') {
             return ['error' => 'Quantity is required.'];
         }
-        if (empty($payload['status'])) {
-            return ['error' => 'Status is required.'];
-        }
         return ['error' => null];
     }
 
@@ -245,6 +242,10 @@ class ProductImportService
 
     protected function normalizeStatus(mixed $status): string
     {
+        if (empty($status) || $status === null) {
+            return 'draft';
+        }
+        
         $value = strtolower(trim((string) $status));
         return match (true) {
             $value === 'publish' || $value === 'published' => 'active',
