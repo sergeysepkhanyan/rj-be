@@ -127,8 +127,7 @@ Route::middleware(['set.locale'])->group(function () {
         Route::get('/payment-methods', [PaymentMethodsController::class, 'index']);
         Route::post('/payment-methods', [PaymentMethodsController::class, 'store']);
         Route::put('/payment-methods/{paymentMethod}', [PaymentMethodsController::class, 'update']);
-        Route::delete('/payment-methods/{paymentMethod
-        }', [PaymentMethodsController::class, 'destroy']);
+        Route::delete('/payment-methods/{paymentMethod}', [PaymentMethodsController::class, 'destroy']);
     });
 
     Route::get('/bookings/available-slots', [BookingsController::class, 'availableSlots']);
