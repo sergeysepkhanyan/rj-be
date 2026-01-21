@@ -42,7 +42,7 @@ class OrderFilter
     protected function filterByStatus(): void
     {
         $status = strtolower(trim((string) $this->request->status));
-        $allowed = ['pending', 'pending_payment', 'paid', 'refunded', 'cancelled', 'fulfilled'];
+        $allowed = ['pending', 'pending_payment', 'processing', 'shipped', 'paid', 'refunded', 'cancelled', 'fulfilled'];
         if (in_array($status, $allowed, true)) {
             $this->query->where('status', $status);
         }

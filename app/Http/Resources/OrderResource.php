@@ -48,72 +48,18 @@ class OrderResource extends JsonResource
         }
         $subtotal = 0;
         $tax = 0;
-        $items = [];
         $quantity = 0;
 
         if ($this->type === 'ecommerce' && $this->relationLoaded('items')) {
             foreach ($this->items as $item) {
                 $itemSubtotal = (float) $item->subtotal;
-                $itemUnitPrice = (float) $item->unit_price;
-                $itemQuantity = (int) $item->quantity;
-
                 $vatRate = 0.05;
                 $itemBasePrice = $itemSubtotal / (1 + $vatRate);
                 $itemTax = $itemSubtotal - $itemBasePrice;
 
                 $subtotal += $itemBasePrice;
                 $tax += $itemTax;
-                $quantity += $itemQuantity;
-
-                $product = $item->product;
-                $mainImage = null;
-                $images = [];
-
-                if ($product) {
-                    if ($product->main_image) {
-                        $mainImage = asset('storage/' . $product->main_image);
-                    }
-
-                    if ($product->relationLoaded('files') && $product->files) {
-                        $images = $product->files->map(function ($file) {
-                            return asset('storage/' . $file->path);
-                        })->all();
-                    }
-                }
-
-                $discount = null;
-                $discountType = null;
-                $discountAmount = null;
-                $originalPrice = null;
-                
-                if ($product) {
-                    $discount = (bool) $product->discount;
-                    $discountType = $product->discount_type;
-                    $discountAmount = $product->discount_amount;
-                    $originalPrice = $product->price;
-                }
-
-                $itemTaxAmount = $itemTax;
-                $itemFinalPrice = $itemSubtotal;
-
-                $items[] = [
-                    'id' => $item->id,
-                    'productId' => $item->product_id,
-                    'name' => $product?->name ?? 'Unknown Product',
-                    'image' => $mainImage,
-                    'quantity' => $itemQuantity,
-                    'unitPrice' => (string) $itemUnitPrice,
-                    'subtotal' => (string) $itemSubtotal,
-                    'finalPrice' => (string) $itemFinalPrice,
-                    'tax' => (string) round($itemTaxAmount, 2),
-                    'type' => 'product',
-                    'skuId' => $product?->sku_id,
-                    'images' => $images,
-                    'discount' => $discount,
-                    'discountType' => $discountType,
-                    'discountAmount' => $discountAmount ? (string) $discountAmount : null,
-                    'originalPrice' => $originalPrice ? (string) $originalPrice : null,
-                ];
+                $quantity += (int) $item->quantity;
             }
         } elseif ($this->type === 'booking' && $this->relationLoaded('orderable')) {
             $booking = $this->orderable;
@@ -126,27 +72,7 @@ class OrderResource extends JsonResource
 
                     $subtotal += $basePrice;
                     $tax += $serviceTax;
-
-                    $serviceImage = null;
-                    $bookable = $service->bookable;
-                    if ($bookable) {
-                        if (isset($bookable->image) && $bookable->image) {
-                            $serviceImage = asset('storage/' . $bookable->image);
-                        }
-                    }
-
-                    $items[] = [
-                        'id' => $service->id,
-                        'productId' => $service->bookable_id ?? $service->id,
-                        'name' => $bookable?->name ?? 'Unknown Service',
-                        'image' => $serviceImage,
-                        'quantity' => 1,
-                        'unitPrice' => (string) $servicePrice,
-                        'subtotal' => (string) $servicePrice,
-                        'finalPrice' => (string) $servicePrice,
-                        'tax' => (string) round($serviceTax, 2),
-                        'type' => 'service',
-                    ];
+                    $quantity += 1;
                 }
             }
         }
@@ -243,7 +169,49 @@ class OrderResource extends JsonResource
             'discount_value' => $orderDiscountValue ? (float) $orderDiscountValue : null,
             'discount_label' => $orderDiscountLabel,
             'discount_amount' => $orderDiscountAmount ? (float) $orderDiscountAmount : null,
-            'items' => $items,
+            'booking' => $this->when($this->type === 'booking' && $this->relationLoaded('orderable') && $this->orderable instanceof Booking, function () {
+                $booking = $this->orderable;
+                $booking->loadMissing('services.bookable', 'master', 'cancelledBy');
+                return new BookingResource($booking);
+            }),
+            'items' => $this->when($this->type === 'ecommerce' && $this->relationLoaded('items'), function () {
+                if (!$this->items->every(fn($item) => $item->relationLoaded('product'))) {
+                    $this->items->loadMissing('product.files');
+                }
+                return OrderItemResource::collection($this->items);
+            }, function () {
+                if ($this->type === 'booking' && $this->relationLoaded('orderable')) {
+                    $booking = $this->orderable;
+                    if ($booking instanceof Booking && $booking->relationLoaded('services')) {
+                        return $booking->services->map(function ($service) {
+                            $servicePrice = (float) ($service->final_price ?? $service->price ?? 0);
+                            $vatRate = 0.05;
+                            $basePrice = $servicePrice / (1 + $vatRate);
+                            $serviceTax = $servicePrice - $basePrice;
+
+                            $serviceImage = null;
+                            $bookable = $service->bookable;
+                            if ($bookable && isset($bookable->image) && $bookable->image) {
+                                $serviceImage = asset('storage/' . $bookable->image);
+                            }
+
+                            return [
+                                'id' => $service->id,
+                                'productId' => $service->bookable_id ?? $service->id,
+                                'name' => $bookable?->name ?? 'Unknown Service',
+                                'image' => $serviceImage,
+                                'quantity' => 1,
+                                'unitPrice' => (string) $servicePrice,
+                                'subtotal' => (string) $servicePrice,
+                                'finalPrice' => (string) $servicePrice,
+                                'tax' => (string) round($serviceTax, 2),
+                                'type' => 'service',
+                            ];
+                        })->all();
+                    }
+                }
+                return [];
+            }),
             'meta' => $this->meta,
             'createdAt' => $this->created_at,
             'paidAt' => $this->paid_at,
