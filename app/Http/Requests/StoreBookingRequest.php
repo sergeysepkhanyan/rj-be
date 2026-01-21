@@ -33,7 +33,7 @@ class StoreBookingRequest extends BaseFormRequest
 
             'timezone'      => ['nullable', 'string', 'max:64'],
             'customerName'  => ['nullable', 'string', 'max:255'],
-            'customerPhone' => ['nullable', 'string', 'max:50'],
+            'customerPhone' => ['nullable', 'string', 'max:50', 'regex:/^[+\-0-9]+$/'],
             'customerEmail' => ['required', 'email'],
 
             'paymentMode' => ['required', 'string', Rule::in(['pay_now', 'pay_later'])],

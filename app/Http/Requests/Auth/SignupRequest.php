@@ -24,6 +24,7 @@ class SignupRequest extends BaseFormRequest
             'mobile' => [
                 'nullable',
                 'string',
+                'regex:/^[+\-0-9]+$/',
                 Rule::unique('users', 'mobile')->whereNull('deleted_at'),
             ],
             'password' => ['required', 'string', 'min:6', 'same:passwordConfirmation'],

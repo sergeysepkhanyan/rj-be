@@ -25,6 +25,7 @@ class StoreStaffRequest extends BaseFormRequest
             'mobile' => [
                 'required',
                 'string',
+                'regex:/^[+\-0-9]+$/',
                 Rule::unique('users', 'mobile')->whereNull('deleted_at'),
             ],
             'subservices' => 'nullable|array',

@@ -20,7 +20,7 @@ class StoreAddressRequest extends BaseFormRequest
             'isDefault' => 'boolean',
             'name' => 'required|string|max:255',
             'lastName' => 'nullable|string|max:255',
-            'mobile' => 'required|string',
+            'mobile' => 'required|string|regex:/^[+\-0-9]+$/',
             'address' => 'required|string|max:255',
             'additionalAddress' => 'nullable|string|max:100',
             'city' => 'required|string|max:100',

@@ -29,6 +29,7 @@ class UpdateUserDetailsRequest extends BaseFormRequest
                 'sometimes',
                 'required',
                 'string',
+                'regex:/^[+\-0-9]+$/',
                 Rule::unique('users', 'mobile')
                     ->ignore($userId)
                     ->whereNull('deleted_at'),

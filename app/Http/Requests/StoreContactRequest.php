@@ -12,7 +12,7 @@ class StoreContactRequest extends BaseFormRequest
         return [
             'name'    => ['required', 'string', 'max:120'],
             'email'   => ['required', 'email', 'max:190'],
-            'phone'   => ['nullable', 'string', 'max:30'],
+            'phone'   => ['nullable', 'string', 'max:30', 'regex:/^[+\-0-9]+$/'],
             'message' => ['required', 'string', 'min:5', 'max:3000'],
             'website' => ['nullable', 'string', 'max:0'],
         ];

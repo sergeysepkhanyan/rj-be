@@ -199,6 +199,24 @@ class CartService
         $user = $userId ? User::find($userId) : null;
         $email = $customerEmail ?: $user?->email;
 
+        if ($user) {
+            $shippingName = $shippingAddress['name'] ?? null;
+            $shippingPhone = $shippingAddress['mobile'] ?? null;
+            
+            $updates = [];
+            if ($shippingName && empty($user->name)) {
+                $updates['name'] = $shippingName;
+            }
+            if ($shippingPhone && empty($user->mobile)) {
+                $updates['mobile'] = $shippingPhone;
+            }
+            
+            if (!empty($updates)) {
+                $user->update($updates);
+                $user->refresh();
+            }
+        }
+
         $order = $this->orderRepository->create([
             'user_id' => $userId,
             'type' => OrderType::Ecommerce,

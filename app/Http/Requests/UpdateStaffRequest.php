@@ -29,6 +29,7 @@ class UpdateStaffRequest extends BaseFormRequest
             'mobile' => [
                 'required_if:role,admin',
                 'string',
+                'regex:/^[+\-0-9]+$/',
                 Rule::unique('users', 'mobile')
                     ->ignore($id)
                     ->whereNull('deleted_at'),
