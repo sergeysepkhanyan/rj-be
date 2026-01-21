@@ -1,9 +1,12 @@
-Hi,
+Hi {{ $name ?: 'there' }},
 
-Click here to reset your password:
+We received a request to reset your password. Use the link below to create a new password:
 
 {{ $resetUrl }}
 
-This link expires in 60 minutes.
+This link will expire in 60 minutes.
 
-If you did not request this, ignore this email.
+If you didn't request a password reset, you can safely ignore this email.
+
+Thank you!
+Romeo & Juliet Beauty Lounge
