@@ -1,11 +1,9 @@
-Hi {{ $name ?: 'there' }} 👋
+Hi,
 
-We received a request to update your account access. To continue, use the link below:
+Click here to reset your password:
 
 {{ $resetUrl }}
 
-This link will remain active for 60 minutes.
+This link expires in 60 minutes.
 
-If you didn't request this change, you can safely ignore this email.
-
-— RJ Team
+If you did not request this, ignore this email.
