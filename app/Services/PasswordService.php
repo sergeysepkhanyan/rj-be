@@ -33,28 +33,7 @@ class PasswordService
         );
 
         if (filter_var($identifier, FILTER_VALIDATE_EMAIL)) {
-            \Illuminate\Support\Facades\Log::info('Sending ResetPasswordMail synchronously', [
-                'user_id' => $user->id,
-                'email' => $user->email,
-                'identifier' => $identifier,
-            ]);
-            
-            try {
-                Mail::to($user->email)->send(new ResetPasswordMail($user, $token));
-                
-                \Illuminate\Support\Facades\Log::info('ResetPasswordMail sent successfully', [
-                    'user_id' => $user->id,
-                    'email' => $user->email,
-                ]);
-            } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::error('ResetPasswordMail send failed', [
-                    'user_id' => $user->id,
-                    'email' => $user->email,
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
-                ]);
-                throw $e;
-            }
+            Mail::to($user->email)->queue(new ResetPasswordMail($user, $token));
         }
 
         return [
