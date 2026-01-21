@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ProductExportService
@@ -12,24 +14,27 @@ class ProductExportService
     {
         $products = $this->productService->getProductsForExport($ids);
 
+        $filename = 'full-inventory-' . date('Y-m-d') . '.xlsx';
+
         $headers = [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="products_inventory.csv"',
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
         ];
 
         $callback = function () use ($products) {
-            $out = fopen('php://output', 'w');
-            fputcsv($out, [
-                'Product Name',
-                'SKU/ID',
-                'Category',
-                'Price',
-                'Quantity',
-                'Availability',
-                'Date',
-                'Status',
-            ]);
+            $spreadsheet = new Spreadsheet();
+            $sheet = $spreadsheet->getActiveSheet();
 
+            $sheet->setCellValue('A1', 'Product Name');
+            $sheet->setCellValue('B1', 'SKU/ID');
+            $sheet->setCellValue('C1', 'Category');
+            $sheet->setCellValue('D1', 'Price');
+            $sheet->setCellValue('E1', 'Quantity');
+            $sheet->setCellValue('F1', 'Availability');
+            $sheet->setCellValue('G1', 'Date');
+            $sheet->setCellValue('H1', 'Status');
+
+            $row = 2;
             foreach ($products as $product) {
                 $quantity = (int) ($product->max_quantity ?? 0);
                 $availability = $quantity > 0 ? 'On Stock' : 'Out';
@@ -37,22 +42,23 @@ class ProductExportService
                 $date = $product->created_at?->format('d, M Y');
                 $categoryName = $product->productCategory?->name ?? '';
 
-                fputcsv($out, [
-                    $product->name ?? '',
-                    $product->sku_id ?? '',
-                    $categoryName,
-                    $price,
-                    $quantity,
-                    $availability,
-                    $date,
-                    $product->status ?? '',
-                ]);
+                $sheet->setCellValue('A' . $row, $product->name ?? '');
+                $sheet->setCellValue('B' . $row, $product->sku_id ?? '');
+                $sheet->setCellValue('C' . $row, $categoryName);
+                $sheet->setCellValue('D' . $row, $price);
+                $sheet->setCellValue('E' . $row, $quantity);
+                $sheet->setCellValue('F' . $row, $availability);
+                $sheet->setCellValue('G' . $row, $date);
+                $sheet->setCellValue('H' . $row, $product->status ?? '');
+
+                $row++;
             }
 
-            fclose($out);
+            $writer = new Xlsx($spreadsheet);
+            $writer->save('php://output');
         };
 
-        return response()->streamDownload($callback, 'products_inventory.csv', $headers);
+        return response()->streamDownload($callback, $filename, $headers);
     }
 
     private function formatPrice($amount, ?string $currency): string
