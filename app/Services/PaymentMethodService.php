@@ -254,5 +254,42 @@ class PaymentMethodService
 
         return $created;
     }
+
+    protected function handlePaymentMethodError(\Illuminate\Http\Client\RequestException $e, string $operation): never
+    {
+        $errorBody = $e->response?->json();
+        $errorMessage = $errorBody['error']['message'] ?? $e->getMessage();
+        
+        $errorMessageLower = strtolower($errorMessage);
+        
+        if (
+            stripos($errorMessageLower, 'previously used') !== false ||
+            stripos($errorMessageLower, 'detach') !== false ||
+            stripos($errorMessageLower, 'already been used') !== false ||
+            stripos($errorMessageLower, 'cannot be reused') !== false
+        ) {
+            throw new \Illuminate\Http\Exceptions\HttpResponseException(
+                \App\Services\ApiResponse::error(
+                    ['token' => [__('validation.payment_method.cannot_be_reused')]],
+                    __('validation.payment_method.cannot_be_reused'),
+                    422
+                )
+            );
+        }
+
+        Log::error("Stripe payment method {$operation} failed", [
+            'error' => $errorMessage,
+            'operation' => $operation,
+            'response_body' => $errorBody,
+        ]);
+
+        throw new \Illuminate\Http\Exceptions\HttpResponseException(
+            \App\Services\ApiResponse::error(
+                ['token' => [__('validation.cart.payment_method_invalid')]],
+                __('validation.cart.payment_method_invalid'),
+                422
+            )
+        );
+    }
 }
 
