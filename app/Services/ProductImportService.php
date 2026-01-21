@@ -44,6 +44,24 @@ class ProductImportService
             ];
         }
 
+        $requiredHeaders = ['name', 'sku', 'category', 'price', 'quantity', 'status'];
+        $missingHeaders = [];
+        foreach ($requiredHeaders as $required) {
+            if (!in_array($required, $headerMap, true)) {
+                $missingHeaders[] = ucfirst($required);
+            }
+        }
+
+        if (!empty($missingHeaders)) {
+            return [
+                'created' => 0,
+                'failed' => 0,
+                'errors' => [
+                    ['row' => 1, 'message' => 'Missing required headers: ' . implode(', ', $missingHeaders)],
+                ],
+            ];
+        }
+
         $created = 0;
         $errors = [];
 
@@ -175,6 +193,12 @@ class ProductImportService
         }
         if (empty($payload['price'])) {
             return ['error' => 'Price is required.'];
+        }
+        if (empty($payload['quantity']) && $payload['quantity'] !== 0 && $payload['quantity'] !== '0') {
+            return ['error' => 'Quantity is required.'];
+        }
+        if (empty($payload['status'])) {
+            return ['error' => 'Status is required.'];
         }
         return ['error' => null];
     }
