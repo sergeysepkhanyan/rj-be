@@ -10,7 +10,7 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
-class ResetPasswordMail extends Mailable implements ShouldQueue
+class ResetPasswordMail extends Mailable
 {
     use Queueable, SerializesModels;
 
@@ -19,8 +19,8 @@ class ResetPasswordMail extends Mailable implements ShouldQueue
     public function build(): self
     {
         try {
-            $frontendUrl = rtrim((string) config('app.frontend_url', env('FRONTEND_URL')), '/');
-            $resetUrl = $frontendUrl . '/reset-password?token=' . $this->token . '&email=' . urlencode($this->user->email);
+            $frontendBase = rtrim((string) config('app.frontend_url'), '/');
+            $resetUrl = $frontendBase . '/reset-password?token=' . urlencode($this->token) . '&email=' . urlencode($this->user->email);
 
             Log::info('ResetPasswordMail building', [
                 'user_id' => $this->user->id,
@@ -30,7 +30,7 @@ class ResetPasswordMail extends Mailable implements ShouldQueue
                 'from_address' => config('mail.from.address'),
             ]);
 
-            return $this->subject('Update your account access')
+            return $this->subject('Reset Password')
                 ->from(config('mail.from.address'), config('mail.from.name'))
                 ->view('emails.reset-password')
                 ->text('emails.reset-password-text')
@@ -48,15 +48,5 @@ class ResetPasswordMail extends Mailable implements ShouldQueue
             ]);
             throw $e;
         }
-    }
-
-    public function failed(Throwable $exception): void
-    {
-        Log::error('ResetPasswordMail job failed', [
-            'user_id' => $this->user->id ?? null,
-            'email' => $this->user->email ?? null,
-            'error' => $exception->getMessage(),
-            'trace' => $exception->getTraceAsString(),
-        ]);
     }
 }
