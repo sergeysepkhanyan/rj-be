@@ -45,27 +45,23 @@ class UsersController extends Controller
 
         $data = $request->only(['password', 'old_password']);
 
-        try {
-            $result = $this->userService->changePassword($authUser->id, $data);
+        $result = $this->userService->changePassword($authUser->id, $data);
 
-            if (!($result['success'] ?? false)) {
-                $msg = $result['message_key']
-                    ? __($result['message_key'])
-                    : ($result['message'] ?? __('messages.something_went_wrong'));
 
-                return ApiResponse::error(
-                    ['password' => [$msg]],
-                    __('validation.failed'),
-                    422
-                );
-            }
+        if (!($result['success'] ?? false)) {
+            $msg = $result['message_key']
+                ? __($result['message_key'])
+                : ($result['message'] ?? __('messages.something_went_wrong'));
 
-            return ApiResponse::success([
-                'user' => new UserResource($this->userService->getUserById($authUser->id)),
-            ], __('success.user.password_changed'));
-
-        } catch (\Throwable $e) {
-            return ApiResponse::error(null, __('messages.something_went_wrong'), 500);
+            return ApiResponse::error(
+                ['password' => [$msg]],
+                __('validation.failed'),
+                422
+            );
         }
+
+        return ApiResponse::success([
+            'user' => new UserResource($this->userService->getUserById($authUser->id)),
+        ], __('success.user.password_changed'));
     }
 }

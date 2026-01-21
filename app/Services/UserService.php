@@ -161,7 +161,7 @@ class UserService
             ];
         }
 
-        $updated = $this->userRepository->update($userId, [
+        $updated = $this->userRepository->update($user, [
             'password' => bcrypt($data['password']),
         ]);
 
