@@ -53,7 +53,7 @@ class UpdateProductRequest extends BaseFormRequest
             $rules['details.*'] = 'required|array';
             $rules['details.*.id'] = 'nullable|integer';
             $rules['details.*.details'] = 'required|string';
-            $rules['details.*.detailsAr'] = 'required|string';
+            $rules['details.*.detailsAr'] = 'nullable|string';
             $rules['details.*.description'] = 'nullable|string';
             $rules['details.*.descriptionAr'] = 'nullable|string';
         }
@@ -113,7 +113,6 @@ class UpdateProductRequest extends BaseFormRequest
             'details.*.details.required'   => __('validation_scoped.product.details.details.required'),
             'details.*.details.string'     => __('validation_scoped.product.details.details.string'),
 
-            'details.*.detailsAr.required' => __('validation_scoped.product.details.detailsAr.required'),
             'details.*.detailsAr.string'   => __('validation_scoped.product.details.detailsAr.string'),
 
             'details.*.description.string'   => __('validation_scoped.product.details.description.string'),

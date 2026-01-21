@@ -698,29 +698,58 @@ class BookingService
             ];
         }
 
+        if (!$user->referral_id) {
+            return [
+                'discount_percent' => 0,
+                'discount_label' => null,
+            ];
+        }
+
+        $user->loadMissing('referral');
+
+        if (!$user->referral) {
+            return [
+                'discount_percent' => 0,
+                'discount_label' => null,
+            ];
+        }
+
+        $referral = $user->referral;
+
+        if ($referral->type !== 'percentage' || $referral->value <= 0) {
+            return [
+                'discount_percent' => 0,
+                'discount_label' => null,
+            ];
+        }
+
         $visitCount = Booking::where('user_id', $user->id)
             ->where('type', 'booking')
             ->where('status', '!=', 'cancelled')
             ->where('payment_status', 'paid')
             ->count();
 
-        $discountPercent = 0;
-        $discountLabel = null;
+        $tierName = $referral->name;
+        $hasEnoughVisits = false;
 
-        if ($visitCount >= 50) {
-            $discountPercent = 20;
-            $discountLabel = 'Loyalty Discount (50+ visits)';
-        } elseif ($visitCount >= 25) {
-            $discountPercent = 15;
-            $discountLabel = 'Loyalty Discount (25+ visits)';
-        } elseif ($visitCount >= 11) {
-            $discountPercent = 10;
-            $discountLabel = 'Loyalty Discount (11+ visits)';
+        if ($tierName === 'Gold' && $visitCount >= 50) {
+            $hasEnoughVisits = true;
+        } elseif ($tierName === 'Silver' && $visitCount >= 25) {
+            $hasEnoughVisits = true;
+        } elseif ($tierName === 'Bronze' && $visitCount >= 11) {
+            $hasEnoughVisits = true;
+        }
+
+        if (!$hasEnoughVisits) {
+            return [
+                'discount_percent' => 0,
+                'discount_label' => null,
+            ];
         }
 
         return [
-            'discount_percent' => $discountPercent,
-            'discount_label' => $discountLabel,
+            'discount_percent' => (float) $referral->value,
+            'discount_label' => $referral->name . ' Tier Discount',
         ];
     }
 

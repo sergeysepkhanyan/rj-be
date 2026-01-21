@@ -40,7 +40,7 @@ class StoreProductRequest extends BaseFormRequest
             'images.*' => 'string',
             'details' => 'nullable|array',
             'details.*.details' => 'required|string',
-            'details.*.detailsAr' => 'required|string',
+            'details.*.detailsAr' => 'nullable|string',
             'details.*.description' => 'nullable|string',
             'details.*.descriptionAr' => 'nullable|string',
         ];
@@ -91,7 +91,6 @@ class StoreProductRequest extends BaseFormRequest
             'status.in'       => __('validation_scoped.product.status.in'),
 
             'details.*.details.required'   => __('validation_scoped.product.details.details.required'),
-            'details.*.detailsAr.required' => __('validation_scoped.product.details.detailsAr.required'),
         ];
     }
 
