@@ -27,4 +27,4 @@ Base total: {{ $fmt($vat['baseTotal'] ?? 0) }}
 VAT total: {{ $fmt($vat['vatTotal'] ?? 0) }}
 Total: {{ $fmt($b['totalPrice'] ?? 0) }}
 
-If this was a mistake, please contact us and mention booking #{{ $b['id'] ?? '' }}.
+If this was a mistake, please contact us and mention booking {{ $b['reference'] ?? ('#' . ($b['id'] ?? '')) }}.

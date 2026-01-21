@@ -141,22 +141,6 @@ class StoreBookingRequest extends BaseFormRequest
                 }
             }
 
-            $rootStart = $this->input('startTime');
-            $rootEnd   = $this->input('endTime');
-
-            if ($rootStart && $minStart && $rootStart !== $minStart) {
-                $validator->errors()->add(
-                    'startTime',
-                    __('validation.booking.root_start_must_match', ['time' => $minStart])
-                );
-            }
-
-            if ($rootEnd && $maxEnd && $rootEnd !== $maxEnd) {
-                $validator->errors()->add(
-                    'endTime',
-                    __('validation.booking.root_end_must_match', ['time' => $maxEnd])
-                );
-            }
         });
     }
 }

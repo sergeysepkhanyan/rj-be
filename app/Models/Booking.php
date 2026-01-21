@@ -1,5 +1,7 @@
 <?php
 
+// app/Models/Booking.php
+
 namespace App\Models;
 
 use App\Traits\BelongsToUser;
@@ -10,7 +12,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Relations\MorphOne;
 
 /**
  * @property mixed $type
@@ -56,6 +57,7 @@ class Booking extends Model
         'notes',
         'timezone',
         'expires_at',
+        'reference',
     ];
 
     protected $casts = [

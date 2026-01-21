@@ -93,6 +93,7 @@ class BookingResource extends BaseResource
 
         return [
             'id'            => $data['id'] ?? null,
+            'reference'     => $this->reference ?? "#{$this->id}",
             'customerName'  => $data['customer_name'] ?? null,
             'customerEmail' => $data['customer_email'] ?? null,
             'customerPhone' => $data['customer_phone'] ?? null,

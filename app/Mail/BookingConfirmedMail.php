@@ -29,7 +29,8 @@ class BookingConfirmedMail extends Mailable implements ShouldQueue
         $payload = (new BookingResource($booking))->resolve();
         $payload = $this->stripMissingValues($payload);
 
-        return $this->subject('Booking confirmed #' . ($payload['id'] ?? $booking->id))
+        $reference = $payload['reference'] ?? ('#' . ($payload['id'] ?? $booking->id));
+        return $this->subject('Booking confirmed ' . $reference)
             ->from(config('mail.from.address'), config('mail.from.name'))
             ->view('emails.booking-confirmed')
             ->text('emails.booking-confirmed-text')

@@ -23,6 +23,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 
 class BookingService
 {
@@ -352,6 +353,7 @@ class BookingService
             $bookingData = [
                 'user_id'        => $user?->id,
                 'type'           => 'booking',
+                'reference'      => $this->makeBookingReference(),
                 'date'           => $date,
                 'timezone'       => $tz,
                 'start_time'     => $bookingStart,
@@ -1061,6 +1063,11 @@ class BookingService
         if ($guestSessionId) {
             $this->bookingSelectionRepository->deleteByGuestSession($guestSessionId);
         }
+    }
+
+    protected function makeBookingReference(): string
+    {
+        return 'BK-' . now()->format('Ymd') . '-' . Str::upper(Str::random(6));
     }
 
     protected function throwValidation(array $errors, string $messageKey, array $replace = [], int $status = 422): void

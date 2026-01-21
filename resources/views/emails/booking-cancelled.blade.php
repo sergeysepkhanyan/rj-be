@@ -38,7 +38,7 @@
                     <td style="padding:22px 24px; background:#8b0000; color:#fff;">
                         <div style="font-size:18px; font-weight:700;">❌ Booking cancelled</div>
                         <div style="font-size:13px; opacity:0.92; margin-top:6px;">
-                            Booking #{{ $b['id'] ?? '' }} • {{ $b['date'] ?? '' }} • {{ $b['startTime'] ?? '' }}–{{ $b['endTime'] ?? '' }}
+                            Booking {{ $b['reference'] ?? ('#' . ($b['id'] ?? '')) }} • {{ $b['date'] ?? '' }} • {{ $b['startTime'] ?? '' }}–{{ $b['endTime'] ?? '' }}
                         </div>
                     </td>
                 </tr>
@@ -151,8 +151,8 @@
                         <div style="height:18px;"></div>
 
                         <div style="font-size:12px; color:#666; line-height:1.6;">
-                            If this cancellation was a mistake, please contact us and we’ll help you rebook.
-                            Mention booking #{{ $b['id'] ?? '' }}.
+                            If this cancellation was a mistake, please contact us and we'll help you rebook.
+                            Mention booking {{ $b['reference'] ?? ('#' . ($b['id'] ?? '')) }}.
                         </div>
                     </td>
                 </tr>

@@ -57,8 +57,12 @@ class BookingFilter
     {
         $search = $this->request->search;
         $this->query->where(function ($q) use ($search) {
-            $q->where('name', 'like', "%{$search}%")
-                ->orWhere('notes', 'like', "%{$search}%");
+            $q->where('reference', 'like', "%{$search}%")
+                ->orWhere('customer_name', 'like', "%{$search}%")
+                ->orWhere('customer_email', 'like', "%{$search}%")
+                ->orWhere('customer_phone', 'like', "%{$search}%")
+                ->orWhere('notes', 'like', "%{$search}%")
+                ->orWhere('id', $search);
         });
     }
 }

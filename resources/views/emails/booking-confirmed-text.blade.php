@@ -12,7 +12,7 @@
 @endphp
 
 Booking confirmed ✅
-Booking #{{ $b['id'] ?? '' }}
+Booking {{ $b['reference'] ?? ('#' . ($b['id'] ?? '')) }}
 
 Date: {{ $b['date'] ?? '' }}
 Time: {{ $b['startTime'] ?? '' }}–{{ $b['endTime'] ?? '' }}
@@ -40,4 +40,4 @@ TOTAL: {{ $fmt($b['totalPrice'] ?? 0) }}
 
 {{--Notes: {{ $b['notes'] ?? '-' }}--}}
 
-If you need help, contact us and mention booking #{{ $b['id'] ?? '' }}.
+If you need help, contact us and mention booking {{ $b['reference'] ?? ('#' . ($b['id'] ?? '')) }}.

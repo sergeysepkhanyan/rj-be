@@ -28,7 +28,8 @@ class BookingCancelledMail extends Mailable implements ShouldQueue
 
         $payload = (new BookingResource($booking))->resolve();
         $payload = $this->stripMissingValues($payload);
-        return $this->subject('Booking cancelled #' . ($payload['id'] ?? $booking->id))
+        $reference = $payload['reference'] ?? ('#' . ($payload['id'] ?? $booking->id));
+        return $this->subject('Booking cancelled ' . $reference)
             ->from(config('mail.from.address'), config('mail.from.name'))
             ->view('emails.booking-cancelled')
             ->text('emails.booking-cancelled-text')

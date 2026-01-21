@@ -32,7 +32,7 @@
                     <td style="padding:22px 24px; background:#111; color:#fff;">
                         <div style="font-size:18px; font-weight:700;">✅ Booking confirmed</div>
                         <div style="font-size:13px; opacity:0.9; margin-top:6px;">
-                            Booking #{{ $b['id'] ?? '' }} • {{ $b['date'] ?? '' }} • {{ $b['startTime'] ?? '' }}–{{ $b['endTime'] ?? '' }}
+                            Booking {{ $b['reference'] ?? ('#' . ($b['id'] ?? '')) }} • {{ $b['date'] ?? '' }} • {{ $b['startTime'] ?? '' }}–{{ $b['endTime'] ?? '' }}
                         </div>
                     </td>
                 </tr>
@@ -150,7 +150,7 @@
                         <div style="height:18px;"></div>
 
                         <div style="font-size:12px; color:#666; line-height:1.6;">
-                            If you need to change or cancel your booking, please contact us and mention booking #{{ $b['id'] ?? '' }}.
+                            If you need to change or cancel your booking, please contact us and mention booking {{ $b['reference'] ?? ('#' . ($b['id'] ?? '')) }}.
                         </div>
                     </td>
                 </tr>
