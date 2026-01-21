@@ -32,7 +32,6 @@ class PasswordService
 
         if (filter_var($identifier, FILTER_VALIDATE_EMAIL)) {
             $user->sendPasswordResetNotification($token);
-        } else {
         }
 
         return [
