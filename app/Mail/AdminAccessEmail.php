@@ -15,12 +15,13 @@ class AdminAccessEmail extends Mailable implements ShouldQueue
     public function __construct(
         public User $user,
         public string $password,
+        public ?string $accessLink = null,
     ) {}
 
     public function build(): static
     {
-        $frontendUrl = config('app.frontend_url', env('FRONTEND_URL'));
-        $actionUrl   = rtrim($frontendUrl, '/');
+        $actionUrl = $this->accessLink 
+            ?: rtrim(config('app.frontend_url', env('FRONTEND_URL')), '/');
 
         return $this
             ->from(config('mail.from.address'), config('mail.from.name'))
@@ -31,7 +32,7 @@ class AdminAccessEmail extends Mailable implements ShouldQueue
                 $headers->addIdHeader('Message-ID', uniqid('', true) . '@rjbeautylounge.com');
                 $headers->addTextHeader('List-Unsubscribe', '<mailto:admin@rjbeautylounge.com>');
             })
-            ->markdown('emails.admin_access', [
+            ->view('emails.admin_access', [
                 'user'      => $this->user,
                 'password'  => $this->password,
                 'actionUrl' => $actionUrl,

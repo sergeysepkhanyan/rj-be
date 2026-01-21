@@ -33,7 +33,8 @@ class UserResource extends BaseResource
             'image' => $this->image ? asset('storage/' . $this->image) : null,
             'bookingsCount' => $this->clientBookings->count(),
             'ordersCount' => 0,
-            'referral' => $this->referral ? new ReferralResource($this->referral) : null
+            'referral' => $this->referral ? new ReferralResource($this->referral) : null,
+            'isTemporaryPassword' => (bool) ($data['is_temporary_password'] ?? false),
         ];
     }
 }

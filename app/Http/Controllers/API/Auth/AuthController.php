@@ -34,7 +34,8 @@ class AuthController extends Controller
             'password' => Hash::make($data['password']),
         ]);
 
-        Mail::to($user->email)->queue(new VerifyEmailMail($user));
+        $redirectTo = $data['redirect_to'] ?? null;
+        Mail::to($user->email)->queue(new VerifyEmailMail($user, $redirectTo));
 
         return ApiResponse::success([
             'success' => true,
@@ -67,6 +68,18 @@ class AuthController extends Controller
             );
         }
 
+        if ($user->is_temporary_password && $user->temporary_password_hash) {
+            $isUsingTemporaryPassword = Hash::check($credentials['password'], $user->temporary_password_hash);
+            
+            if ($isUsingTemporaryPassword && $user->temporary_password_used_at) {
+                return ApiResponse::error(
+                    ['auth' => [__('errors.auth.temporary_password_already_used')]],
+                    __('errors.auth.temporary_password_already_used'),
+                    401
+                );
+            }
+        }
+
         if (!$token = auth()->attempt($credentials)) {
             return ApiResponse::error(
                 ['auth' => [__('errors.auth.invalid_credentials')]],
@@ -76,6 +89,14 @@ class AuthController extends Controller
         }
 
         $user = auth()->user()->load('role');
+
+        if ($user->is_temporary_password && !$user->temporary_password_used_at && $user->temporary_password_hash) {
+            $isUsingTemporaryPassword = Hash::check($credentials['password'], $user->temporary_password_hash);
+            if ($isUsingTemporaryPassword) {
+                $user->update(['temporary_password_used_at' => now()]);
+                $user->refresh();
+            }
+        }
 
         $guestSessionId = $request->input('guest_session_id')
             ?? $request->input('guestSessionId')

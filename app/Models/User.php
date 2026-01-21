@@ -43,6 +43,8 @@ class User extends Authenticatable implements JWTSubject, CanResetPasswordContra
         'user_role_id',
         'date_of_birth',
         'is_temporary_password',
+        'temporary_password_hash',
+        'temporary_password_used_at',
         'referral_id',
         'description',
         'description_ar',
@@ -53,6 +55,7 @@ class User extends Authenticatable implements JWTSubject, CanResetPasswordContra
 
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'temporary_password_used_at' => 'datetime',
     ];
 
     protected $hidden = [

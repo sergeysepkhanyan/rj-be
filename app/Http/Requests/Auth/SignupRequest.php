@@ -12,6 +12,10 @@ use Illuminate\Validation\Rule;
 class SignupRequest extends BaseFormRequest
 {
 
+    protected array $fieldMap = [
+        'passwordConfirmation' => 'password_confirmation',
+    ];
+
     public function rules(): array
     {
         return [
@@ -29,6 +33,7 @@ class SignupRequest extends BaseFormRequest
             ],
             'password' => ['required', 'string', 'min:6', 'same:passwordConfirmation'],
             'passwordConfirmation' => ['required', 'string'],
+            'redirect_to' => 'nullable|string|max:500',
         ];
     }
 }

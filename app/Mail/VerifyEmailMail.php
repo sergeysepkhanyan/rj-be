@@ -13,7 +13,10 @@ class VerifyEmailMail extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 
-    public function __construct(public User $user) {}
+    public function __construct(
+        public User $user,
+        public ?string $redirectTo = null,
+    ) {}
 
     public function build(): self
     {
@@ -29,9 +32,13 @@ class VerifyEmailMail extends Mailable implements ShouldQueue
         $frontendBase = rtrim((string) config('app.frontend_url'), '/');
 
         $frontendUrl = $frontendBase . '/verify-email?url=' . urlencode($backendUrl);
+        
+        if ($this->redirectTo) {
+            $frontendUrl .= '&redirect_to=' . urlencode($this->redirectTo);
+        }
 
-        return $this->subject('Welcome to RJ – confirm your account')   // softer wording
-        ->from(config('mail.from.address'), config('mail.from.name'))
+        return $this->subject('Welcome to RJ – confirm your account')
+            ->from(config('mail.from.address'), config('mail.from.name'))
             ->view('emails.verify-email')
             ->text('emails.verify-email-text')
             ->with([

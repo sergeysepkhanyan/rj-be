@@ -11,8 +11,11 @@ class ChangeUserPasswordRequest extends BaseFormRequest
 
     public function rules(): array
     {
+        $user = auth()->user();
+        $isTemporaryPassword = $user && ($user->is_temporary_password ?? false);
+
         return [
-            'oldPassword' => 'required|string',
+            'oldPassword' => $isTemporaryPassword ? 'nullable|string' : 'required|string',
             'password' => 'required|string|min:8|same:passwordConfirmation',
             'passwordConfirmation' => 'required|string',
         ];

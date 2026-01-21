@@ -39,8 +39,11 @@ class UserService
         $data['user_role_id'] = $role->id;
         $generatedPassword = Str::random(6);
         if ($role->slug === 'admin') {
-            $data['password'] = Hash::make($generatedPassword);
+            $hashedPassword = Hash::make($generatedPassword);
+            $data['password'] = $hashedPassword;
             $data['is_temporary_password'] = true;
+            $data['temporary_password_hash'] = $hashedPassword;
+            $data['temporary_password_used_at'] = null;
         }
         $user = $this->userRepository->create($data);
         if ($role->slug === 'master' && !empty($subservices)) {
@@ -120,8 +123,11 @@ class UserService
 
             if ($oldRole !== 'admin' && $role->slug === 'admin') {
                 $generatedPassword = Str::random(6);
-                $fields['password'] = Hash::make($generatedPassword);
+                $hashedPassword = Hash::make($generatedPassword);
+                $fields['password'] = $hashedPassword;
                 $fields['is_temporary_password'] = true;
+                $fields['temporary_password_hash'] = $hashedPassword;
+                $fields['temporary_password_used_at'] = null;
 
                 $accessLink = config('app.url') . '/admin/login';
                 Mail::to($user->email)->queue(new AdminAccessEmail($user, $generatedPassword, $accessLink));
@@ -154,27 +160,43 @@ class UserService
     {
         $user = $this->userRepository->find($userId);
 
-        if (!Hash::check($data['old_password'], $user->password)) {
-            return [
-                'success' => false,
-                'message' => 'Old password is incorrect',
-            ];
+        if ($user->is_temporary_password) {
+            if (isset($data['old_password']) && !Hash::check($data['old_password'], $user->password)) {
+                return [
+                    'success' => false,
+                    'message_key' => 'errors.password.temporary_incorrect',
+                    'message' => __('errors.password.temporary_incorrect'),
+                ];
+            }
+        } else {
+            if (!isset($data['old_password']) || !Hash::check($data['old_password'], $user->password)) {
+                return [
+                    'success' => false,
+                    'message_key' => 'errors.password.old_incorrect',
+                    'message' => __('errors.password.old_incorrect'),
+                ];
+            }
         }
 
-        $updated = $this->userRepository->update($user, [
+        $updateData = [
             'password' => bcrypt($data['password']),
-        ]);
+            'is_temporary_password' => false,
+        ];
+
+        $updated = $this->userRepository->update($user, $updateData);
 
         if (!$updated) {
             return [
                 'success' => false,
-                'message' => 'Failed to update password',
+                'message_key' => 'errors.password.update_failed',
+                'message' => __('errors.password.update_failed'),
             ];
         }
 
         return [
             'success' => true,
-            'message' => 'Password changed successfully',
+            'message_key' => 'success.user.password_changed',
+            'message' => __('success.user.password_changed'),
         ];
     }
 
