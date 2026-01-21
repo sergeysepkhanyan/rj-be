@@ -208,6 +208,17 @@ class CartService
                 $updates['name'] = $shippingName;
             }
             if ($shippingPhone && empty($user->mobile)) {
+                $existingUserWithPhone = User::where('mobile', $shippingPhone)
+                    ->where('id', '!=', $user->id)
+                    ->whereNull('deleted_at')
+                    ->exists();
+                
+                if ($existingUserWithPhone) {
+                    $this->throwValidation([
+                        'shippingAddress.mobile' => __('validation.custom.mobile.unique')
+                    ], 422);
+                }
+                
                 $updates['mobile'] = $shippingPhone;
             }
             
