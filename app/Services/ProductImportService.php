@@ -194,7 +194,7 @@ class ProductImportService
         if (empty($payload['price'])) {
             return ['error' => 'Price is required.'];
         }
-        if (empty($payload['quantity']) && $payload['quantity'] !== 0 && $payload['quantity'] !== '0') {
+        if ($payload['quantity'] === null || $payload['quantity'] === '') {
             return ['error' => 'Quantity is required.'];
         }
         if (empty($payload['status'])) {
