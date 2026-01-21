@@ -7,6 +7,7 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 
 class ResetPasswordMail extends Mailable implements ShouldQueue
 {
@@ -18,6 +19,12 @@ class ResetPasswordMail extends Mailable implements ShouldQueue
     {
         $frontendUrl = rtrim((string) config('app.frontend_url', env('FRONTEND_URL')), '/');
         $resetUrl = $frontendUrl . '/reset-password?token=' . $this->token . '&email=' . urlencode($this->user->email);
+
+        Log::info('ResetPasswordMail building', [
+            'user_id' => $this->user->id,
+            'email' => $this->user->email,
+            'token_preview' => substr($this->token, 0, 10) . '...',
+        ]);
 
         return $this->subject('Reset Your Password')
             ->from(config('mail.from.address'), config('mail.from.name'))

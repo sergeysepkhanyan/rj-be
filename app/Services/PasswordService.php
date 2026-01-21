@@ -33,7 +33,18 @@ class PasswordService
         );
 
         if (filter_var($identifier, FILTER_VALIDATE_EMAIL)) {
+            \Illuminate\Support\Facades\Log::info('Queueing ResetPasswordMail', [
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'identifier' => $identifier,
+            ]);
+            
             Mail::to($user->email)->queue(new ResetPasswordMail($user, $token));
+            
+            \Illuminate\Support\Facades\Log::info('ResetPasswordMail queued successfully', [
+                'user_id' => $user->id,
+                'email' => $user->email,
+            ]);
         }
 
         return [
