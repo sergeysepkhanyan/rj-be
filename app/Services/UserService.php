@@ -44,6 +44,7 @@ class UserService
             $data['is_temporary_password'] = true;
             $data['temporary_password_hash'] = $hashedPassword;
             $data['temporary_password_used_at'] = null;
+            $data['email_verified_at'] = now();
         }
         $user = $this->userRepository->create($data);
         if ($role->slug === 'master' && !empty($subservices)) {
@@ -128,6 +129,10 @@ class UserService
                 $fields['is_temporary_password'] = true;
                 $fields['temporary_password_hash'] = $hashedPassword;
                 $fields['temporary_password_used_at'] = null;
+                
+                if (!$user->hasVerifiedEmail()) {
+                    $fields['email_verified_at'] = now();
+                }
 
                 $accessLink = config('app.url') . '/admin/login';
                 Mail::to($user->email)->queue(new AdminAccessEmail($user, $generatedPassword, $accessLink));
