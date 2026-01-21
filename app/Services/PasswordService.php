@@ -19,7 +19,8 @@ class PasswordService
         if (!$user) {
             return [
                 'success' => false,
-                'message' => 'User not found.'
+                'message_key' => 'errors.password.user_not_found',
+                'message' => __('errors.password.user_not_found')
             ];
         }
 
@@ -32,13 +33,12 @@ class PasswordService
         if (filter_var($identifier, FILTER_VALIDATE_EMAIL)) {
             $user->sendPasswordResetNotification($token);
         } else {
-            // Placeholder for SMS sending
-            // SmsService::send($identifier, "Your reset code is $token");
         }
 
         return [
             'success' => true,
-            'message' => 'Password reset link sent.'
+            'message_key' => 'success.password.reset_link_sent',
+            'message' => __('success.password.reset_link_sent')
         ];
     }
 
@@ -52,7 +52,8 @@ class PasswordService
         if (!$record) {
             return [
                 'success' => false,
-                'message' => 'Invalid token.'
+                'message_key' => 'errors.password.invalid_token',
+                'message' => __('errors.password.invalid_token')
             ];
         }
 
@@ -67,7 +68,8 @@ class PasswordService
 
         return [
             'success' => true,
-            'message' => 'Password has been reset successfully.'
+            'message_key' => 'success.password.reset_done',
+            'message' => __('success.password.reset_done')
         ];
     }
 }

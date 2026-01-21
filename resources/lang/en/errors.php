@@ -18,6 +18,8 @@ return [
     'password' => [
         'reset_link_failed' => 'Reset link failed.',
         'reset_failed' => 'Password reset failed.',
+        'user_not_found' => 'User not found.',
+        'invalid_token' => 'Invalid or expired token.',
     ],
 
 

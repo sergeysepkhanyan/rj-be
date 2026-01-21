@@ -17,6 +17,8 @@ return [
     'password' => [
         'reset_link_failed' => 'فشل إرسال رابط إعادة التعيين.',
         'reset_failed' => 'فشل تغيير كلمة المرور.',
+        'user_not_found' => 'المستخدم غير موجود.',
+        'invalid_token' => 'رمز غير صحيح أو منتهي الصلاحية.',
     ],
 
 ];
