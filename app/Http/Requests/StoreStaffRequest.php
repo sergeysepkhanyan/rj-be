@@ -15,7 +15,7 @@ class StoreStaffRequest extends BaseFormRequest
         return [
             'role' => 'required|in:admin,master',
             'name' => 'required|string',
-            'nameAr' => 'required_if:role,master|string',
+            'nameAr' => 'nullable|string',
             'email' => [
                 'required',
                 'email',
@@ -43,8 +43,7 @@ class StoreStaffRequest extends BaseFormRequest
             'name.required' => __('validation_scoped.staff.name.required'),
             'name.string'   => __('validation_scoped.staff.name.string'),
 
-            'nameAr.required_if' => __('validation_scoped.staff.nameAr.required_if'),
-            'nameAr.string'      => __('validation_scoped.staff.nameAr.string'),
+            'nameAr.string' => __('validation_scoped.staff.nameAr.string'),
 
             'email.required' => __('validation_scoped.staff.email.required'),
             'email.email'    => __('validation_scoped.staff.email.email'),

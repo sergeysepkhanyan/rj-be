@@ -17,7 +17,7 @@ class UpdateStaffRequest extends BaseFormRequest
         return [
             'role' => 'required|in:admin,master',
             'name' => 'required|string',
-            'nameAr' => 'required_if:role,master|string',
+            'nameAr' => 'nullable|string',
             'email' => [
                 'required_if:role,admin',
                 'email',
@@ -49,8 +49,7 @@ class UpdateStaffRequest extends BaseFormRequest
             'name.required' => __('validation_scoped.staff.name.required'),
             'name.string'   => __('validation_scoped.staff.name.string'),
 
-            'nameAr.required_if' => __('validation_scoped.staff.nameAr.required_if'),
-            'nameAr.string'      => __('validation_scoped.staff.nameAr.string'),
+            'nameAr.string' => __('validation_scoped.staff.nameAr.string'),
 
             'email.required_if' => __('validation_scoped.staff.email.required_if_admin'),
             'email.email'       => __('validation_scoped.staff.email.email'),
