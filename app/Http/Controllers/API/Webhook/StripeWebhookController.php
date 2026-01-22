@@ -198,12 +198,19 @@ class StripeWebhookController extends Controller
                         ]);
                         
                         // Send booking confirmation email after payment success (same as ecommerce)
+                        \Log::info('[stripe][webhook] Sending booking confirmation email', [
+                            'booking_id' => $booking->id,
+                        ]);
                         try {
                             $this->bookingService->sendBookingConfirmation($booking);
+                            \Log::info('[stripe][webhook] Booking confirmation email sent', [
+                                'booking_id' => $booking->id,
+                            ]);
                         } catch (\Exception $e) {
                             \Log::warning('[stripe][webhook] Failed to send booking confirmation email', [
                                 'error' => $e->getMessage(),
                                 'booking_id' => $booking->id,
+                                'trace' => $e->getTraceAsString(),
                             ]);
                         }
                     } elseif ($order->type === 'ecommerce') {

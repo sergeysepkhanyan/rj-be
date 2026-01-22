@@ -22,6 +22,7 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
@@ -1086,10 +1087,27 @@ class BookingService
 
     public function sendBookingConfirmation(Booking $booking): void
     {
+        Log::info('[booking][email] Starting booking confirmation email', [
+            'booking_id' => $booking->id,
+        ]);
+
         $email = $booking->customer_email;
 
         if ($email) {
+            Log::info('[booking][email] Sending booking confirmation email', [
+                'booking_id' => $booking->id,
+                'email' => $email,
+            ]);
             Mail::to($email)->queue(new BookingConfirmedMail($booking));
+            Log::info('[booking][email] Booking confirmation email queued', [
+                'booking_id' => $booking->id,
+                'email' => $email,
+            ]);
+        } else {
+            Log::warning('[booking][email] No email found for booking confirmation', [
+                'booking_id' => $booking->id,
+                'customer_email' => $booking->customer_email,
+            ]);
         }
     }
 
