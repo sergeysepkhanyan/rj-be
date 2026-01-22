@@ -272,6 +272,8 @@ return [
 
     'auth' => [
         'invalid_verification_link' => 'رابط التحقق غير صالح أو منتهي الصلاحية.',
+        'expired_verification_link' => 'انتهت صلاحية رابط التحقق. يرجى طلب رابط جديد.',
+        'email_already_verified' => 'تم التحقق من هذا البريد الإلكتروني بالفعل.',
     ],
 
 

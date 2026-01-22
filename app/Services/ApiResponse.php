@@ -33,9 +33,10 @@ class ApiResponse
      * @param mixed $errors array|string|null
      * @param string|null $message
      * @param int $status
+     * @param array|null $meta Additional metadata for frontend
      * @return JsonResponse
      */
-    public static function error(mixed $errors = null, string $message = null, int $status = 500): JsonResponse
+    public static function error(mixed $errors = null, string $message = null, int $status = 500, ?array $meta = null): JsonResponse
     {
         $message = $message ?? 'Something went wrong. Please try again later.';
         $status = $status ?? 500;
@@ -61,7 +62,7 @@ class ApiResponse
             'success' => false,
             'message' => $message,
             'errors'  => $normalizedErrors,
-            'data'    => (object)[],
+            'data'    => $meta ? (object)$meta : (object)[],
         ];
 
         return response()->json($payload, $status);

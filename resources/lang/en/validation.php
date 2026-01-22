@@ -269,6 +269,8 @@ return [
 
     'auth' => [
         'invalid_verification_link' => 'This verification link is invalid or has expired.',
+        'expired_verification_link' => 'This verification link has expired. Please request a new one.',
+        'email_already_verified' => 'This email address has already been verified.',
     ],
 
     'break' => [

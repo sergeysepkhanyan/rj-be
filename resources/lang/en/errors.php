@@ -19,7 +19,7 @@ return [
     'password' => [
         'reset_link_failed' => 'Reset link failed.',
         'reset_failed' => 'Password reset failed.',
-        'user_not_found' => 'User not found.',
+        'user_not_found' => 'This email address is not registered in our system.',
         'invalid_token' => 'Invalid or expired token.',
         'temporary_incorrect' => 'Temporary password is incorrect.',
         'old_incorrect' => 'Old password is incorrect.',

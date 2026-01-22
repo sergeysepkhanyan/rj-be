@@ -83,6 +83,10 @@ Route::middleware(['set.locale'])->group(function () {
         Route::get('email/verify/{id}/{hash}', [EmailVerificationController::class, 'verify'])
             ->middleware(['signed', 'throttle:6,1'])
             ->name('verification.verify');
+        
+        Route::post('email/verify/resend', [EmailVerificationController::class, 'resend'])
+            ->middleware('throttle:6,1')
+            ->name('verification.resend');
 
         Route::middleware(['auth:api'])->group(function () {
             Route::get('me', [AuthController::class, 'me']);

@@ -62,6 +62,7 @@ return [
         'logged_out' => 'Logged out successfully.',
         'token_refreshed' => 'Token refreshed successfully.',
         'email_verified' => 'Your email has been verified successfully.',
+        'verification_email_resent' => 'Verification email has been sent. Please check your inbox.',
     ],
     'password' => [
         'reset_link_sent' => 'Reset link sent successfully.',

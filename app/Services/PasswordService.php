@@ -66,8 +66,15 @@ class PasswordService
             ->orWhere('mobile', $identifier)
             ->firstOrFail();
 
-        $user->password = Hash::make($newPassword);
-        $user->save();
+        $updateData = [
+            'password' => Hash::make($newPassword),
+        ];
+
+        if (!$user->hasVerifiedEmail()) {
+            $updateData['email_verified_at'] = now();
+        }
+
+        $user->update($updateData);
 
         DB::table('password_resets')->where('identifier', $identifier)->delete();
 
