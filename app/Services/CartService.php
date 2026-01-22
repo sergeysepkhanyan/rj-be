@@ -320,24 +320,9 @@ class CartService
 
     protected function getAvailableQuantity(Product $product, ?int $userId, ?string $guestSessionId, ?int $excludeCartItemId = null): int
     {
+        // Return max_quantity directly - quantity is now managed by decrementing max_quantity on successful payment
         $maxQuantity = (int) ($product->max_quantity ?? 0);
-        if ($maxQuantity <= 0) {
-            return 0;
-        }
-
-        $orderedQty = OrderItem::query()
-            ->where('product_id', $product->id)
-            ->whereHas('order', function ($q) {
-                $q->whereIn('status', [
-                    OrderStatus::Paid->value,
-                    OrderStatus::Fulfilled->value,
-                ]);
-            })
-            ->sum('quantity');
-
-        $currentQuantity = max(0, $maxQuantity - (int) $orderedQty);
-
-        return $currentQuantity;
+        return max(0, $maxQuantity);
     }
 
     protected function makeReference(): string

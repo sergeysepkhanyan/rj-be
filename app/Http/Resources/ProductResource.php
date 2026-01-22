@@ -52,26 +52,8 @@ class ProductResource extends BaseResource
 
     protected function calculateCurrentQuantity(int $maxQuantity): int
     {
-        if ($maxQuantity <= 0) {
-            return 0;
-        }
-
-        $productId = $this->id ?? $this->resource->id ?? null;
-        if (!$productId) {
-            return $maxQuantity;
-        }
-
-        $orderedQty = \App\Models\OrderItem::query()
-            ->where('product_id', $productId)
-            ->whereHas('order', function ($q) {
-                $q->whereIn('status', [
-                    \App\Enums\OrderStatus::Paid->value,
-                    \App\Enums\OrderStatus::Fulfilled->value,
-                ]);
-            })
-            ->sum('quantity');
-
-        return max(0, $maxQuantity - (int) $orderedQty);
+        // Return max_quantity directly - quantity is now managed by decrementing max_quantity on successful payment
+        return max(0, $maxQuantity);
     }
 }
 

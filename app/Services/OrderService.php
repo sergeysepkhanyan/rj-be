@@ -10,7 +10,9 @@ use App\Mail\OrderConfirmedMail;
 use App\Mail\OrderDeliveryStatusUpdatedMail;
 use App\Models\Booking;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\OrderStatusHistory;
+use App\Models\Product;
 use App\Repositories\Interfaces\OrderRepositoryInterface;
 use App\Services\ApiResponse;
 use App\Services\PaymentService;
@@ -56,10 +58,19 @@ class OrderService
 
     public function markPaid(Order $order, array $meta = []): Order
     {
-        return $this->orderRepository->update($order, [
+        $wasAlreadyPaid = $order->status === OrderStatus::Paid->value;
+
+        $order = $this->orderRepository->update($order, [
             'status' => OrderStatus::Paid,
             'meta'   => array_merge($order->meta ?? [], $meta),
         ]);
+
+        // Decrease product quantities for ecommerce orders (only if not already paid)
+        if (!$wasAlreadyPaid && $order->type === OrderType::Ecommerce->value) {
+            $this->decreaseProductQuantities($order);
+        }
+
+        return $order;
     }
 
     public function cancel(Order $order, array $meta = []): Order
@@ -74,6 +85,11 @@ class OrderService
 
     public function refund(Order $order, array $meta = []): Order
     {
+        // Increase product quantities back for ecommerce orders before updating status
+        if ($order->type === OrderType::Ecommerce->value && $order->status === OrderStatus::Paid->value) {
+            $this->increaseProductQuantities($order);
+        }
+
         return $this->orderRepository->update($order, [
             'status' => OrderStatus::Refunded,
             'refunded_at' => now(),
@@ -180,5 +196,42 @@ class OrderService
     protected function makeReference(): string
     {
         return 'ORD-' . now()->format('Ymd') . '-' . Str::upper(Str::random(6));
+    }
+
+    /**
+     * Decrease product quantities when order is paid.
+     * Uses database decrement to avoid race conditions.
+     */
+    protected function decreaseProductQuantities(Order $order): void
+    {
+        if (!$order->relationLoaded('items')) {
+            $order->load('items');
+        }
+
+        foreach ($order->items as $item) {
+            if ($item->product_id && $item->quantity > 0) {
+                Product::where('id', $item->product_id)
+                    ->where('max_quantity', '>', 0)
+                    ->decrement('max_quantity', $item->quantity);
+            }
+        }
+    }
+
+    /**
+     * Increase product quantities back when order is refunded.
+     * Uses database increment to avoid race conditions.
+     */
+    protected function increaseProductQuantities(Order $order): void
+    {
+        if (!$order->relationLoaded('items')) {
+            $order->load('items');
+        }
+
+        foreach ($order->items as $item) {
+            if ($item->product_id && $item->quantity > 0) {
+                Product::where('id', $item->product_id)
+                    ->increment('max_quantity', $item->quantity);
+            }
+        }
     }
 }
