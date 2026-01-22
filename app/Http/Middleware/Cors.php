@@ -4,12 +4,18 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 
 class Cors
 {
     public function handle(Request $request, Closure $next): Response
     {
+        // Skip CORS for webhook endpoints (Stripe/Tabby don't send Origin header)
+        if ($this->isWebhookEndpoint($request)) {
+            return $next($request);
+        }
+
         $origin  = $request->headers->get('Origin');
         $isLocal = app()->environment('local');
 
@@ -26,6 +32,27 @@ class Cors
         $response = $next($request);
 
         return $this->applyCors($request, $response, $origin, $isLocal, $isAllowed);
+    }
+
+    private function isWebhookEndpoint(Request $request): bool
+    {
+        $path = $request->path();
+        // Match: api/webhooks/stripe, api/webhooks/tabby, or any path containing /webhooks/
+        $isWebhook = str_starts_with($path, 'api/webhooks/') || 
+                     str_contains($path, '/webhooks/stripe') || 
+                     str_contains($path, '/webhooks/tabby') ||
+                     str_contains($path, 'webhooks/stripe') ||
+                     str_contains($path, 'webhooks/tabby');
+        
+        if ($isWebhook) {
+            Log::info('[cors] Bypassing CORS for webhook endpoint', [
+                'path' => $path,
+                'method' => $request->method(),
+                'full_url' => $request->fullUrl(),
+            ]);
+        }
+        
+        return $isWebhook;
     }
 
     private function applyCors(
