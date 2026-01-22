@@ -36,7 +36,7 @@ class UserRepository implements UserRepositoryInterface
 
     public function countAdmins(): int
     {
-        return User::whereHas('role', fn($q) => $q->where('name', 'admin'))->count();
+        return User::whereHas('role', fn($q) => $q->where('slug', 'admin'))->count();
     }
 
     public function allStaff()

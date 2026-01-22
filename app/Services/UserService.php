@@ -123,6 +123,15 @@ class UserService
             $oldRole = $user->role->slug;
 
             if ($oldRole !== 'admin' && $role->slug === 'admin') {
+                if (!$this->canAddAdmins(1)) {
+                    throw new \Illuminate\Http\Exceptions\HttpResponseException(
+                        \App\Services\ApiResponse::error(
+                            ['role' => [__('errors.staff.admin_limit')]],
+                            __('validation.failed'),
+                            422
+                        )
+                    );
+                }
                 $generatedPassword = Str::random(6);
                 $hashedPassword = Hash::make($generatedPassword);
                 $fields['password'] = $hashedPassword;
