@@ -53,7 +53,6 @@ class UpdateUserDetailsRequest extends BaseFormRequest
             'mobile.string'   => __('validation.profile.mobile.string'),
             'mobile.unique'   => __('validation.profile.mobile.unique'),
 
-            'dateOfBirth.required' => __('validation.profile.dateOfBirth.required'),
             'dateOfBirth.date'     => __('validation.profile.dateOfBirth.date'),
             'dateOfBirth.date_format' => __('validation.profile.dateOfBirth.date_format'),
             'dateOfBirth.before_or_equal' => __('validation.profile.dateOfBirth.min_age'),

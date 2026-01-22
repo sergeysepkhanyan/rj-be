@@ -7,6 +7,9 @@ use App\Services\ProductCategoryService;
 use App\Services\ProductService;
 use Illuminate\Http\UploadedFile;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Reader\Csv;
+use PhpOffice\PhpSpreadsheet\Reader\Xls;
+use PhpOffice\PhpSpreadsheet\Reader\Xlsx;
 
 class ProductImportService
 {
@@ -17,9 +20,20 @@ class ProductImportService
 
     public function import(UploadedFile $file, bool $dryRun = false): array
     {
-        $spreadsheet = IOFactory::load($file->getRealPath());
-        $sheet = $spreadsheet->getActiveSheet();
-        $rows = $sheet->toArray(null, true, true, true);
+        try {
+            $reader = $this->getReaderForFile($file);
+            $spreadsheet = $reader->load($file->getRealPath());
+            $sheet = $spreadsheet->getActiveSheet();
+            $rows = $sheet->toArray(null, true, true, true);
+        } catch (\Exception $e) {
+            return [
+                'created' => 0,
+                'failed' => 0,
+                'errors' => [
+                    ['row' => 1, 'message' => 'Unable to read file. Please ensure the file is a valid CSV, XLSX, or XLS format.'],
+                ],
+            ];
+        }
 
         if (!$rows || count($rows) < 2) {
             return [
@@ -198,6 +212,42 @@ class ProductImportService
             return ['error' => 'Quantity is required.'];
         }
         return ['error' => null];
+    }
+
+    protected function getReaderForFile(UploadedFile $file)
+    {
+        $extension = strtolower($file->getClientOriginalExtension());
+        $mimeType = strtolower($file->getMimeType());
+        $filePath = $file->getRealPath();
+
+        if ($extension === 'csv' || $mimeType === 'text/csv' || 
+            ($mimeType === 'text/plain' && $extension === 'csv') ||
+            ($mimeType === 'application/csv')) {
+            $reader = new Csv();
+            $reader->setInputEncoding('UTF-8');
+            $reader->setDelimiter(',');
+            $reader->setEnclosure('"');
+            $reader->setSheetIndex(0);
+            return $reader;
+        }
+
+        if ($extension === 'xls' || 
+            $mimeType === 'application/vnd.ms-excel' ||
+            $mimeType === 'application/excel') {
+            return new Xls();
+        }
+
+        if ($extension === 'xlsx' || 
+            $mimeType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
+            return new Xlsx();
+        }
+
+        try {
+            $identifiedType = IOFactory::identify($filePath);
+            return IOFactory::createReader($identifiedType);
+        } catch (\Exception $e) {
+            throw new \RuntimeException('Unable to determine file format. Please ensure the file is CSV, XLSX, or XLS.');
+        }
     }
 
     protected function parsePrice(mixed $value): array
