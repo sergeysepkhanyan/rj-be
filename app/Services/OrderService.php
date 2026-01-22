@@ -60,16 +60,52 @@ class OrderService
     public function markPaid(Order $order, array $meta = []): Order
     {
         $wasAlreadyPaid = $order->status === OrderStatus::Paid->value;
+        $previousStatus = $order->status;
+
+        Log::info('[order][markPaid] Starting markPaid process', [
+            'order_id' => $order->id,
+            'order_type' => $order->type,
+            'previous_status' => $previousStatus,
+            'was_already_paid' => $wasAlreadyPaid,
+        ]);
 
         $order = $this->orderRepository->update($order, [
             'status' => OrderStatus::Paid->value, // Explicitly use ->value to ensure status is updated
             'meta'   => array_merge($order->meta ?? [], $meta),
         ]);
 
+        $order->refresh(); // Ensure we have the latest status
+
+        Log::info('[order][markPaid] Order status updated', [
+            'order_id' => $order->id,
+            'previous_status' => $previousStatus,
+            'new_status' => $order->status,
+            'status_changed' => $previousStatus !== $order->status,
+        ]);
+
         // Decrease product quantities for ecommerce orders (only if not already paid)
         if (!$wasAlreadyPaid && $order->type === OrderType::Ecommerce->value) {
+            Log::info('[order][markPaid] Decreasing product quantities', [
+                'order_id' => $order->id,
+                'order_type' => $order->type,
+            ]);
             $this->decreaseProductQuantities($order);
+            Log::info('[order][markPaid] Product quantities decreased', [
+                'order_id' => $order->id,
+            ]);
+        } else {
+            Log::info('[order][markPaid] Skipping quantity decrease', [
+                'order_id' => $order->id,
+                'was_already_paid' => $wasAlreadyPaid,
+                'order_type' => $order->type,
+                'is_ecommerce' => $order->type === OrderType::Ecommerce->value,
+            ]);
         }
+
+        Log::info('[order][markPaid] markPaid completed', [
+            'order_id' => $order->id,
+            'final_status' => $order->status,
+        ]);
 
         return $order;
     }
@@ -100,6 +136,11 @@ class OrderService
 
     public function sendOrderConfirmation(Order $order): void
     {
+        Log::info('[order][email] Starting order confirmation email', [
+            'order_id' => $order->id,
+            'order_type' => $order->type,
+        ]);
+
         // Get customer email from order
         $email = null;
 
@@ -117,7 +158,21 @@ class OrderService
         }
 
         if ($email) {
+            Log::info('[order][email] Sending order confirmation email', [
+                'order_id' => $order->id,
+                'email' => $email,
+            ]);
             Mail::to($email)->queue(new OrderConfirmedMail($order));
+            Log::info('[order][email] Order confirmation email queued', [
+                'order_id' => $order->id,
+                'email' => $email,
+            ]);
+        } else {
+            Log::warning('[order][email] No email found for order confirmation', [
+                'order_id' => $order->id,
+                'user_id' => $order->user_id,
+                'has_meta' => !empty($order->meta),
+            ]);
         }
     }
 

@@ -9,6 +9,7 @@ use App\Services\BookingService;
 use App\Services\OrderService;
 use App\Repositories\Interfaces\BookingRepositoryInterface;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -47,17 +48,33 @@ class TabbyWebhookController extends Controller
 
         $paymentUpdate = ['raw' => $remote];
         $order = $payment->order()->with('orderable')->first();
+        
+        if (!$order) {
+            \Log::error('[tabby][webhook] Order not found for payment', [
+                'payment_id' => $payment->id,
+                'tabby_payment_id' => $tabbyPaymentId,
+                'order_id' => $payment->order_id,
+            ]);
+            return response()->json(['ok' => true]);
+        }
 
         switch ($status) {
             case 'AUTHORIZED':
                 $paymentUpdate['status'] = 'authorized';
                 $paymentUpdate['authorized_at'] = now();
+                $this->paymentRepo->update($payment, $paymentUpdate);
                 break;
 
             case 'CLOSED':
                 $paymentUpdate['status'] = 'paid';
                 $paymentUpdate['paid_at'] = now();
-                if ($order) {
+                
+                try {
+                    \DB::beginTransaction();
+                    
+                    // Update payment status FIRST to ensure it's recorded
+                    $this->paymentRepo->update($payment, $paymentUpdate);
+                    
                     $previousOrderStatus = $order->status;
                     \Log::info('[tabby][webhook] Marking order as paid', [
                         'order_id' => $order->id,
@@ -98,11 +115,44 @@ class TabbyWebhookController extends Controller
                         ]);
                         
                         // Send booking confirmation email after payment success (same as ecommerce)
-                        $this->bookingService->sendBookingConfirmation($booking);
+                        try {
+                            $this->bookingService->sendBookingConfirmation($booking);
+                        } catch (\Exception $e) {
+                            \Log::warning('[tabby][webhook] Failed to send booking confirmation email', [
+                                'error' => $e->getMessage(),
+                                'booking_id' => $booking->id,
+                            ]);
+                        }
                     } elseif ($order->type === 'ecommerce') {
                         // Send order confirmation email for ecommerce orders
-                        $this->orderService->sendOrderConfirmation($order);
+                        try {
+                            $this->orderService->sendOrderConfirmation($order);
+                        } catch (\Exception $e) {
+                            \Log::warning('[tabby][webhook] Failed to send order confirmation email', [
+                                'error' => $e->getMessage(),
+                                'order_id' => $order->id,
+                            ]);
+                        }
                     }
+                    
+                    \DB::commit();
+                    
+                    \Log::info('[tabby][webhook] Successfully processed payment', [
+                        'payment_id' => $payment->id,
+                        'order_id' => $order->id,
+                        'order_status' => $order->status,
+                    ]);
+                    
+                } catch (\Exception $e) {
+                    \DB::rollBack();
+                    \Log::error('[tabby][webhook] Error processing payment', [
+                        'payment_id' => $payment->id,
+                        'tabby_payment_id' => $tabbyPaymentId,
+                        'order_id' => $order->id,
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString(),
+                    ]);
+                    throw $e;
                 }
                 break;
 
@@ -175,7 +225,10 @@ class TabbyWebhookController extends Controller
                 break;
         }
 
-        $this->paymentRepo->update($payment, $paymentUpdate);
+        // Only update payment if not already updated in the CLOSED case
+        if ($status !== 'CLOSED') {
+            $this->paymentRepo->update($payment, $paymentUpdate);
+        }
 
         return response()->json(['ok' => true]);
     }
