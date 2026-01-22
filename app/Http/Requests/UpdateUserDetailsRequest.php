@@ -34,7 +34,7 @@ class UpdateUserDetailsRequest extends BaseFormRequest
                     ->ignore($userId)
                     ->whereNull('deleted_at'),
             ],
-            'dateOfBirth' => 'sometimes|required|date|date_format:Y-m-d|before_or_equal:' . now()->subYears(18)->toDateString(),
+            'dateOfBirth' => 'sometimes|nullable|date|date_format:Y-m-d|before_or_equal:' . now()->subYears(18)->toDateString(),
         ];
     }
 

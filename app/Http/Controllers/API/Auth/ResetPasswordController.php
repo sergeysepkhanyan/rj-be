@@ -27,11 +27,11 @@ class ResetPasswordController extends Controller
         $response = $this->passwordService->sendResetLink($request->identifier);
 
         if (!($response['success'] ?? false)) {
-            $serviceMsg = $response['message'] ?? null;
+            $serviceMsg = $response['message'] ?? __('errors.password.reset_link_failed');
 
             return ApiResponse::error(
-                ['identifier' => [$serviceMsg ?: __('errors.password.reset_link_failed')]],
-                __('errors.password.reset_link_failed'),
+                ['identifier' => [$serviceMsg]],
+                $serviceMsg,
                 400
             );
         }
