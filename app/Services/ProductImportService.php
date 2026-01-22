@@ -21,10 +21,29 @@ class ProductImportService
     public function import(UploadedFile $file, bool $dryRun = false): array
     {
         try {
+            $filePath = $file->getRealPath();
+            if (!$filePath) {
+                return [
+                    'created' => 0,
+                    'failed' => 0,
+                    'errors' => [
+                        ['row' => 1, 'message' => 'Unable to read file. File path is invalid.'],
+                    ],
+                ];
+            }
+
             $reader = $this->getReaderForFile($file);
-            $spreadsheet = $reader->load($file->getRealPath());
+            $spreadsheet = $reader->load($filePath);
             $sheet = $spreadsheet->getActiveSheet();
             $rows = $sheet->toArray(null, true, true, true);
+        } catch (\RuntimeException $e) {
+            return [
+                'created' => 0,
+                'failed' => 0,
+                'errors' => [
+                    ['row' => 1, 'message' => $e->getMessage()],
+                ],
+            ];
         } catch (\Exception $e) {
             return [
                 'created' => 0,
