@@ -38,8 +38,8 @@ class OrderService
         }
 
         $status = ($paymentMode === 'pay_now')
-            ? OrderStatus::PendingPayment
-            : OrderStatus::Pending;
+            ? OrderStatus::PendingPayment->value
+            : OrderStatus::Pending->value;
 
         return $this->orderRepository->create([
             'user_id' => $booking->user_id,
@@ -76,7 +76,7 @@ class OrderService
     public function cancel(Order $order, array $meta = []): Order
     {
         return $this->orderRepository->update($order, [
-            'status' => OrderStatus::Canceled,
+            'status' => OrderStatus::Canceled->value, // Explicitly use ->value to ensure status is updated
             'cancelled_at' => now(),
             'meta'   => array_merge($order->meta ?? [], $meta),
         ]);
@@ -91,7 +91,7 @@ class OrderService
         }
 
         return $this->orderRepository->update($order, [
-            'status' => OrderStatus::Refunded,
+            'status' => OrderStatus::Refunded->value, // Explicitly use ->value to ensure status is updated
             'refunded_at' => now(),
             'meta'   => array_merge($order->meta ?? [], $meta),
         ]);
@@ -140,7 +140,7 @@ class OrderService
         ];
 
         if ($deliveryStatus === DeliveryStatus::Delivered->value) {
-            $updateData['status'] = OrderStatus::Fulfilled;
+            $updateData['status'] = OrderStatus::Fulfilled->value; // Explicitly use ->value to ensure status is updated
         }
 
         $order = $this->orderRepository->update($order, $updateData);
