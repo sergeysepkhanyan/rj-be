@@ -51,6 +51,17 @@ class OrdersController extends Controller
                 default => ucfirst(str_replace('_', ' ', $status)),
             };
 
+            // Derive payment status from order status
+            $paymentStatus = match($order->status) {
+                'pending' => 'pending',
+                'pending_payment' => 'pending',
+                'paid' => 'paid',
+                'refunded' => 'refunded',
+                'cancelled' => 'cancelled',
+                'fulfilled' => 'paid', // Fulfilled orders must have been paid
+                default => $order->status, // Fallback to order status
+            };
+
             if ($order->type === 'ecommerce') {
                 // Get first product for ecommerce orders
                 if ($order->relationLoaded('items') && $order->items->isNotEmpty()) {
@@ -196,6 +207,7 @@ class OrdersController extends Controller
                 'address' => $address,
                 'date' => $order->created_at?->format('d. M Y'),
                 'status' => $displayStatus,
+                'paymentStatus' => $paymentStatus,
                 'type' => $order->type,
                 'reference' => $order->reference,
                 'customerName' => $customerName,
