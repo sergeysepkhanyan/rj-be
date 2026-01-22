@@ -170,77 +170,110 @@ class PaymentService
         }
 
         if ($paymentMethodId) {
-            if (!$customerId) {
-                throw new HttpResponseException(
-                    \App\Services\ApiResponse::error(
-                        ['paymentMethod' => [__('validation.cart.payment_method_invalid')]],
-                        __('validation.cart.payment_method_invalid'),
-                        422
-                    )
-                );
-            }
+            if ($customerId) {
+                try {
+                    $pm = $this->stripeClient->retrievePaymentMethod($paymentMethodId);
+                    
+                    if (isset($pm['customer']) && $pm['customer'] && $pm['customer'] !== $customerId) {
+                        throw new HttpResponseException(
+                            \App\Services\ApiResponse::error(
+                                ['paymentMethod' => [__('validation.payment_method.already_attached_to_another_customer')]],
+                                __('validation.payment_method.already_attached'),
+                                422
+                            )
+                        );
+                    }
 
-            try {
-                $pm = $this->stripeClient->retrievePaymentMethod($paymentMethodId);
-                
-                if (isset($pm['customer']) && $pm['customer'] && $pm['customer'] !== $customerId) {
-                    throw new HttpResponseException(
-                        \App\Services\ApiResponse::error(
-                            ['paymentMethod' => [__('validation.payment_method.already_attached_to_another_customer')]],
-                            __('validation.payment_method.already_attached'),
-                            422
-                        )
-                    );
+                    if ($order->user_id) {
+                        $order->load('user');
+                        $user = $order->user;
+                        if ($user) {
+                            $localPaymentMethod = \App\Models\PaymentMethod::query()
+                                ->where('token', $paymentMethodId)
+                                ->where('user_id', $user->id)
+                                ->where('provider', 'stripe')
+                                ->first();
+
+                            if (!$localPaymentMethod) {
+                                throw new HttpResponseException(
+                                    \App\Services\ApiResponse::error(
+                                        ['paymentMethod' => [__('validation.payment_method.already_attached_to_another_customer')]],
+                                        __('validation.payment_method.already_attached'),
+                                        422
+                                    )
+                                );
+                            }
+                        }
+                    }
+                    
+                    if (!isset($pm['customer']) || $pm['customer'] !== $customerId) {
+                        $this->stripeClient->attachPaymentMethod($paymentMethodId, $customerId);
+                    }
+                } catch (HttpResponseException $e) {
+                    throw $e;
+                } catch (\Illuminate\Http\Client\RequestException $e) {
+                    $errorBody = $e->response?->json();
+                    $errorMessage = ($errorBody && isset($errorBody['error']['message']))
+                        ? $errorBody['error']['message']
+                        : ($e->getMessage() ?: 'Unknown error');
+                    $errorMessageLower = strtolower($errorMessage);
+                    
+                    if (
+                        stripos($errorMessageLower, 'previously used') !== false ||
+                        stripos($errorMessageLower, 'detach') !== false ||
+                        stripos($errorMessageLower, 'cannot be reused') !== false
+                    ) {
+                        throw new HttpResponseException(
+                            \App\Services\ApiResponse::error(
+                                ['paymentMethod' => [__('validation.payment_method.cannot_be_reused')]],
+                                __('validation.payment_method.cannot_be_reused'),
+                                422
+                            )
+                        );
+                    }
+                    throw $e;
                 }
-
-                if ($order->user_id) {
-                    $order->load('user');
-                    $user = $order->user;
-                    if ($user) {
-                        $localPaymentMethod = \App\Models\PaymentMethod::query()
-                            ->where('token', $paymentMethodId)
-                            ->where('user_id', $user->id)
-                            ->where('provider', 'stripe')
-                            ->first();
-
-                        if (!$localPaymentMethod) {
+            } else {
+                try {
+                    $pm = $this->stripeClient->retrievePaymentMethod($paymentMethodId);
+                    
+                    if (isset($pm['customer']) && $pm['customer']) {
+                        try {
+                            $this->stripeClient->detachPaymentMethod($paymentMethodId);
+                        } catch (\Illuminate\Http\Client\RequestException $detachException) {
                             throw new HttpResponseException(
                                 \App\Services\ApiResponse::error(
-                                    ['paymentMethod' => [__('validation.payment_method.already_attached_to_another_customer')]],
-                                    __('validation.payment_method.already_attached'),
+                                    ['paymentMethod' => [__('validation.payment_method.cannot_be_reused')]],
+                                    __('validation.payment_method.cannot_be_reused'),
                                     422
                                 )
                             );
                         }
                     }
+                } catch (HttpResponseException $e) {
+                    throw $e;
+                } catch (\Illuminate\Http\Client\RequestException $e) {
+                    $errorBody = $e->response?->json();
+                    $errorMessage = ($errorBody && isset($errorBody['error']['message']))
+                        ? $errorBody['error']['message']
+                        : ($e->getMessage() ?: 'Unknown error');
+                    $errorMessageLower = strtolower($errorMessage);
+                    
+                    if (
+                        stripos($errorMessageLower, 'previously used') !== false ||
+                        stripos($errorMessageLower, 'detach') !== false ||
+                        stripos($errorMessageLower, 'cannot be reused') !== false ||
+                        stripos($errorMessageLower, 'no such payment_method') !== false
+                    ) {
+                        throw new HttpResponseException(
+                            \App\Services\ApiResponse::error(
+                                ['paymentMethod' => [__('validation.payment_method.cannot_be_reused')]],
+                                __('validation.payment_method.cannot_be_reused'),
+                                422
+                            )
+                        );
+                    }
                 }
-                
-                if (!isset($pm['customer']) || $pm['customer'] !== $customerId) {
-                    $this->stripeClient->attachPaymentMethod($paymentMethodId, $customerId);
-                }
-            } catch (HttpResponseException $e) {
-                throw $e;
-            } catch (\Illuminate\Http\Client\RequestException $e) {
-                $errorBody = $e->response?->json();
-                $errorMessage = ($errorBody && isset($errorBody['error']['message']))
-                    ? $errorBody['error']['message']
-                    : ($e->getMessage() ?: 'Unknown error');
-                $errorMessageLower = strtolower($errorMessage);
-                
-                if (
-                    stripos($errorMessageLower, 'previously used') !== false ||
-                    stripos($errorMessageLower, 'detach') !== false ||
-                    stripos($errorMessageLower, 'cannot be reused') !== false
-                ) {
-                    throw new HttpResponseException(
-                        \App\Services\ApiResponse::error(
-                            ['paymentMethod' => [__('validation.payment_method.cannot_be_reused')]],
-                            __('validation.payment_method.cannot_be_reused'),
-                            422
-                        )
-                    );
-                }
-                throw $e;
             }
             
             $payload['payment_method'] = $paymentMethodId;

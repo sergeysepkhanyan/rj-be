@@ -105,6 +105,9 @@ class CartController extends Controller
         $shippingAddress = $request->input('shipping_address', []);
         $billingAddress = $request->input('billing_address', []);
         $paymentMethodId = $request->input('payment_method_id');
+        $paymentMethodToken = $request->input('payment_method_token');
+        
+        $paymentMethod = $paymentMethodToken ?: $paymentMethodId;
 
         $order = $this->cartService->checkout(
             $guestSessionId,
@@ -114,7 +117,7 @@ class CartController extends Controller
             $billingSameAsShipping,
             $billingAddressId,
             $billingAddress,
-            $paymentMethodId
+            $paymentMethod
         );
 
         return ApiResponse::success([

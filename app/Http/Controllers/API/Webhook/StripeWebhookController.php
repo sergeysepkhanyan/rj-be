@@ -39,9 +39,42 @@ class StripeWebhookController extends Controller
         }
 
         $payment = $this->paymentRepo->findByProviderExternalId('stripe', $paymentIntentId);
+        
+        // Fallback: Try to find payment by order_id from metadata if external_id lookup fails
         if (!$payment) {
+            $orderId = data_get($object, 'metadata.order_id');
+            if ($orderId) {
+                $payment = \App\Models\Payment::where('provider', 'stripe')
+                    ->where('order_id', $orderId)
+                    ->where(function ($query) use ($paymentIntentId) {
+                        $query->whereNull('external_id')
+                              ->orWhere('external_id', $paymentIntentId);
+                    })
+                    ->orderBy('created_at', 'desc')
+                    ->first();
+                
+                if ($payment && !$payment->external_id) {
+                    // Update the payment with the external_id if it was missing
+                    $this->paymentRepo->update($payment, ['external_id' => $paymentIntentId]);
+                }
+            }
+        }
+        
+        if (!$payment) {
+            \Log::warning('[stripe][webhook] Payment not found', [
+                'payment_intent_id' => $paymentIntentId,
+                'event_type' => $type,
+                'order_id_from_metadata' => data_get($object, 'metadata.order_id'),
+            ]);
             return response()->json(['ok' => true]);
         }
+
+        \Log::info('[stripe][webhook] Payment found', [
+            'payment_id' => $payment->id,
+            'payment_intent_id' => $paymentIntentId,
+            'current_status' => $payment->status,
+            'event_type' => $type,
+        ]);
 
         $order = $payment->order()->with('orderable')->first();
         $paymentUpdate = ['raw' => $object];
@@ -51,6 +84,10 @@ class StripeWebhookController extends Controller
                 $paymentUpdate['status'] = 'paid';
                 $paymentUpdate['paid_at'] = now();
                 if ($order) {
+                    \Log::info('[stripe][webhook] Marking order as paid', [
+                        'order_id' => $order->id,
+                        'current_order_status' => $order->status,
+                    ]);
                     $this->orderService->markPaid($order, ['stripe_payment_intent_id' => $paymentIntentId]);
 
                     // Auto-save payment method for logged-in users (if not already saved)
@@ -109,7 +146,20 @@ class StripeWebhookController extends Controller
                 break;
         }
 
+        \Log::info('[stripe][webhook] Updating payment', [
+            'payment_id' => $payment->id,
+            'payment_update' => $paymentUpdate,
+        ]);
+
         $this->paymentRepo->update($payment, $paymentUpdate);
+
+        $payment->refresh();
+        \Log::info('[stripe][webhook] Payment updated', [
+            'payment_id' => $payment->id,
+            'new_status' => $payment->status,
+            'order_id' => $order?->id,
+            'order_status' => $order?->status,
+        ]);
 
         return response()->json(['ok' => true]);
     }

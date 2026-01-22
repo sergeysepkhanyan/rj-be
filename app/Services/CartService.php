@@ -157,7 +157,7 @@ class CartService
         bool $billingSameAsShipping = false,
         ?int $billingAddressId = null,
         array $billingAddress = [],
-        ?int $paymentMethodId = null
+        $paymentMethodId = null
     ): Order
     {
         [$userId, $guestSessionId] = $this->resolveSession($guestSessionId);
@@ -273,7 +273,7 @@ class CartService
         }
 
         $meta = $guestSessionId ? ['guest_session_id' => $guestSessionId] : [];
-        [$stripeCustomerId, $stripePaymentMethodId] = $this->resolveSavedPaymentMethod($user, $paymentMethodId);
+        [$stripeCustomerId, $stripePaymentMethodId] = $this->resolvePaymentMethod($user, $paymentMethodId);
         $this->paymentService->startStripePaymentIntentForOrder(
             $order,
             $email,
@@ -432,11 +432,21 @@ class CartService
         ]);
     }
 
-    protected function resolveSavedPaymentMethod(?User $user, ?int $paymentMethodId): array
+    protected function resolvePaymentMethod(?User $user, $paymentMethodId): array
     {
         if (!$paymentMethodId) {
             return [null, null];
         }
+
+        if (is_string($paymentMethodId) && str_starts_with($paymentMethodId, 'pm_')) {
+            return [null, $paymentMethodId];
+        }
+
+        if (!is_numeric($paymentMethodId)) {
+            $this->throwValidation(['paymentMethodId' => __('validation.cart.payment_method_invalid')]);
+        }
+
+        $paymentMethodId = (int) $paymentMethodId;
 
         if (!$user) {
             $this->throwValidation(['paymentMethodId' => __('validation.cart.payment_method_required')]);
