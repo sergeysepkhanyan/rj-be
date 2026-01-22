@@ -8,6 +8,7 @@ use App\Repositories\Interfaces\PaymentRepositoryInterface;
 use App\Services\OrderService;
 use App\Repositories\Interfaces\BookingRepositoryInterface;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 
 class TabbyWebhookController extends Controller
@@ -55,13 +56,47 @@ class TabbyWebhookController extends Controller
                 $paymentUpdate['status'] = 'paid';
                 $paymentUpdate['paid_at'] = now();
                 if ($order) {
-                    $this->orderService->markPaid($order, ['tabby_payment_id' => $tabbyPaymentId]);
+                    $previousOrderStatus = $order->status;
+                    \Log::info('[tabby][webhook] Marking order as paid', [
+                        'order_id' => $order->id,
+                        'previous_order_status' => $previousOrderStatus,
+                        'order_type' => $order->type,
+                    ]);
+                    
+                    // Update order status to paid
+                    $order = $this->orderService->markPaid($order, ['tabby_payment_id' => $tabbyPaymentId]);
+                    $order->refresh(); // Ensure we have the latest status
+                    
+                    \Log::info('[tabby][webhook] Order status updated', [
+                        'order_id' => $order->id,
+                        'previous_status' => $previousOrderStatus,
+                        'new_status' => $order->status,
+                        'status_changed' => $previousOrderStatus !== $order->status,
+                    ]);
+
+                    // Update booking status if this is a booking order
                     if ($order->orderable && $order->type === 'booking') {
                         $booking = $order->orderable;
+                        $previousBookingStatus = $booking->status;
+                        $previousPaymentStatus = $booking->payment_status;
+                        
                         $this->bookingRepo->update($booking, [
                             'status' => 'confirmed',
                             'payment_status' => 'paid',
                         ]);
+                        
+                        $booking->refresh();
+                        
+                        \Log::info('[tabby][webhook] Booking status updated', [
+                            'booking_id' => $booking->id,
+                            'previous_status' => $previousBookingStatus,
+                            'new_status' => $booking->status,
+                            'previous_payment_status' => $previousPaymentStatus,
+                            'new_payment_status' => $booking->payment_status,
+                        ]);
+                    } elseif ($order->type === 'ecommerce') {
+                        // Send order confirmation email for ecommerce orders
+                        $this->orderService->sendOrderConfirmation($order);
                     }
                 }
                 break;
@@ -70,12 +105,29 @@ class TabbyWebhookController extends Controller
                 $paymentUpdate['status'] = 'failed';
                 $paymentUpdate['failed_at'] = now();
                 if ($order) {
-                    $this->orderService->cancel($order, ['reason' => $status]);
+                    $previousOrderStatus = $order->status;
+                    $order = $this->orderService->cancel($order, ['reason' => $status]);
+                    $order->refresh();
+                    
+                    \Log::info('[tabby][webhook] Order cancelled (rejected)', [
+                        'order_id' => $order->id,
+                        'previous_status' => $previousOrderStatus,
+                        'new_status' => $order->status,
+                    ]);
+                    
                     if ($order->orderable && $order->type === 'booking') {
                         $booking = $order->orderable;
+                        $previousBookingStatus = $booking->status;
                         $this->bookingRepo->update($booking, [
                             'status' => 'cancelled',
                             'payment_status' => 'unpaid',
+                        ]);
+                        $booking->refresh();
+                        
+                        \Log::info('[tabby][webhook] Booking cancelled (rejected)', [
+                            'booking_id' => $booking->id,
+                            'previous_status' => $previousBookingStatus,
+                            'new_status' => $booking->status,
                         ]);
                     }
                 }
@@ -85,12 +137,29 @@ class TabbyWebhookController extends Controller
                 $paymentUpdate['status'] = 'expired';
                 $paymentUpdate['expired_at'] = now();
                 if ($order) {
-                    $this->orderService->cancel($order, ['reason' => $status]);
+                    $previousOrderStatus = $order->status;
+                    $order = $this->orderService->cancel($order, ['reason' => $status]);
+                    $order->refresh();
+                    
+                    \Log::info('[tabby][webhook] Order cancelled (expired)', [
+                        'order_id' => $order->id,
+                        'previous_status' => $previousOrderStatus,
+                        'new_status' => $order->status,
+                    ]);
+                    
                     if ($order->orderable && $order->type === 'booking') {
                         $booking = $order->orderable;
+                        $previousBookingStatus = $booking->status;
                         $this->bookingRepo->update($booking, [
                             'status' => 'cancelled',
                             'payment_status' => 'unpaid',
+                        ]);
+                        $booking->refresh();
+                        
+                        \Log::info('[tabby][webhook] Booking cancelled (expired)', [
+                            'booking_id' => $booking->id,
+                            'previous_status' => $previousBookingStatus,
+                            'new_status' => $booking->status,
                         ]);
                     }
                 }

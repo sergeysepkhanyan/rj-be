@@ -61,7 +61,7 @@ class OrderService
         $wasAlreadyPaid = $order->status === OrderStatus::Paid->value;
 
         $order = $this->orderRepository->update($order, [
-            'status' => OrderStatus::Paid,
+            'status' => OrderStatus::Paid->value, // Explicitly use ->value to ensure status is updated
             'meta'   => array_merge($order->meta ?? [], $meta),
         ]);
 

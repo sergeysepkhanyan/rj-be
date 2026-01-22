@@ -84,11 +84,23 @@ class StripeWebhookController extends Controller
                 $paymentUpdate['status'] = 'paid';
                 $paymentUpdate['paid_at'] = now();
                 if ($order) {
+                    $previousOrderStatus = $order->status;
                     \Log::info('[stripe][webhook] Marking order as paid', [
                         'order_id' => $order->id,
-                        'current_order_status' => $order->status,
+                        'previous_order_status' => $previousOrderStatus,
+                        'order_type' => $order->type,
                     ]);
-                    $this->orderService->markPaid($order, ['stripe_payment_intent_id' => $paymentIntentId]);
+                    
+                    // Update order status to paid
+                    $order = $this->orderService->markPaid($order, ['stripe_payment_intent_id' => $paymentIntentId]);
+                    $order->refresh(); // Ensure we have the latest status
+                    
+                    \Log::info('[stripe][webhook] Order status updated', [
+                        'order_id' => $order->id,
+                        'previous_status' => $previousOrderStatus,
+                        'new_status' => $order->status,
+                        'status_changed' => $previousOrderStatus !== $order->status,
+                    ]);
 
                     // Auto-save payment method for logged-in users (if not already saved)
                     if ($order->user_id) {
@@ -98,11 +110,25 @@ class StripeWebhookController extends Controller
                         );
                     }
 
+                    // Update booking status if this is a booking order
                     if ($order->orderable && $order->type === 'booking') {
                         $booking = $order->orderable;
+                        $previousBookingStatus = $booking->status;
+                        $previousPaymentStatus = $booking->payment_status;
+                        
                         $this->bookingRepo->update($booking, [
                             'status' => 'confirmed',
                             'payment_status' => 'paid',
+                        ]);
+                        
+                        $booking->refresh();
+                        
+                        \Log::info('[stripe][webhook] Booking status updated', [
+                            'booking_id' => $booking->id,
+                            'previous_status' => $previousBookingStatus,
+                            'new_status' => $booking->status,
+                            'previous_payment_status' => $previousPaymentStatus,
+                            'new_payment_status' => $booking->payment_status,
                         ]);
                     } elseif ($order->type === 'ecommerce') {
                         // Send order confirmation email for ecommerce orders
@@ -115,12 +141,29 @@ class StripeWebhookController extends Controller
                 $paymentUpdate['status'] = 'failed';
                 $paymentUpdate['failed_at'] = now();
                 if ($order) {
-                    $this->orderService->cancel($order, ['reason' => 'payment_failed']);
+                    $previousOrderStatus = $order->status;
+                    $order = $this->orderService->cancel($order, ['reason' => 'payment_failed']);
+                    $order->refresh();
+                    
+                    \Log::info('[stripe][webhook] Order cancelled (payment failed)', [
+                        'order_id' => $order->id,
+                        'previous_status' => $previousOrderStatus,
+                        'new_status' => $order->status,
+                    ]);
+                    
                     if ($order->orderable && $order->type === 'booking') {
                         $booking = $order->orderable;
+                        $previousBookingStatus = $booking->status;
                         $this->bookingRepo->update($booking, [
                             'status' => 'cancelled',
                             'payment_status' => 'unpaid',
+                        ]);
+                        $booking->refresh();
+                        
+                        \Log::info('[stripe][webhook] Booking cancelled (payment failed)', [
+                            'booking_id' => $booking->id,
+                            'previous_status' => $previousBookingStatus,
+                            'new_status' => $booking->status,
                         ]);
                     }
                 }
@@ -130,12 +173,29 @@ class StripeWebhookController extends Controller
                 $paymentUpdate['status'] = 'cancelled';
                 $paymentUpdate['failed_at'] = now();
                 if ($order) {
-                    $this->orderService->cancel($order, ['reason' => 'canceled']);
+                    $previousOrderStatus = $order->status;
+                    $order = $this->orderService->cancel($order, ['reason' => 'canceled']);
+                    $order->refresh();
+                    
+                    \Log::info('[stripe][webhook] Order cancelled (canceled)', [
+                        'order_id' => $order->id,
+                        'previous_status' => $previousOrderStatus,
+                        'new_status' => $order->status,
+                    ]);
+                    
                     if ($order->orderable && $order->type === 'booking') {
                         $booking = $order->orderable;
+                        $previousBookingStatus = $booking->status;
                         $this->bookingRepo->update($booking, [
                             'status' => 'cancelled',
                             'payment_status' => 'unpaid',
+                        ]);
+                        $booking->refresh();
+                        
+                        \Log::info('[stripe][webhook] Booking cancelled (canceled)', [
+                            'booking_id' => $booking->id,
+                            'previous_status' => $previousBookingStatus,
+                            'new_status' => $booking->status,
                         ]);
                     }
                 }
