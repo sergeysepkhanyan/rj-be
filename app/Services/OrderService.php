@@ -19,6 +19,7 @@ use App\Services\PaymentService;
 use Illuminate\Http\Response;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response as ResponseAlias;
@@ -201,6 +202,7 @@ class OrderService
     /**
      * Decrease product quantities when order is paid.
      * Uses database decrement to avoid race conditions.
+     * Prevents negative quantities by using GREATEST to cap at 0.
      */
     protected function decreaseProductQuantities(Order $order): void
     {
@@ -210,9 +212,23 @@ class OrderService
 
         foreach ($order->items as $item) {
             if ($item->product_id && $item->quantity > 0) {
-                Product::where('id', $item->product_id)
-                    ->where('max_quantity', '>', 0)
-                    ->decrement('max_quantity', $item->quantity);
+                // Use Eloquent with lockForUpdate to prevent race conditions
+                // Calculate new quantity ensuring it never goes below 0
+                $product = Product::lockForUpdate()->find($item->product_id);
+                
+                if ($product) {
+                    $previousQuantity = $product->max_quantity;
+                    $newQuantity = max(0, $previousQuantity - $item->quantity);
+                    $product->update(['max_quantity' => $newQuantity]);
+                    
+                    Log::info('[order][quantity] Decreased product quantity', [
+                        'order_id' => $order->id,
+                        'product_id' => $item->product_id,
+                        'quantity_decreased' => $item->quantity,
+                        'previous_quantity' => $previousQuantity,
+                        'new_quantity' => $newQuantity,
+                    ]);
+                }
             }
         }
     }

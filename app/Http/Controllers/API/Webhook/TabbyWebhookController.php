@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API\Webhook;
 use App\Http\Controllers\Controller;
 use App\Integrations\Tabby\TabbyClient;
 use App\Repositories\Interfaces\PaymentRepositoryInterface;
+use App\Services\BookingService;
 use App\Services\OrderService;
 use App\Repositories\Interfaces\BookingRepositoryInterface;
 use Illuminate\Http\Request;
@@ -18,6 +19,7 @@ class TabbyWebhookController extends Controller
         protected PaymentRepositoryInterface $paymentRepo,
         protected OrderService $orderService,
         protected BookingRepositoryInterface $bookingRepo,
+        protected BookingService $bookingService,
     ) {}
 
     public function handle(Request $request)
@@ -94,6 +96,9 @@ class TabbyWebhookController extends Controller
                             'previous_payment_status' => $previousPaymentStatus,
                             'new_payment_status' => $booking->payment_status,
                         ]);
+                        
+                        // Send booking confirmation email after payment success (same as ecommerce)
+                        $this->bookingService->sendBookingConfirmation($booking);
                     } elseif ($order->type === 'ecommerce') {
                         // Send order confirmation email for ecommerce orders
                         $this->orderService->sendOrderConfirmation($order);

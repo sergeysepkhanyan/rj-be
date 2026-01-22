@@ -72,7 +72,13 @@ class BookingsController extends Controller
     public function store(StoreBookingRequest $request): JsonResponse
     {
         $booking = $this->bookingService->createBooking($request->all());
-        $this->bookingService->sendBookingConfirmation($booking);
+        
+        // Only send email immediately for pay_later bookings (immediately confirmed)
+        // For pay_now bookings, email will be sent via webhook after payment success
+        if ($booking->payment_mode === 'pay_later') {
+            $this->bookingService->sendBookingConfirmation($booking);
+        }
+        
         return ApiResponse::success([
             'booking' => new BookingResource($booking)
         ], __('success.booking.created'));

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API\Webhook;
 use App\Http\Controllers\Controller;
 use App\Repositories\Interfaces\BookingRepositoryInterface;
 use App\Repositories\Interfaces\PaymentRepositoryInterface;
+use App\Services\BookingService;
 use App\Services\OrderService;
 use App\Services\PaymentMethodService;
 use Illuminate\Http\Request;
@@ -17,6 +18,7 @@ class StripeWebhookController extends Controller
         protected OrderService $orderService,
         protected BookingRepositoryInterface $bookingRepo,
         protected PaymentMethodService $paymentMethodService,
+        protected BookingService $bookingService,
     ) {}
 
     public function handle(Request $request)
@@ -130,6 +132,9 @@ class StripeWebhookController extends Controller
                             'previous_payment_status' => $previousPaymentStatus,
                             'new_payment_status' => $booking->payment_status,
                         ]);
+                        
+                        // Send booking confirmation email after payment success (same as ecommerce)
+                        $this->bookingService->sendBookingConfirmation($booking);
                     } elseif ($order->type === 'ecommerce') {
                         // Send order confirmation email for ecommerce orders
                         $this->orderService->sendOrderConfirmation($order);
