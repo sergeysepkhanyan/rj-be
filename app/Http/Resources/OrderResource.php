@@ -157,12 +157,25 @@ class OrderResource extends JsonResource
             }
         }
 
+        // Derive payment status from order status
+        // Map order status to payment status
+        $paymentStatus = match($this->status) {
+            'pending' => 'pending',
+            'pending_payment' => 'pending',
+            'paid' => 'paid',
+            'refunded' => 'refunded',
+            'cancelled' => 'cancelled',
+            'fulfilled' => 'paid', // Fulfilled orders must have been paid
+            default => $this->status, // Fallback to order status
+        };
+
         return [
             'id'        => $this->id,
             'reference' => $this->reference ?? "#{$this->id}",
             'type'      => $this->type,
             'status'    => $this->status,
             'deliveryStatus' => $this->delivery_status,
+            'paymentStatus' => $paymentStatus,
             'amount'   => (string) $this->amount,
             'currency' => $this->currency ?? 'AED',
             'discount_type' => $orderDiscountType,

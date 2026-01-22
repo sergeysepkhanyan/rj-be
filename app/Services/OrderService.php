@@ -19,6 +19,7 @@ use App\Services\PaymentService;
 use Illuminate\Http\Response;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
@@ -69,19 +70,50 @@ class OrderService
             'was_already_paid' => $wasAlreadyPaid,
         ]);
 
-        $order = $this->orderRepository->update($order, [
+        // Update order status - use direct update to ensure it persists
+        $updateData = [
             'status' => OrderStatus::Paid->value, // Explicitly use ->value to ensure status is updated
             'meta'   => array_merge($order->meta ?? [], $meta),
-        ]);
-
+            'paid_at' => now(),
+        ];
+        
+        $order = $this->orderRepository->update($order, $updateData);
         $order->refresh(); // Ensure we have the latest status
 
+        // Verify the status was actually updated
+        $statusUpdateSuccess = $order->status === OrderStatus::Paid->value;
+        
         Log::info('[order][markPaid] Order status updated', [
             'order_id' => $order->id,
             'previous_status' => $previousStatus,
             'new_status' => $order->status,
             'status_changed' => $previousStatus !== $order->status,
+            'status_update_success' => $statusUpdateSuccess,
+            'expected_status' => OrderStatus::Paid->value,
         ]);
+
+        // If status update failed, log error and try direct DB update as fallback
+        if (!$statusUpdateSuccess) {
+            Log::error('[order][markPaid] Status update failed, attempting direct DB update', [
+                'order_id' => $order->id,
+                'expected_status' => OrderStatus::Paid->value,
+                'actual_status' => $order->status,
+            ]);
+            
+            // Direct database update as fallback
+            DB::table('orders')
+                ->where('id', $order->id)
+                ->update([
+                    'status' => OrderStatus::Paid->value,
+                    'paid_at' => now(),
+                ]);
+            
+            $order->refresh();
+            Log::info('[order][markPaid] Direct DB update completed', [
+                'order_id' => $order->id,
+                'status_after_fallback' => $order->status,
+            ]);
+        }
 
         // Decrease product quantities for ecommerce orders (only if not already paid)
         if (!$wasAlreadyPaid && $order->type === OrderType::Ecommerce->value) {
@@ -105,6 +137,7 @@ class OrderService
         Log::info('[order][markPaid] markPaid completed', [
             'order_id' => $order->id,
             'final_status' => $order->status,
+            'status_is_paid' => $order->status === OrderStatus::Paid->value,
         ]);
 
         return $order;
