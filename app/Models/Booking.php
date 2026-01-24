@@ -28,6 +28,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property mixed $status
  * @property mixed $price
  * @property mixed $payment_mode
+ * @property mixed $services
  */
 class Booking extends Model
 {
