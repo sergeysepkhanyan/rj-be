@@ -3,13 +3,13 @@
 namespace App\Http\Controllers\API\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\AddReferralRequest;
 use App\Http\Resources\ClientResource;
 use App\Models\User;
 use App\Services\ApiResponse;
 use App\Services\UserService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
 
 class ClientsController extends Controller
 {
@@ -39,23 +39,9 @@ class ClientsController extends Controller
         ], __('success.client.list'));
     }
 
-    public function addReferral(Request $request, User $user): JsonResponse
+    public function addReferral(AddReferralRequest $request, User $user): JsonResponse
     {
-        $data = $request->all();
-
-        $validator = Validator::make($data, [
-            'referral_id' => 'nullable|exists:referrals,id',
-        ], [
-            'referral_id.exists' => __('validation.custom.referral_id.exists'),
-        ], [
-            'referral_id' => __('attributes.referral_id'),
-        ]);
-
-        if ($validator->fails()) {
-            return ApiResponse::error($validator->errors(), __('validation.failed'), 422);
-        }
-
-        $client = $this->userService->updateUser($user, $data);
+        $client = $this->userService->updateUser($user, $request->all());
 
         return ApiResponse::success([
             'user' => new ClientResource($client),

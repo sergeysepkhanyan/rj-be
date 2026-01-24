@@ -56,4 +56,25 @@ class OrderRepository implements OrderRepositoryInterface
         return $query->orderByDesc('created_at')
             ->paginate($perPage, ['*'], 'page', $page);
     }
+
+    public function paginateWithFilterForUser(int $userId, ?OrderFilter $filter = null, int $perPage = 15, int $page = 1): LengthAwarePaginator
+    {
+        $query = Order::query()
+            ->where('user_id', $userId)
+            ->with([
+                'user',
+                'items.product.files',
+                'shippingAddress',
+                'billingAddress',
+                'orderable',
+                'latestPayment',
+            ]);
+
+        if ($filter) {
+            $query = $filter->apply($query);
+        }
+
+        return $query->orderByDesc('created_at')
+            ->paginate($perPage, ['*'], 'page', $page);
+    }
 }

@@ -5,32 +5,21 @@ namespace App\Http\Controllers\API;
 use App\Filters\OrderFilter;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\OrderResource;
-use App\Models\Booking;
-use App\Models\Order;
 use App\Services\ApiResponse;
+use App\Services\OrderService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class OrdersController extends Controller
 {
+    public function __construct(protected OrderService $orderService) {}
 
     public function index(Request $request, OrderFilter $filter): JsonResponse
     {
         $perPage = (int) $request->input('per_page', 10);
         $page    = (int) $request->input('page', 1);
 
-        $query = Order::query()
-            ->where('user_id', auth()->id())
-            ->with(['items.product.files', 'shippingAddress', 'billingAddress', 'orderable']);
-
-        $orders = $filter->apply($query)->orderByDesc('created_at')
-            ->paginate($perPage, ['*'], 'page', $page);
-
-        $orders->getCollection()->each(function (Order $order) {
-            if ($order->orderable instanceof Booking) {
-                $order->loadMissing('orderable.services.bookable');
-            }
-        });
+        $orders = $this->orderService->getPaginatedOrdersForUser(auth()->id(), $filter, $perPage, $page);
 
         return ApiResponse::success([
             'orders' => OrderResource::collection($orders),

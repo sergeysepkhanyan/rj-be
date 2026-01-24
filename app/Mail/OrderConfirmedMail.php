@@ -25,7 +25,6 @@ class OrderConfirmedMail extends Mailable implements ShouldQueue
             'user',
         ]);
 
-        // Build order data for email
         $orderData = [
             'id' => $order->id,
             'reference' => $order->reference,
@@ -73,7 +72,7 @@ class OrderConfirmedMail extends Mailable implements ShouldQueue
                 'last4' => $order->latestPayment->paymentMethod->last4,
             ] : ($order->latestPayment ? [
                 'provider' => $order->latestPayment->provider,
-                'type' => 'card', // Default assumption
+                'type' => 'card',
             ] : null),
         ];
 

@@ -262,6 +262,19 @@ class OrderService
         return $this->orderRepository->paginateWithFilter($filter, $perPage, $page);
     }
 
+    public function getPaginatedOrdersForUser(int $userId, ?OrderFilter $filter = null, int $perPage = 15, int $page = 1): LengthAwarePaginator
+    {
+        $orders = $this->orderRepository->paginateWithFilterForUser($userId, $filter, $perPage, $page);
+
+        $orders->getCollection()->each(function (Order $order) {
+            if ($order->orderable instanceof Booking) {
+                $order->loadMissing('orderable.services.bookable');
+            }
+        });
+
+        return $orders;
+    }
+
     protected function sendDeliveryStatusUpdateEmail(Order $order, string $deliveryStatus): void
     {
         $email = null;
