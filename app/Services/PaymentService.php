@@ -214,16 +214,25 @@ class PaymentService
                     if (isset($pm['customer']) && $pm['customer'] === $customerId) {
                         // Already attached - safe to use
                         $canUsePaymentMethod = true;
-                    } else {
-                        // Not attached - try to attach it
-                        // BUT: If payment method was used in a previous payment intent without being attached,
-                        // Stripe marks it as "previously used" and we can't attach it.
-                        // In that case, we should check if it's actually attached now (Stripe might have auto-attached it)
-                        // If not attached, we can't use it - user needs a new payment method
+                        \Log::info('Payment method already attached to customer, can use', [
+                            'order_id' => $order->id,
+                            'payment_method_id' => $paymentMethodId,
+                            'customer_id' => $customerId,
+                        ]);
+                    } elseif (!isset($pm['customer']) || !$pm['customer']) {
+                        // Payment method is not attached to any customer
+                        // CRITICAL: If this payment method was used in a previous payment intent without being attached,
+                        // Stripe will reject our attachment attempt with "previously used" error.
+                        // We should try to attach, but if it fails, check if Stripe auto-attached it.
                         try {
                             $this->stripeClient->attachPaymentMethod($paymentMethodId, $customerId);
                             // Attachment succeeded - safe to use
                             $canUsePaymentMethod = true;
+                            \Log::info('Payment method attached successfully', [
+                                'order_id' => $order->id,
+                                'payment_method_id' => $paymentMethodId,
+                                'customer_id' => $customerId,
+                            ]);
                         } catch (\Illuminate\Http\Client\RequestException $attachException) {
                             $errorBody = $attachException->response?->json();
                             $errorMessage = ($errorBody && isset($errorBody['error']['message']))
@@ -250,6 +259,11 @@ class PaymentService
                                         ]);
                                     } else {
                                         // Not attached and can't attach - user needs a new payment method
+                                        \Log::warning('Payment method previously used and cannot be attached', [
+                                            'order_id' => $order->id,
+                                            'payment_method_id' => $paymentMethodId,
+                                            'customer_id' => $customerId,
+                                        ]);
                                         throw new HttpResponseException(
                                             \App\Services\ApiResponse::error(
                                                 ['paymentMethod' => [__('validation.payment_method.cannot_be_reused')]],
@@ -275,6 +289,16 @@ class PaymentService
                                 throw $attachException;
                             }
                         }
+                    } else {
+                        // Payment method is attached to a different customer - this shouldn't happen
+                        // We already checked for this above, but handle it just in case
+                        throw new HttpResponseException(
+                            \App\Services\ApiResponse::error(
+                                ['paymentMethod' => [__('validation.payment_method.already_attached_to_another_customer')]],
+                                __('validation.payment_method.already_attached'),
+                                422
+                            )
+                        );
                     }
                 } catch (HttpResponseException $e) {
                     throw $e;
