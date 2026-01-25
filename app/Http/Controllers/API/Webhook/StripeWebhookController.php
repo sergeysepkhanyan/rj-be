@@ -213,8 +213,23 @@ class StripeWebhookController extends Controller
                                 'trace' => $e->getTraceAsString(),
                             ]);
                         }
-                    } elseif ($order->type === 'ecommerce') {
-                        // Send order confirmation email for ecommerce orders
+                    }
+                    
+                    // Log order type check for debugging
+                    \Log::info('[stripe][webhook] Checking order type for email sending', [
+                        'order_id' => $order->id,
+                        'order_type' => $order->type,
+                        'order_type_raw' => gettype($order->type),
+                        'has_orderable' => !is_null($order->orderable),
+                        'orderable_type' => $order->orderable_type ?? null,
+                        'is_booking' => ($order->orderable && $order->type === 'booking'),
+                        'is_ecommerce' => ($order->type === 'ecommerce'),
+                        'type_equals_ecommerce' => (string) $order->type === 'ecommerce',
+                    ]);
+                    
+                    // Send order confirmation email for ecommerce orders
+                    // Use string comparison to handle any type casting issues
+                    if ((string) $order->type === 'ecommerce') {
                         \Log::info('[stripe][webhook] Sending ecommerce order confirmation email', [
                             'order_id' => $order->id,
                         ]);
@@ -230,6 +245,13 @@ class StripeWebhookController extends Controller
                                 'trace' => $e->getTraceAsString(),
                             ]);
                         }
+                    } else {
+                        \Log::warning('[stripe][webhook] Order type does not match ecommerce, skipping email', [
+                            'order_id' => $order->id,
+                            'order_type' => $order->type,
+                            'order_type_value' => $order->type instanceof \BackedEnum ? $order->type->value : $order->type,
+                            'type_as_string' => (string) $order->type,
+                        ]);
                     }
                     
                     // Refresh order to get latest status after all updates
