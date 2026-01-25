@@ -162,19 +162,68 @@ class StripeWebhookController extends Controller
                     ]);
 
                     // Auto-save payment method for logged-in users (if not already saved)
+                    // NOTE: This is non-critical - errors here should not prevent email sending
                     if ($order->user_id) {
-                        try {
-                            $this->paymentMethodService->ensureStripePaymentMethodSaved(
-                                (int) $order->user_id,
-                                (string) data_get($object, 'payment_method')
-                            );
-                        } catch (\Exception $e) {
-                            \Log::warning('[stripe][webhook] Failed to save payment method', [
-                                'error' => $e->getMessage(),
-                                'user_id' => $order->user_id,
-                            ]);
+                        $paymentMethodId = (string) data_get($object, 'payment_method');
+                        
+                        // Check if payment method exists and if it was already attached to a customer
+                        // If it was used in the payment intent without being attached, we can't attach it now
+                        if ($paymentMethodId) {
+                            try {
+                                // Check the payment intent's payment_method to see if it's already attached
+                                $paymentMethodFromIntent = data_get($object, 'payment_method');
+                                $customerFromIntent = data_get($object, 'customer');
+                                
+                                // If payment method was used without a customer, Stripe won't let us attach it
+                                // Skip saving in this case to avoid the error
+                                if (!$customerFromIntent) {
+                                    \Log::info('[stripe][webhook] Payment method used without customer, skipping save', [
+                                        'order_id' => $order->id,
+                                        'user_id' => $order->user_id,
+                                        'payment_method_id' => $paymentMethodId,
+                                    ]);
+                                } else {
+                                    // Payment method was used with a customer, safe to try saving
+                                    $this->paymentMethodService->ensureStripePaymentMethodSaved(
+                                        (int) $order->user_id,
+                                        $paymentMethodId
+                                    );
+                                    \Log::info('[stripe][webhook] Payment method saved successfully', [
+                                        'user_id' => $order->user_id,
+                                    ]);
+                                }
+                            } catch (\Exception $e) {
+                                // Check if error is about "previously used" - this is expected for guest checkouts
+                                $errorMessage = strtolower($e->getMessage());
+                                $isPreviouslyUsedError = (
+                                    stripos($errorMessage, 'previously used') !== false ||
+                                    stripos($errorMessage, 'detach') !== false ||
+                                    stripos($errorMessage, 'cannot be reused') !== false
+                                );
+                                
+                                if ($isPreviouslyUsedError) {
+                                    \Log::info('[stripe][webhook] Payment method previously used, skipping save (expected for guest checkouts)', [
+                                        'user_id' => $order->user_id,
+                                        'order_id' => $order->id,
+                                        'payment_method_id' => $paymentMethodId,
+                                    ]);
+                                } else {
+                                    \Log::warning('[stripe][webhook] Failed to save payment method (non-critical, continuing)', [
+                                        'error' => $e->getMessage(),
+                                        'user_id' => $order->user_id,
+                                        'order_id' => $order->id,
+                                    ]);
+                                }
+                                // Continue execution - this error should not prevent email sending
+                            }
                         }
                     }
+
+                    \Log::info('[stripe][webhook] ===== REACHED EMAIL SENDING SECTION =====', [
+                        'order_id' => $order->id,
+                        'order_type' => $order->type,
+                        'has_orderable' => !is_null($order->orderable),
+                    ]);
 
                     // Update booking status if this is a booking order
                     if ($order->orderable && $order->type === 'booking') {
@@ -215,21 +264,32 @@ class StripeWebhookController extends Controller
                         }
                     }
                     
-                    // Log order type check for debugging
-                    \Log::info('[stripe][webhook] Checking order type for email sending', [
+                    // Send order confirmation email for ecommerce orders
+                    // Log order type check for debugging - MUST APPEAR BEFORE EMAIL SENDING
+                    \Log::info('[stripe][webhook] ===== CHECKING ORDER TYPE FOR EMAIL =====', [
                         'order_id' => $order->id,
                         'order_type' => $order->type,
+                        'order_type_string' => (string) $order->type,
+                        'order_type_trimmed' => trim((string) $order->type),
                         'order_type_raw' => gettype($order->type),
                         'has_orderable' => !is_null($order->orderable),
                         'orderable_type' => $order->orderable_type ?? null,
                         'is_booking' => ($order->orderable && $order->type === 'booking'),
-                        'is_ecommerce' => ($order->type === 'ecommerce'),
-                        'type_equals_ecommerce' => (string) $order->type === 'ecommerce',
+                        'is_ecommerce_strict' => ($order->type === 'ecommerce'),
+                        'is_ecommerce_string' => ((string) $order->type === 'ecommerce'),
+                        'is_ecommerce_trimmed' => (trim((string) $order->type) === 'ecommerce'),
                     ]);
                     
-                    // Send order confirmation email for ecommerce orders
                     // Use string comparison to handle any type casting issues
-                    if ((string) $order->type === 'ecommerce') {
+                    // Also trim to handle any whitespace issues
+                    $orderTypeString = trim((string) $order->type);
+                    \Log::info('[stripe][webhook] Final order type check', [
+                        'order_id' => $order->id,
+                        'orderTypeString' => $orderTypeString,
+                        'comparison_result' => ($orderTypeString === 'ecommerce'),
+                    ]);
+                    
+                    if ($orderTypeString === 'ecommerce') {
                         \Log::info('[stripe][webhook] Sending ecommerce order confirmation email', [
                             'order_id' => $order->id,
                         ]);
@@ -273,6 +333,9 @@ class StripeWebhookController extends Controller
                         'order_status_before' => $previousOrderStatus,
                         'order_status_after' => $finalOrderStatus,
                         'order_type' => $order->type,
+                        'order_type_string' => (string) $order->type,
+                        'order_type_trimmed' => trim((string) $order->type),
+                        'is_ecommerce' => ((string) $order->type === 'ecommerce'),
                         'status_update_success' => $statusUpdateSuccess,
                         'email_sent' => $order->type === 'ecommerce' || ($order->orderable && $order->type === 'booking'),
                         'quantities_decreased' => $order->type === 'ecommerce' && ($previousOrderStatus !== OrderStatus::Paid->value),

@@ -198,21 +198,62 @@ class PaymentMethodService
 
         $customerId = $user->stripe_customer_id;
 
-        // Attach to customer (safe to try; Stripe may respond with "already attached" in some cases).
-        if ($customerId) {
-            try {
-                $this->stripeClient->attachPaymentMethod($stripePaymentMethodId, $customerId);
-            } catch (\Throwable $e) {
-                Log::warning('Stripe attachPaymentMethod failed (continuing)', [
-                    'user_id' => $userId,
-                    'stripe_customer_id' => $customerId,
-                    'stripe_payment_method_id' => $stripePaymentMethodId,
-                    'error' => $e->getMessage(),
-                ]);
+        // Check if payment method is already attached to this customer before trying to attach
+        // This prevents "previously used" errors when reusing saved payment methods
+        try {
+            $pm = $this->stripeClient->retrievePaymentMethod($stripePaymentMethodId);
+            
+            // If payment method is already attached to this customer, skip attaching
+            if (isset($pm['customer']) && $pm['customer'] === $customerId) {
+                // Already attached, continue to save locally
+            } elseif ($customerId) {
+                // Not attached, try to attach
+                try {
+                    $this->stripeClient->attachPaymentMethod($stripePaymentMethodId, $customerId);
+                } catch (\Throwable $e) {
+                    $errorMessage = strtolower($e->getMessage());
+                    // If error is about "previously used" or "cannot be reused", check if it's actually attached
+                    if (
+                        stripos($errorMessage, 'previously used') !== false ||
+                        stripos($errorMessage, 'cannot be reused') !== false
+                    ) {
+                        // Re-check the payment method - it might be attached now
+                        $pmCheck = $this->stripeClient->retrievePaymentMethod($stripePaymentMethodId);
+                        if (isset($pmCheck['customer']) && $pmCheck['customer'] === $customerId) {
+                            // It's attached, continue
+                        } else {
+                            // Can't attach, log and continue (payment method can still be used)
+                            Log::warning('Stripe attachPaymentMethod failed - payment method previously used', [
+                                'user_id' => $userId,
+                                'stripe_customer_id' => $customerId,
+                                'stripe_payment_method_id' => $stripePaymentMethodId,
+                                'error' => $e->getMessage(),
+                            ]);
+                        }
+                    } else {
+                        // Some other error, log it
+                        Log::warning('Stripe attachPaymentMethod failed (continuing)', [
+                            'user_id' => $userId,
+                            'stripe_customer_id' => $customerId,
+                            'stripe_payment_method_id' => $stripePaymentMethodId,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
             }
+        } catch (\Throwable $e) {
+            // If we can't retrieve the payment method, log and continue
+            Log::warning('Stripe retrievePaymentMethod failed (continuing)', [
+                'user_id' => $userId,
+                'stripe_payment_method_id' => $stripePaymentMethodId,
+                'error' => $e->getMessage(),
+            ]);
         }
 
-        $pm = $this->stripeClient->retrievePaymentMethod($stripePaymentMethodId);
+        // Retrieve payment method details (or use the one we already retrieved)
+        if (!isset($pm)) {
+            $pm = $this->stripeClient->retrievePaymentMethod($stripePaymentMethodId);
+        }
 
         $isDefault = !PaymentMethod::query()
             ->where('user_id', $userId)

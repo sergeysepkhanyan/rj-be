@@ -174,6 +174,7 @@ class PaymentService
                 try {
                     $pm = $this->stripeClient->retrievePaymentMethod($paymentMethodId);
                     
+                    // Check if payment method is attached to a different customer
                     if (isset($pm['customer']) && $pm['customer'] && $pm['customer'] !== $customerId) {
                         throw new HttpResponseException(
                             \App\Services\ApiResponse::error(
@@ -184,6 +185,7 @@ class PaymentService
                         );
                     }
 
+                    // Verify the payment method belongs to the user in our database
                     if ($order->user_id) {
                         $order->load('user');
                         $user = $order->user;
@@ -206,9 +208,43 @@ class PaymentService
                         }
                     }
                     
+                    // Only attach if not already attached to this customer
+                    // If already attached, we can use it directly in the payment intent
                     if (!isset($pm['customer']) || $pm['customer'] !== $customerId) {
-                        $this->stripeClient->attachPaymentMethod($paymentMethodId, $customerId);
+                        try {
+                            $this->stripeClient->attachPaymentMethod($paymentMethodId, $customerId);
+                        } catch (\Illuminate\Http\Client\RequestException $attachException) {
+                            $errorBody = $attachException->response?->json();
+                            $errorMessage = ($errorBody && isset($errorBody['error']['message']))
+                                ? $errorBody['error']['message']
+                                : ($attachException->getMessage() ?: 'Unknown error');
+                            $errorMessageLower = strtolower($errorMessage);
+                            
+                            // If payment method was previously used, it's already attached or can't be attached
+                            // Check if it's actually attached to our customer now
+                            $pmCheck = $this->stripeClient->retrievePaymentMethod($paymentMethodId);
+                            if (isset($pmCheck['customer']) && $pmCheck['customer'] === $customerId) {
+                                // It's already attached, continue
+                            } elseif (
+                                stripos($errorMessageLower, 'previously used') !== false ||
+                                stripos($errorMessageLower, 'cannot be reused') !== false
+                            ) {
+                                // Payment method was used in a previous payment intent without being attached
+                                // We can't use it for a new payment intent - user needs to use a new payment method
+                                throw new HttpResponseException(
+                                    \App\Services\ApiResponse::error(
+                                        ['paymentMethod' => [__('validation.payment_method.cannot_be_reused')]],
+                                        __('validation.payment_method.cannot_be_reused'),
+                                        422
+                                    )
+                                );
+                            } else {
+                                // Some other error, rethrow
+                                throw $attachException;
+                            }
+                        }
                     }
+                    // If payment method is already attached to this customer, we can use it directly
                 } catch (HttpResponseException $e) {
                     throw $e;
                 } catch (\Illuminate\Http\Client\RequestException $e) {
