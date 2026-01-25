@@ -195,7 +195,7 @@ class OrderService
                 'order_id' => $order->id,
                 'email' => $email,
             ]);
-            Mail::to($email)->queue(new OrderConfirmedMail($order));
+            Mail::to($email)->queue(new OrderConfirmedMail($order, $email));
             Log::info('[order][email] Order confirmation email queued', [
                 'order_id' => $order->id,
                 'email' => $email,
