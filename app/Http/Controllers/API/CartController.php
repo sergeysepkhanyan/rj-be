@@ -106,7 +106,7 @@ class CartController extends Controller
         $billingAddress = $request->input('billing_address', []);
         $paymentMethodId = $request->input('payment_method_id');
         $paymentMethodToken = $request->input('payment_method_token');
-        
+
         $paymentMethod = $paymentMethodToken ?: $paymentMethodId;
 
         $order = $this->cartService->checkout(

@@ -107,9 +107,7 @@ class PaymentService
             'metadata[reference]' => (string) ($order->reference ?? $order->id),
         ];
 
-        // Include customer if user has stripe_customer_id (allows using saved payment methods)
         if ($booking->user_id) {
-            // Load the client (user) relationship if not already loaded
             if (!$booking->relationLoaded('client')) {
                 $booking->load('client');
             }
@@ -176,7 +174,6 @@ class PaymentService
                 try {
                     $pm = $this->stripeClient->retrievePaymentMethod($paymentMethodId);
                     
-                    // Check if payment method is attached to a different customer
                     if (isset($pm['customer']) && $pm['customer'] && $pm['customer'] !== $customerId) {
                         throw new HttpResponseException(
                             \App\Services\ApiResponse::error(
@@ -187,9 +184,6 @@ class PaymentService
                         );
                     }
 
-                    // Check if payment method is already saved in our database
-                    // Only attach if it's already saved (user wants to use saved card)
-                    // For new payment methods (not saved), we'll use them without attaching
                     $isSavedPaymentMethod = false;
                     if ($order->user_id) {
                         $order->load('user');
@@ -203,45 +197,16 @@ class PaymentService
 
                             if ($localPaymentMethod) {
                                 $isSavedPaymentMethod = true;
-                                \Log::info('Payment method is saved in database, will attach if needed', [
-                                    'order_id' => $order->id,
-                                    'payment_method_id' => $paymentMethodId,
-                                    'user_id' => $user->id,
-                                ]);
-                            } else {
-                                \Log::info('Payment method is NOT saved in database, will use without attaching', [
-                                    'order_id' => $order->id,
-                                    'payment_method_id' => $paymentMethodId,
-                                    'user_id' => $user->id,
-                                ]);
                             }
                         }
                     }
                     
-                    // Check if payment method is already attached to this customer
                     if (isset($pm['customer']) && $pm['customer'] === $customerId) {
-                        // Already attached - safe to use
                         $canUsePaymentMethod = true;
-                        \Log::info('Payment method already attached to customer, can use', [
-                            'order_id' => $order->id,
-                            'payment_method_id' => $paymentMethodId,
-                            'customer_id' => $customerId,
-                        ]);
                     } elseif ((!isset($pm['customer']) || !$pm['customer']) && $isSavedPaymentMethod) {
-                        // Payment method is not attached to any customer BUT it's saved in our database
-                        // This means user wants to use a saved card - we should attach it
-                        // CRITICAL: If this payment method was used in a previous payment intent without being attached,
-                        // Stripe will reject our attachment attempt with "previously used" error.
-                        // We should try to attach, but if it fails, check if Stripe auto-attached it.
                         try {
                             $this->stripeClient->attachPaymentMethod($paymentMethodId, $customerId);
-                            // Attachment succeeded - safe to use
                             $canUsePaymentMethod = true;
-                            \Log::info('Payment method attached successfully (saved payment method)', [
-                                'order_id' => $order->id,
-                                'payment_method_id' => $paymentMethodId,
-                                'customer_id' => $customerId,
-                            ]);
                         } catch (\Illuminate\Http\Client\RequestException $attachException) {
                             $errorBody = $attachException->response?->json();
                             $errorMessage = ($errorBody && isset($errorBody['error']['message']))
@@ -249,31 +214,15 @@ class PaymentService
                                 : ($attachException->getMessage() ?: 'Unknown error');
                             $errorMessageLower = strtolower($errorMessage);
                             
-                            // If payment method was previously used, check if it's actually attached now
                             if (
                                 stripos($errorMessageLower, 'previously used') !== false ||
                                 stripos($errorMessageLower, 'cannot be reused') !== false
                             ) {
-                                // Payment method was used in a previous payment intent
-                                // Check if it's actually attached to the customer now (Stripe might have auto-attached it)
                                 try {
                                     $pmCheck = $this->stripeClient->retrievePaymentMethod($paymentMethodId);
                                     if (isset($pmCheck['customer']) && $pmCheck['customer'] === $customerId) {
-                                        // It's actually attached now - safe to use
                                         $canUsePaymentMethod = true;
-                                        \Log::info('Payment method previously used but now attached, can use', [
-                                            'order_id' => $order->id,
-                                            'payment_method_id' => $paymentMethodId,
-                                            'customer_id' => $customerId,
-                                        ]);
                                     } else {
-                                        // Not attached and can't attach - but this is a saved payment method
-                                        // This shouldn't happen, but if it does, we can't use it
-                                        \Log::warning('Saved payment method previously used and cannot be attached', [
-                                            'order_id' => $order->id,
-                                            'payment_method_id' => $paymentMethodId,
-                                            'customer_id' => $customerId,
-                                        ]);
                                         throw new HttpResponseException(
                                             \App\Services\ApiResponse::error(
                                                 ['paymentMethod' => [__('validation.payment_method.cannot_be_reused')]],
@@ -285,7 +234,6 @@ class PaymentService
                                 } catch (HttpResponseException $e) {
                                     throw $e;
                                 } catch (\Exception $e) {
-                                    // If we can't check, assume it can't be used
                                     throw new HttpResponseException(
                                         \App\Services\ApiResponse::error(
                                             ['paymentMethod' => [__('validation.payment_method.cannot_be_reused')]],
@@ -295,23 +243,12 @@ class PaymentService
                                     );
                                 }
                             } else {
-                                // Some other error, rethrow
                                 throw $attachException;
                             }
                         }
                     } elseif ((!isset($pm['customer']) || !$pm['customer']) && !$isSavedPaymentMethod) {
-                        // Payment method is NOT saved and NOT attached
-                        // This is a new payment method - use it without attaching
-                        // Frontend will confirm it separately, and we won't try to attach it
-                        $canUsePaymentMethod = false; // Don't include in payment intent, let frontend confirm
-                        \Log::info('New payment method (not saved), will use without attaching', [
-                            'order_id' => $order->id,
-                            'payment_method_id' => $paymentMethodId,
-                            'customer_id' => $customerId,
-                        ]);
+                        $canUsePaymentMethod = false;
                     } else {
-                        // Payment method is attached to a different customer - this shouldn't happen
-                        // We already checked for this above, but handle it just in case
                         throw new HttpResponseException(
                             \App\Services\ApiResponse::error(
                                 ['paymentMethod' => [__('validation.payment_method.already_attached_to_another_customer')]],
@@ -386,25 +323,10 @@ class PaymentService
                     }
                 }
             }
-            
-            // IMPORTANT: Only add payment_method to payload if we can safely use it
-            // If we have a customer and the payment method is attached/attachable, include it
-            // If we don't have a customer, don't include payment_method (frontend will confirm separately)
-            // This prevents the "previously used" error
+
             if ($canUsePaymentMethod && $customerId) {
-                // Payment method is attached to customer - safe to include in payment intent
-                // Stripe will automatically use it and keep it attached
                 $payload['payment_method'] = $paymentMethodId;
-            } elseif (!$customerId) {
-                // No customer (guest checkout) - don't include payment_method in the payment intent
-                // The frontend will need to confirm the payment intent with the payment method separately
-                // This prevents the "previously used" error
-                \Log::info('Payment method provided without customer - not including in payment intent (frontend will confirm)', [
-                    'order_id' => $order->id,
-                    'payment_method_id' => $paymentMethodId,
-                ]);
             }
-            // If $canUsePaymentMethod is false and we have a customer, we've already thrown an error above
         }
 
         if ($customerId) {

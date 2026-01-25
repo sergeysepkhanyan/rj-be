@@ -185,7 +185,6 @@ class PaymentMethodService
             return null;
         }
 
-        // Ensure Stripe customer exists so the method can be reused later.
         if (!$user->stripe_customer_id) {
             $customer = $this->stripeClient->createCustomer([
                 'name' => $user->name,
@@ -198,93 +197,31 @@ class PaymentMethodService
 
         $customerId = $user->stripe_customer_id;
 
-        // Check if payment method is already attached to this customer before trying to attach
-        // This prevents "previously used" errors when reusing saved payment methods
         try {
             $pm = $this->stripeClient->retrievePaymentMethod($stripePaymentMethodId);
             
-            // If payment method is already attached to this customer, skip attaching
             if (isset($pm['customer']) && $pm['customer'] === $customerId) {
-                // Already attached, continue to save locally
-                Log::info('Payment method already attached to customer, skipping attach', [
-                    'user_id' => $userId,
-                    'stripe_customer_id' => $customerId,
-                    'stripe_payment_method_id' => $stripePaymentMethodId,
-                ]);
-            } elseif ($customerId) {
-                // Not attached - check if it can be attached
-                // CRITICAL: If payment method has no customer, it might have been used in a payment intent
-                // In that case, Stripe won't let us attach it. We should check this BEFORE attempting attachment.
-                if (!isset($pm['customer']) || !$pm['customer']) {
-                    // Payment method is not attached to any customer
-                    // This could mean:
-                    // 1. It's a new payment method (safe to attach)
-                    // 2. It was used in a payment intent without being attached (can't attach)
-                    // We'll try to attach, but catch "previously used" errors gracefully
-                    try {
-                        $this->stripeClient->attachPaymentMethod($stripePaymentMethodId, $customerId);
-                        Log::info('Payment method attached successfully', [
-                            'user_id' => $userId,
-                            'stripe_customer_id' => $customerId,
-                            'stripe_payment_method_id' => $stripePaymentMethodId,
-                        ]);
-                    } catch (\Throwable $e) {
-                        $errorMessage = strtolower($e->getMessage());
-                        $errorResponse = null;
-                        
-                        // Try to get the full error response
-                        if ($e instanceof \Illuminate\Http\Client\RequestException && $e->response) {
-                            $errorResponse = $e->response->json();
-                            $errorMessage = strtolower($errorResponse['error']['message'] ?? $e->getMessage());
-                        }
-                        
-                        // If error is about "previously used" or "cannot be reused", that's expected
-                        // The payment method was used in a payment intent without being attached first
-                        if (
-                            stripos($errorMessage, 'previously used') !== false ||
-                            stripos($errorMessage, 'cannot be reused') !== false ||
-                            stripos($errorMessage, 'detach') !== false
-                        ) {
-                            // Can't attach because it was previously used - this is OK, we'll save it locally anyway
-                            Log::info('Payment method previously used, cannot attach (will save locally only)', [
-                                'user_id' => $userId,
-                                'stripe_customer_id' => $customerId,
-                                'stripe_payment_method_id' => $stripePaymentMethodId,
-                                'error' => $errorMessage,
-                            ]);
-                            // Don't rethrow - we'll save it locally without attachment
-                        } else {
-                            // Some other error, log it but don't fail
-                            Log::warning('Stripe attachPaymentMethod failed (continuing)', [
-                                'user_id' => $userId,
-                                'stripe_customer_id' => $customerId,
-                                'stripe_payment_method_id' => $stripePaymentMethodId,
-                                'error' => $e->getMessage(),
-                                'error_response' => $errorResponse,
-                            ]);
-                        }
+            } elseif ($customerId && (!isset($pm['customer']) || !$pm['customer'])) {
+                try {
+                    $this->stripeClient->attachPaymentMethod($stripePaymentMethodId, $customerId);
+                } catch (\Throwable $e) {
+                    $errorMessage = strtolower($e->getMessage());
+                    $errorResponse = null;
+                    if ($e instanceof \Illuminate\Http\Client\RequestException && $e->response) {
+                        $errorResponse = $e->response->json();
+                        $errorMessage = strtolower($errorResponse['error']['message'] ?? $e->getMessage());
                     }
-                } else {
-                    // Payment method is attached to a different customer - this shouldn't happen
-                    Log::warning('Payment method attached to different customer', [
-                        'user_id' => $userId,
-                        'stripe_customer_id' => $customerId,
-                        'payment_method_customer' => $pm['customer'],
-                        'stripe_payment_method_id' => $stripePaymentMethodId,
-                    ]);
-                    // Don't try to attach - it's already attached to someone else
+                    if (
+                        stripos($errorMessage, 'previously used') !== false ||
+                        stripos($errorMessage, 'cannot be reused') !== false ||
+                        stripos($errorMessage, 'detach') !== false
+                    ) {
+                    }
                 }
             }
         } catch (\Throwable $e) {
-            // If we can't retrieve the payment method, log and continue
-            Log::warning('Stripe retrievePaymentMethod failed (continuing)', [
-                'user_id' => $userId,
-                'stripe_payment_method_id' => $stripePaymentMethodId,
-                'error' => $e->getMessage(),
-            ]);
         }
 
-        // Retrieve payment method details (or use the one we already retrieved)
         if (!isset($pm)) {
             try {
                 $pm = $this->stripeClient->retrievePaymentMethod($stripePaymentMethodId);
@@ -327,12 +264,6 @@ class PaymentMethodService
             try {
                 $this->stripeClient->updateCustomerDefaultPaymentMethod($customerId, $stripePaymentMethodId);
             } catch (\Throwable $e) {
-                Log::warning('Stripe updateCustomerDefaultPaymentMethod failed (continuing)', [
-                    'user_id' => $userId,
-                    'stripe_customer_id' => $customerId,
-                    'stripe_payment_method_id' => $stripePaymentMethodId,
-                    'error' => $e->getMessage(),
-                ]);
             }
         }
 

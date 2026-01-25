@@ -202,7 +202,7 @@ class CartService
         if ($user) {
             $shippingName = $shippingAddress['name'] ?? null;
             $shippingPhone = $shippingAddress['mobile'] ?? null;
-            
+
             $updates = [];
             if ($shippingName && empty($user->name)) {
                 $updates['name'] = $shippingName;
@@ -212,16 +212,16 @@ class CartService
                     ->where('id', '!=', $user->id)
                     ->whereNull('deleted_at')
                     ->exists();
-                
+
                 if ($existingUserWithPhone) {
                     $this->throwValidation([
                         'shippingAddress.mobile' => __('validation.custom.mobile.unique')
                     ], 422);
                 }
-                
+
                 $updates['mobile'] = $shippingPhone;
             }
-            
+
             if (!empty($updates)) {
                 $user->update($updates);
                 $user->refresh();
@@ -447,7 +447,9 @@ class CartService
         }
 
         if (!$user->stripe_customer_id) {
-            $this->throwValidation(['paymentMethodId' => __('validation.cart.payment_method_invalid')]);
+            $this->throwValidation([
+                'paymentMethodId' => __('validation.cart.saved_payment_method_requires_customer'),
+            ]);
         }
 
         return [$user->stripe_customer_id, $method->token];

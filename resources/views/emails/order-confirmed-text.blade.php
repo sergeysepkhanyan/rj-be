@@ -1,5 +1,6 @@
 @php
     $items = $order['items'] ?? [];
+    $items = is_array($items) ? $items : (method_exists($items, 'all') ? $items->all() : []);
     $shippingAddress = $order['shippingAddress'] ?? null;
     $billingAddress = $order['billingAddress'] ?? null;
     $paymentMethod = $order['paymentMethod'] ?? null;

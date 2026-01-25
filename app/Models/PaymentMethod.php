@@ -7,6 +7,10 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * @property mixed $provider
+ * @property mixed $token
+ */
 class PaymentMethod extends Model
 {
     use BelongsToUser, SoftDeletes;

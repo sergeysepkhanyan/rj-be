@@ -12,6 +12,7 @@ return [
         'address_id_required' => 'Address is required.',
         'payment_method_required' => 'Payment method is required.',
         'payment_method_invalid' => 'Payment method is invalid.',
+        'saved_payment_method_requires_customer' => 'This saved card cannot be used. Please pay with a new card.',
     ],
 
     'custom' => [

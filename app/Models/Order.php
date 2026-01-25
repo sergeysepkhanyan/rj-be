@@ -97,4 +97,9 @@ class Order extends Model
     {
         return $this->hasMany(OrderStatusHistory::class, 'order_id')->orderBy('created_at');
     }
+
+    public function getTypeValue(): string
+    {
+        return $this->type instanceof \BackedEnum ? $this->type->value : (string) $this->type;
+    }
 }
