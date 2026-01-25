@@ -216,6 +216,10 @@ class PaymentService
                         $canUsePaymentMethod = true;
                     } else {
                         // Not attached - try to attach it
+                        // BUT: If payment method was used in a previous payment intent without being attached,
+                        // Stripe marks it as "previously used" and we can't attach it.
+                        // In that case, we should check if it's actually attached now (Stripe might have auto-attached it)
+                        // If not attached, we can't use it - user needs a new payment method
                         try {
                             $this->stripeClient->attachPaymentMethod($paymentMethodId, $customerId);
                             // Attachment succeeded - safe to use
@@ -227,20 +231,45 @@ class PaymentService
                                 : ($attachException->getMessage() ?: 'Unknown error');
                             $errorMessageLower = strtolower($errorMessage);
                             
-                            // If payment method was previously used, we can't attach it
+                            // If payment method was previously used, check if it's actually attached now
                             if (
                                 stripos($errorMessageLower, 'previously used') !== false ||
                                 stripos($errorMessageLower, 'cannot be reused') !== false
                             ) {
-                                // Payment method was used in a previous payment intent without being attached
-                                // We can't use it for a new payment intent - user needs to use a new payment method
-                                throw new HttpResponseException(
-                                    \App\Services\ApiResponse::error(
-                                        ['paymentMethod' => [__('validation.payment_method.cannot_be_reused')]],
-                                        __('validation.payment_method.cannot_be_reused'),
-                                        422
-                                    )
-                                );
+                                // Payment method was used in a previous payment intent
+                                // Check if it's actually attached to the customer now (Stripe might have auto-attached it)
+                                try {
+                                    $pmCheck = $this->stripeClient->retrievePaymentMethod($paymentMethodId);
+                                    if (isset($pmCheck['customer']) && $pmCheck['customer'] === $customerId) {
+                                        // It's actually attached now - safe to use
+                                        $canUsePaymentMethod = true;
+                                        \Log::info('Payment method previously used but now attached, can use', [
+                                            'order_id' => $order->id,
+                                            'payment_method_id' => $paymentMethodId,
+                                            'customer_id' => $customerId,
+                                        ]);
+                                    } else {
+                                        // Not attached and can't attach - user needs a new payment method
+                                        throw new HttpResponseException(
+                                            \App\Services\ApiResponse::error(
+                                                ['paymentMethod' => [__('validation.payment_method.cannot_be_reused')]],
+                                                __('validation.payment_method.cannot_be_reused'),
+                                                422
+                                            )
+                                        );
+                                    }
+                                } catch (HttpResponseException $e) {
+                                    throw $e;
+                                } catch (\Exception $e) {
+                                    // If we can't check, assume it can't be used
+                                    throw new HttpResponseException(
+                                        \App\Services\ApiResponse::error(
+                                            ['paymentMethod' => [__('validation.payment_method.cannot_be_reused')]],
+                                            __('validation.payment_method.cannot_be_reused'),
+                                            422
+                                        )
+                                    );
+                                }
                             } else {
                                 // Some other error, rethrow
                                 throw $attachException;

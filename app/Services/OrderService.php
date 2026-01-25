@@ -172,6 +172,9 @@ class OrderService
         Log::info('[order][email] Starting order confirmation email', [
             'order_id' => $order->id,
             'order_type' => $order->type,
+            'order_type_string' => (string) $order->type,
+            'user_id' => $order->user_id,
+            'has_meta' => !empty($order->meta),
         ]);
 
         // Get customer email from order
@@ -182,29 +185,56 @@ class OrderService
             $order->load('user');
             if ($order->user) {
                 $email = $order->user->email;
+                Log::info('[order][email] Email from user', [
+                    'order_id' => $order->id,
+                    'email' => $email,
+                    'user_id' => $order->user_id,
+                ]);
+            } else {
+                Log::warning('[order][email] User not found', [
+                    'order_id' => $order->id,
+                    'user_id' => $order->user_id,
+                ]);
             }
         }
 
         // Fallback to meta if user email not available
         if (!$email && $order->meta && isset($order->meta['customer_email'])) {
             $email = $order->meta['customer_email'];
+            Log::info('[order][email] Email from meta', [
+                'order_id' => $order->id,
+                'email' => $email,
+            ]);
         }
 
         if ($email) {
             Log::info('[order][email] Sending order confirmation email', [
                 'order_id' => $order->id,
                 'email' => $email,
+                'queue_connection' => config('queue.default'),
             ]);
-            Mail::to($email)->queue(new OrderConfirmedMail($order, $email));
-            Log::info('[order][email] Order confirmation email queued', [
-                'order_id' => $order->id,
-                'email' => $email,
-            ]);
+            
+            try {
+                Mail::to($email)->queue(new OrderConfirmedMail($order, $email));
+                Log::info('[order][email] Order confirmation email queued successfully', [
+                    'order_id' => $order->id,
+                    'email' => $email,
+                ]);
+            } catch (\Exception $e) {
+                Log::error('[order][email] Failed to queue email', [
+                    'order_id' => $order->id,
+                    'email' => $email,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+                throw $e;
+            }
         } else {
             Log::warning('[order][email] No email found for order confirmation', [
                 'order_id' => $order->id,
                 'user_id' => $order->user_id,
                 'has_meta' => !empty($order->meta),
+                'meta_keys' => $order->meta ? array_keys($order->meta) : [],
             ]);
         }
     }
