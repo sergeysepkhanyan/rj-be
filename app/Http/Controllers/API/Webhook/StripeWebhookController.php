@@ -171,7 +171,6 @@ class StripeWebhookController extends Controller
                         if ($paymentMethodId) {
                             try {
                                 // Check the payment intent's payment_method to see if it's already attached
-                                $paymentMethodFromIntent = data_get($object, 'payment_method');
                                 $customerFromIntent = data_get($object, 'customer');
                                 
                                 // If payment method was used without a customer, Stripe won't let us attach it
@@ -184,37 +183,47 @@ class StripeWebhookController extends Controller
                                     ]);
                                 } else {
                                     // Payment method was used with a customer, safe to try saving
-                                    $this->paymentMethodService->ensureStripePaymentMethodSaved(
-                                        (int) $order->user_id,
-                                        $paymentMethodId
-                                    );
-                                    \Log::info('[stripe][webhook] Payment method saved successfully', [
-                                        'user_id' => $order->user_id,
-                                    ]);
+                                    // Wrap in try-catch to ensure errors don't prevent email sending
+                                    try {
+                                        $this->paymentMethodService->ensureStripePaymentMethodSaved(
+                                            (int) $order->user_id,
+                                            $paymentMethodId
+                                        );
+                                        \Log::info('[stripe][webhook] Payment method saved successfully', [
+                                            'user_id' => $order->user_id,
+                                        ]);
+                                    } catch (\Exception $e) {
+                                        // Check if error is about "previously used" - this is expected in some cases
+                                        $errorMessage = strtolower($e->getMessage());
+                                        $isPreviouslyUsedError = (
+                                            stripos($errorMessage, 'previously used') !== false ||
+                                            stripos($errorMessage, 'detach') !== false ||
+                                            stripos($errorMessage, 'cannot be reused') !== false
+                                        );
+                                        
+                                        if ($isPreviouslyUsedError) {
+                                            \Log::info('[stripe][webhook] Payment method previously used, skipping save (non-critical)', [
+                                                'user_id' => $order->user_id,
+                                                'order_id' => $order->id,
+                                                'payment_method_id' => $paymentMethodId,
+                                            ]);
+                                        } else {
+                                            \Log::warning('[stripe][webhook] Failed to save payment method (non-critical, continuing)', [
+                                                'error' => $e->getMessage(),
+                                                'user_id' => $order->user_id,
+                                                'order_id' => $order->id,
+                                            ]);
+                                        }
+                                        // Continue execution - this error should not prevent email sending
+                                    }
                                 }
                             } catch (\Exception $e) {
-                                // Check if error is about "previously used" - this is expected for guest checkouts
-                                $errorMessage = strtolower($e->getMessage());
-                                $isPreviouslyUsedError = (
-                                    stripos($errorMessage, 'previously used') !== false ||
-                                    stripos($errorMessage, 'detach') !== false ||
-                                    stripos($errorMessage, 'cannot be reused') !== false
-                                );
-                                
-                                if ($isPreviouslyUsedError) {
-                                    \Log::info('[stripe][webhook] Payment method previously used, skipping save (expected for guest checkouts)', [
-                                        'user_id' => $order->user_id,
-                                        'order_id' => $order->id,
-                                        'payment_method_id' => $paymentMethodId,
-                                    ]);
-                                } else {
-                                    \Log::warning('[stripe][webhook] Failed to save payment method (non-critical, continuing)', [
-                                        'error' => $e->getMessage(),
-                                        'user_id' => $order->user_id,
-                                        'order_id' => $order->id,
-                                    ]);
-                                }
-                                // Continue execution - this error should not prevent email sending
+                                // Catch any unexpected errors and log, but continue
+                                \Log::warning('[stripe][webhook] Unexpected error in payment method save (non-critical, continuing)', [
+                                    'error' => $e->getMessage(),
+                                    'user_id' => $order->user_id,
+                                    'order_id' => $order->id,
+                                ]);
                             }
                         }
                     }
@@ -222,7 +231,10 @@ class StripeWebhookController extends Controller
                     \Log::info('[stripe][webhook] ===== REACHED EMAIL SENDING SECTION =====', [
                         'order_id' => $order->id,
                         'order_type' => $order->type,
+                        'order_type_value' => $order->type instanceof \BackedEnum ? $order->type->value : $order->type,
+                        'order_type_string' => (string) $order->type,
                         'has_orderable' => !is_null($order->orderable),
+                        'orderable_type' => $order->orderable_type ?? null,
                     ]);
 
                     // Update booking status if this is a booking order
@@ -504,6 +516,20 @@ class StripeWebhookController extends Controller
         }
 
         if (!$timestamp || empty($signatures)) {
+            return false;
+        }
+
+        // Prevent replay attacks: reject requests older than 5 minutes
+        $currentTime = time();
+        $requestTime = (int) $timestamp;
+        $timeDifference = abs($currentTime - $requestTime);
+        
+        if ($timeDifference > 300) { // 5 minutes
+            \Log::warning('[stripe][webhook] Request timestamp too old, possible replay attack', [
+                'timestamp' => $timestamp,
+                'current_time' => $currentTime,
+                'difference' => $timeDifference,
+            ]);
             return false;
         }
 
