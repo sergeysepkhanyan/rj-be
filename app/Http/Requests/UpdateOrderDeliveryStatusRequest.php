@@ -16,7 +16,7 @@ class UpdateOrderDeliveryStatusRequest extends BaseFormRequest
             'deliveryStatus' => [
                 'required',
                 'string',
-                Rule::in(['ordered', 'out_for_delivery', 'arriving', 'delivered']),
+                Rule::in(['ordered', 'out_of_delivery', 'delivered', 'canceled']),
             ],
         ];
     }

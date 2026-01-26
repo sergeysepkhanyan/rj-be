@@ -35,6 +35,10 @@ class ProductFilter
             $this->filterByMonth();
         }
 
+        if ($this->request->has('search')) {
+            $this->filterBySearch();
+        }
+
         return $this->query;
     }
 
@@ -105,5 +109,21 @@ class ProductFilter
         ];
 
         return $months[$str] ?? 0;
+    }
+
+    protected function filterBySearch(): void
+    {
+        $search = trim((string) $this->request->search);
+        if ($search === '') {
+            return;
+        }
+
+        $this->query->where(function ($q) use ($search) {
+            $q->where('name', 'like', "%{$search}%")
+                ->orWhere('name_ar', 'like', "%{$search}%")
+                ->orWhere('description', 'like', "%{$search}%")
+                ->orWhere('description_ar', 'like', "%{$search}%")
+                ->orWhere('sku_id', 'like', "%{$search}%");
+        });
     }
 }

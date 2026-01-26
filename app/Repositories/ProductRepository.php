@@ -29,6 +29,13 @@ class ProductRepository implements ProductRepositoryInterface
         return Product::findOrFail($id);
     }
 
+    public function findBySlug(string $slug): ?Product
+    {
+        return Product::where('slug', $slug)
+            ->where('status', 'active')
+            ->first();
+    }
+
     public function create(array $data)
     {
         return Product::create($data);

@@ -98,7 +98,9 @@ class CartController extends Controller
     public function checkout(CheckoutCartRequest $request): JsonResponse
     {
         $guestSessionId = $this->getGuestSessionId($request);
+        $customerName = $request->input('customer_name');
         $customerEmail = $request->input('customer_email');
+        $customerPhone = $request->input('customer_phone');
         $shippingAddressId = $request->input('shipping_address_id');
         $billingAddressId = $request->input('billing_address_id');
         $billingSameAsShipping = (bool) $request->input('billing_same_as_shipping', false);
@@ -111,7 +113,9 @@ class CartController extends Controller
 
         $order = $this->cartService->checkout(
             $guestSessionId,
+            $customerName,
             $customerEmail,
+            $customerPhone,
             $shippingAddressId,
             $shippingAddress,
             $billingSameAsShipping,

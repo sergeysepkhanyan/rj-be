@@ -56,7 +56,8 @@ class OrderDeliveryStatusUpdatedMail extends Mailable implements ShouldQueue
 
         $subject = match($this->deliveryStatus) {
             'delivered' => 'Order Delivered #' . ($orderData['reference'] ?? $order->reference ?? $order->id),
-            'out_for_delivery' => 'Your Order is Out for Delivery #' . ($orderData['reference'] ?? $order->reference ?? $order->id),
+            'out_of_delivery' => 'Your Order is Out for Delivery #' . ($orderData['reference'] ?? $order->reference ?? $order->id),
+            'canceled' => 'Order Canceled #' . ($orderData['reference'] ?? $order->reference ?? $order->id),
             default => 'Order Status Updated #' . ($orderData['reference'] ?? $order->reference ?? $order->id),
         };
 
@@ -71,9 +72,9 @@ class OrderDeliveryStatusUpdatedMail extends Mailable implements ShouldQueue
     {
         return match($status) {
             'ordered' => 'Ordered',
-            'out_for_delivery' => 'Out for Delivery',
-            'arriving' => 'Arriving',
+            'out_of_delivery' => 'Out of Delivery',
             'delivered' => 'Delivered',
+            'canceled' => 'Canceled',
             default => ucfirst(str_replace('_', ' ', $status)),
         };
     }

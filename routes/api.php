@@ -66,6 +66,7 @@ Route::middleware(['set.locale'])->group(function () {
     Route::get('/posts/{slug}', [PostsController::class, 'getBySlug']);
 
     Route::get('/products', [ProductsController::class, 'index']);
+    Route::get('/products/by-slug/{slug}', [ProductsController::class, 'getBySlug']);
     Route::get('/product-categories', [ProductCategoriesController::class, 'index']);
     Route::get('/cart', [CartController::class, 'index']);
     Route::post('/cart/items', [CartController::class, 'store']);

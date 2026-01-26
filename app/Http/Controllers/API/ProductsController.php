@@ -23,6 +23,19 @@ class ProductsController extends Controller
         return $this->respondWithProducts($products);
     }
 
+    public function getBySlug(string $slug): JsonResponse
+    {
+        $product = $this->productService->getProductBySlug($slug);
+
+        if (!$product) {
+            return ApiResponse::error(null, __('messages.resource_not_found'), 404);
+        }
+
+        return ApiResponse::success([
+            'product' => new ProductResource($product->load(['details', 'files', 'productCategory'])),
+        ]);
+    }
+
     private function respondWithProducts($products): JsonResponse
     {
         return ApiResponse::success([

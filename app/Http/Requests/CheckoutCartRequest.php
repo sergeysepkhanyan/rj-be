@@ -6,7 +6,9 @@ class CheckoutCartRequest extends BaseFormRequest
 {
     protected array $fieldMap = [
         'guestSessionId' => 'guest_session_id',
+        'customerName' => 'customer_name',
         'customerEmail' => 'customer_email',
+        'customerPhone' => 'customer_phone',
         'shippingAddressId' => 'shipping_address_id',
         'billingAddressId' => 'billing_address_id',
         'billingSameAsShipping' => 'billing_same_as_shipping',
@@ -18,7 +20,9 @@ class CheckoutCartRequest extends BaseFormRequest
     {
         return [
             'guestSessionId' => ['sometimes', 'string', 'max:64'],
-            'customerEmail' => ['nullable', 'email', 'max:255'],
+            'customerName' => ['required', 'string', 'max:255'],
+            'customerEmail' => ['required', 'email', 'max:255'],
+            'customerPhone' => ['required', 'string', 'max:50', 'regex:/^[+\-0-9]+$/'],
             'shippingAddressId' => ['nullable', 'integer'],
             'billingAddressId' => ['nullable', 'integer'],
             'billingSameAsShipping' => ['sometimes', 'boolean'],

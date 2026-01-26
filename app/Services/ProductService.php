@@ -115,6 +115,11 @@ class ProductService
         return $this->productRepository->find($id);
     }
 
+    public function getProductBySlug(string $slug): ?Product
+    {
+        return $this->productRepository->findBySlug($slug);
+    }
+
     public function getProductsForExport(?array $ids = null)
     {
         return $this->productRepository->allForExport($ids);

@@ -32,19 +32,19 @@ class OrderResource extends JsonResource
     public function toArray(Request $request): array
     {
         $shippingAddress = $this->whenLoaded('shippingAddress') ? $this->shippingAddress : null;
-        $customerName = null;
-        $customerFullName = null;
-        $customerEmail = null;
+        $customerName = $this->meta['customer_name'] ?? null;
+        $customerEmail = $this->meta['customer_email'] ?? null;
+        $customerPhone = $this->meta['customer_phone'] ?? null;
+
+        $clientName = null;
+        $clientEmail = null;
+        $clientPhone = null;
         if ($this->whenLoaded('user') && $this->user) {
             $firstName = $this->user->name ?? '';
             $lastName = $this->user->last_name ?? '';
-            $customerName = trim("{$firstName} {$lastName}");
-            $customerFullName = trim("{$firstName} {$lastName}");
-            $customerEmail = $this->user->email;
-        } else {
-            $customerName = $this->meta['customer_name'] ?? null;
-            $customerFullName = $customerName;
-            $customerEmail = $this->meta['customer_email'] ?? null;
+            $clientName = trim("{$firstName} {$lastName}");
+            $clientEmail = $this->user->email;
+            $clientPhone = $this->user->mobile;
         }
         $subtotal = 0;
         $tax = 0;
@@ -93,14 +93,14 @@ class OrderResource extends JsonResource
         if ($this->type === 'ecommerce') {
             $statuses = [
                 'ordered' => $this->created_at,
-                'out_for_delivery' => null,
-                'arriving' => null,
+                'out_of_delivery' => null,
                 'delivered' => null,
+                'canceled' => null,
             ];
 
             if ($this->delivery_status) {
                 $found = false;
-                foreach (['ordered', 'out_for_delivery', 'arriving', 'delivered'] as $status) {
+                foreach (['ordered', 'out_of_delivery', 'delivered', 'canceled'] as $status) {
                     if ($status === $this->delivery_status) {
                         $found = true;
                         $statuses[$status] = $this->delivery_status_updated_at ?? $this->updated_at;
@@ -120,22 +120,22 @@ class OrderResource extends JsonResource
                     'checked' => true,
                 ],
                 [
-                    'status' => 'out_for_delivery',
-                    'label' => 'Out for delivery',
-                    'date' => $statuses['out_for_delivery']?->format('D, d F Y'),
-                    'checked' => $statuses['out_for_delivery'] !== null,
-                ],
-                [
-                    'status' => 'arriving',
-                    'label' => 'Arriving',
-                    'date' => $statuses['arriving']?->format('D, d F Y'),
-                    'checked' => $statuses['arriving'] !== null,
+                    'status' => 'out_of_delivery',
+                    'label' => 'Out of Delivery',
+                    'date' => $statuses['out_of_delivery']?->format('D, d F Y'),
+                    'checked' => $statuses['out_of_delivery'] !== null,
                 ],
                 [
                     'status' => 'delivered',
                     'label' => 'Delivered',
                     'date' => $statuses['delivered']?->format('D, d F Y'),
                     'checked' => $statuses['delivered'] !== null,
+                ],
+                [
+                    'status' => 'canceled',
+                    'label' => 'Canceled',
+                    'date' => $statuses['canceled']?->format('D, d F Y'),
+                    'checked' => $statuses['canceled'] !== null,
                 ],
             ];
         }
@@ -229,11 +229,16 @@ class OrderResource extends JsonResource
             'createdAt' => $this->created_at,
             'paidAt' => $this->paid_at,
             'customer' => [
-                'id' => $this->user_id,
                 'name' => $customerName,
-                'fullName' => $customerFullName,
                 'email' => $customerEmail,
+                'phone' => $customerPhone,
             ],
+            'client' => $this->when($this->user_id, [
+                'id' => $this->user_id,
+                'name' => $clientName,
+                'email' => $clientEmail,
+                'phone' => $clientPhone,
+            ]),
             'purchaseDate' => $this->created_at?->format('Y-m-d'),
             'purchaseTime' => $this->created_at?->format('H:i:s'),
             'purchaseDateTime' => $this->created_at?->format('Y-m-d H:i:s'),

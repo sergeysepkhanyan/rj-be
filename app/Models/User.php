@@ -145,4 +145,14 @@ class User extends Authenticatable implements JWTSubject, CanResetPasswordContra
         return in_array(optional($this->role)->slug, ['admin', 'superadmin']);
     }
 
+    public function isMarketer(): bool
+    {
+        return optional($this->role)->slug === 'marketer';
+    }
+
+    public function isMarketerOrAbove(): bool
+    {
+        return in_array(optional($this->role)->slug, ['marketer', 'admin', 'superadmin']);
+    }
+
 }

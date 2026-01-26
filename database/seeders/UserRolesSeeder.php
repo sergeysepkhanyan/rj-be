@@ -21,6 +21,7 @@ class UserRolesSeeder extends Seeder
             'admin' => 'Admin',
             'master' => 'Master',
             'client' => 'Client',
+            'marketer' => 'Marketer',
         ];
 
         foreach ($roles as $slug => $name) {

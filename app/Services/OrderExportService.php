@@ -164,7 +164,7 @@ class OrderExportService
 
         $row = 2;
         foreach ($orders as $order) {
-            $paymentId = $order->latestPayment?->external_id ?? $order->reference ?? "#{$order->id}";
+            $paymentId = $order->reference ?? $order->latestPayment?->external_id ?? "#{$order->id}";
             
             $productName = 'N/A';
             if ($order->type === 'ecommerce' && $order->items->isNotEmpty()) {

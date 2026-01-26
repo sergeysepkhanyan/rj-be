@@ -151,7 +151,9 @@ class CartService
 
     public function checkout(
         ?string $guestSessionId,
-        ?string $customerEmail = null,
+        string $customerName,
+        string $customerEmail,
+        string $customerPhone,
         ?int $shippingAddressId = null,
         array $shippingAddress = [],
         bool $billingSameAsShipping = false,
@@ -165,10 +167,6 @@ class CartService
 
         if ($items->isEmpty()) {
             $this->throwValidation(['cart' => __('validation.cart.empty')], 400);
-        }
-
-        if (!$userId && !$customerEmail) {
-            $this->throwValidation(['customerEmail' => __('validation.cart.customer_email_required')]);
         }
 
         $currency = null;
@@ -197,7 +195,6 @@ class CartService
         }
 
         $user = $userId ? User::find($userId) : null;
-        $email = $customerEmail ?: $user?->email;
 
         if ($user) {
             $shippingName = $shippingAddress['name'] ?? null;
@@ -241,7 +238,9 @@ class CartService
             'reference' => $this->makeReference(),
             'meta' => [
                 'guest_session_id' => $guestSessionId,
-                'customer_email' => $email,
+                'customer_name' => $customerName,
+                'customer_email' => $customerEmail,
+                'customer_phone' => $customerPhone,
             ],
         ]);
 

@@ -372,9 +372,9 @@ class BookingService
                 'expires_at' => $pricing['payment_mode'] === 'pay_now'
                     ? now()->addMinutes((int) config('payment.booking_hold_minutes', 10))
                     : null,
-                'customer_name'  => $data['customer_name']  ?? $data['customerName']  ?? ($user->name ?? null),
-                'customer_phone' => $data['customer_phone'] ?? $data['customerPhone'] ?? ($user->mobile ?? null),
-                'customer_email' => $data['customer_email'] ?? $data['customerEmail'] ?? ($user->email ?? null),
+                'customer_name'  => $data['customer_name']  ?? $data['customerName'],
+                'customer_phone' => $data['customer_phone'] ?? $data['customerPhone'],
+                'customer_email' => $data['customer_email'] ?? $data['customerEmail'],
                 'notes'          => $data['notes'] ?? null,
 
                 'master_id'      => $uniqueMasters->count() === 1 ? (int)$uniqueMasters->first() : null,
