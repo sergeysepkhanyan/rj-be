@@ -20,6 +20,11 @@ class DatabaseSeeder extends Seeder
             WeekDaysSeeder::class,
             ReferralsSeeder::class,
             CountriesSeeder::class,
+            PageSeoSeeder::class,
+            TrackingConfigSeeder::class,
+            DiscountSettingSeeder::class,
+            PagesSeeder::class,
+            WorkingHoursSeeder::class,
         ]);
     }
 }
