@@ -23,7 +23,7 @@ class Address extends Model
         'address',
         'additional_address',
         'city',
-        'state',
+        'country_id',
         'zip_code',
     ];
 
@@ -37,6 +37,14 @@ class Address extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Each address belongs to a country.
+     */
+    public function country(): BelongsTo
+    {
+        return $this->belongsTo(Country::class);
     }
 
 //    /**

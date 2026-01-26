@@ -14,6 +14,7 @@ use App\Repositories\Interfaces\PaymentRepositoryInterface;
 use App\Repositories\Interfaces\SubServiceItemRepositoryInterface;
 use App\Repositories\Interfaces\SubServiceRepositoryInterface;
 use App\Repositories\Interfaces\WorkingHourRepositoryInterface;
+use App\Services\DiscountSettingService;
 use App\Support\VatCalculator;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
@@ -37,6 +38,7 @@ class BookingService
         protected OrderService $orderService,
         protected PaymentService $paymentService,
         protected PaymentRepositoryInterface $paymentRepository,
+        protected DiscountSettingService $discountSettingService,
     ) {}
 
     public function getAllBooking()
@@ -539,8 +541,7 @@ class BookingService
             }
 
             $basePrice  = (float) ($serviceable->price ?? 0);
-            $vatEnabled = (bool)  ($serviceable->vat_enabled ?? false);
-            $vat = VatCalculator::breakdown($basePrice, $vatEnabled);
+            $vat = VatCalculator::breakdown($basePrice, true);
 
             $isAnyMaster = (bool)($s['any_master'] ?? $s['anyMaster'] ?? false);
 
@@ -626,7 +627,7 @@ class BookingService
             'bookable_type'    => $seg['bookable_type'],
             'price'            => $seg['price'],
             'base_price'       => $seg['base_price'] ?? $seg['price'],
-            'vat_enabled'      => (bool)($seg['vat_enabled'] ?? false),
+            'vat_enabled'      => true,
             'vat_rate'         => (float)($seg['vat_rate'] ?? (float) config('vat.rate', 0.05)),
             'vat_amount'       => (float)($seg['vat_amount'] ?? 0),
             'final_price'      => $seg['final_price'] ?? $seg['price'],
@@ -658,7 +659,7 @@ class BookingService
         $discountLabel = $data['discount_label'] ?? $data['discountLabel'] ?? null;
 
         if ($discountType === 'none' || !$discountValue) {
-            $autoDiscount = $this->calculateAutomaticDiscount();
+            $autoDiscount = $this->calculateAutomaticDiscount($services->count());
             if ($autoDiscount['discount_percent'] > 0) {
                 $discountType = 'percent';
                 $discountValue = $autoDiscount['discount_percent'];
@@ -690,68 +691,51 @@ class BookingService
         ];
     }
 
-    protected function calculateAutomaticDiscount(): array
+    protected function calculateAutomaticDiscount(int $serviceCount = 0): array
     {
         $user = auth()->user();
-        if (!$user || !$user->id) {
-            return [
-                'discount_percent' => 0,
-                'discount_label' => null,
-            ];
+        
+        if ($user && $user->id) {
+            if ($user->referral_id) {
+                $user->loadMissing('referral');
+                if ($user->referral) {
+                    $referral = $user->referral;
+                    if ($referral->type === 'percentage' && $referral->value > 0) {
+                        $visitCount = Booking::where('user_id', $user->id)
+                            ->where('type', 'booking')
+                            ->where('status', '!=', 'cancelled')
+                            ->where('payment_status', 'paid')
+                            ->count();
+
+                        $tierName = $referral->name;
+                        $hasEnoughVisits = false;
+
+                        if ($tierName === 'Gold' && $visitCount >= 50) {
+                            $hasEnoughVisits = true;
+                        } elseif ($tierName === 'Silver' && $visitCount >= 25) {
+                            $hasEnoughVisits = true;
+                        } elseif ($tierName === 'Bronze' && $visitCount >= 11) {
+                            $hasEnoughVisits = true;
+                        }
+
+                        if ($hasEnoughVisits) {
+                            return [
+                                'discount_percent' => (float) $referral->value,
+                                'discount_label' => $referral->name . ' Tier Discount',
+                            ];
+                        }
+                    }
+                }
+            }
         }
 
-        if (!$user->referral_id) {
-            return [
-                'discount_percent' => 0,
-                'discount_label' => null,
-            ];
-        }
-
-        $user->loadMissing('referral');
-
-        if (!$user->referral) {
-            return [
-                'discount_percent' => 0,
-                'discount_label' => null,
-            ];
-        }
-
-        $referral = $user->referral;
-
-        if ($referral->type !== 'percentage' || $referral->value <= 0) {
-            return [
-                'discount_percent' => 0,
-                'discount_label' => null,
-            ];
-        }
-
-        $visitCount = Booking::where('user_id', $user->id)
-            ->where('type', 'booking')
-            ->where('status', '!=', 'cancelled')
-            ->where('payment_status', 'paid')
-            ->count();
-
-        $tierName = $referral->name;
-        $hasEnoughVisits = false;
-
-        if ($tierName === 'Gold' && $visitCount >= 50) {
-            $hasEnoughVisits = true;
-        } elseif ($tierName === 'Silver' && $visitCount >= 25) {
-            $hasEnoughVisits = true;
-        } elseif ($tierName === 'Bronze' && $visitCount >= 11) {
-            $hasEnoughVisits = true;
-        }
-
-        if (!$hasEnoughVisits) {
-            return [
-                'discount_percent' => 0,
-                'discount_label' => null,
-            ];
+        if ($serviceCount > 0) {
+            return $this->discountSettingService->getAutomaticDiscount($serviceCount);
         }
 
         return [
-            'discount_percent' => (float) $referral->value,
-            'discount_label' => $referral->name . ' Tier Discount',
+            'discount_percent' => 0,
+            'discount_label' => null,
         ];
     }
 

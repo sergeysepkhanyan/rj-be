@@ -15,18 +15,18 @@ class UpdateStaffRequest extends BaseFormRequest
         $id = $this->route('id');
 
         return [
-            'role' => 'required|in:admin,master',
+            'role' => 'required|in:admin,master,marketer',
             'name' => 'required|string',
             'nameAr' => 'nullable|string',
             'email' => [
-                'required_if:role,admin',
+                'required_if:role,admin,marketer',
                 'email',
                 Rule::unique('users', 'email')
                     ->ignore($id),
             ],
 
             'mobile' => [
-                'required_if:role,admin',
+                'required_if:role,admin,marketer',
                 'string',
                 'regex:/^[+\-0-9]+$/',
                 Rule::unique('users', 'mobile')

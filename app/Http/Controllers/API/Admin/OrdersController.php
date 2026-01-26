@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API\Admin;
 
 use App\Filters\OrderFilter;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreOrderRequest;
 use App\Http\Requests\UpdateOrderDeliveryStatusRequest;
 use App\Http\Requests\UpdateOrderStatusRequest;
 use App\Http\Resources\AdminOrderResource;
@@ -22,6 +23,19 @@ class OrdersController extends Controller
         protected OrderService $orderService,
         protected OrderExportService $orderExportService
     ) {}
+
+    public function store(StoreOrderRequest $request): JsonResponse
+    {
+        $data = $request->all();
+        $sendEmail = (bool) ($data['send_email'] ?? false);
+
+        $order = $this->orderService->createManually($data, $sendEmail);
+        $this->loadOrderForDetail($order);
+
+        return ApiResponse::success([
+            'order' => new OrderResource($order),
+        ], __('success.order.created'));
+    }
 
     public function index(Request $request, OrderFilter $filter): JsonResponse
     {
@@ -93,8 +107,8 @@ class OrdersController extends Controller
         $order->load([
             'user',
             'items.product',
-            'shippingAddress',
-            'billingAddress',
+            'shippingAddress.country',
+            'billingAddress.country',
             'latestPayment',
             'statusHistory.createdBy',
         ]);

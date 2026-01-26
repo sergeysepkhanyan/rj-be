@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
             UserRolesSeeder::class,
             WeekDaysSeeder::class,
             ReferralsSeeder::class,
+            CountriesSeeder::class,
         ]);
     }
 }

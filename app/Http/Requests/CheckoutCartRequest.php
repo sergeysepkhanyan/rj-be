@@ -35,8 +35,8 @@ class CheckoutCartRequest extends BaseFormRequest
             'shippingAddress.address' => ['required_without:shippingAddressId', 'string', 'max:255'],
             'shippingAddress.additionalAddress' => ['nullable', 'string', 'max:100'],
             'shippingAddress.city' => ['required_without:shippingAddressId', 'string', 'max:100'],
-            'shippingAddress.state' => ['required_without:shippingAddressId', 'string', 'max:100'],
-            'shippingAddress.zipCode' => ['required_without:shippingAddressId', 'string', 'max:20'],
+            'shippingAddress.countryId' => ['required_without:shippingAddressId', 'integer', 'exists:countries,id'],
+            'shippingAddress.zipCode' => ['nullable', 'string', 'max:20'],
             'billingAddress' => ['nullable', 'array'],
             'billingAddress.name' => ['required_without_all:billingAddressId,billingSameAsShipping', 'string', 'max:255'],
             'billingAddress.lastName' => ['nullable', 'string', 'max:255'],
@@ -44,8 +44,8 @@ class CheckoutCartRequest extends BaseFormRequest
             'billingAddress.address' => ['required_without_all:billingAddressId,billingSameAsShipping', 'string', 'max:255'],
             'billingAddress.additionalAddress' => ['nullable', 'string', 'max:100'],
             'billingAddress.city' => ['required_without_all:billingAddressId,billingSameAsShipping', 'string', 'max:100'],
-            'billingAddress.state' => ['required_without_all:billingAddressId,billingSameAsShipping', 'string', 'max:100'],
-            'billingAddress.zipCode' => ['required_without_all:billingAddressId,billingSameAsShipping', 'string', 'max:20'],
+            'billingAddress.countryId' => ['required_without_all:billingAddressId,billingSameAsShipping', 'integer', 'exists:countries,id'],
+            'billingAddress.zipCode' => ['nullable', 'string', 'max:20'],
         ];
     }
 }

@@ -115,7 +115,11 @@ class AdminOrderResource extends JsonResource
             return null;
         }
         $a = $this->shippingAddress;
-        $parts = array_filter([$a->address, $a->city, $a->state]);
+        $parts = array_filter([
+            $a->address,
+            $a->city,
+            $a->country?->name ?? ($a->country_id ? 'Country #' . $a->country_id : null)
+        ]);
 
         return $parts ? implode(', ', $parts) : null;
     }

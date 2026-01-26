@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Mail\AdminAccessEmail;
+use App\Mail\MarketerAccessEmail;
 use App\Models\User;
 use App\Repositories\Interfaces\UserRepositoryInterface;
 use App\Repositories\Interfaces\UserRoleRepositoryInterface;
@@ -38,7 +39,7 @@ class UserService
         $data = array_diff_key($data, array_flip(['role', 'subservices', 'weekends']));
         $data['user_role_id'] = $role->id;
         $generatedPassword = Str::random(6);
-        if ($role->slug === 'admin') {
+        if (in_array($role->slug, ['admin', 'marketer'])) {
             $hashedPassword = Hash::make($generatedPassword);
             $data['password'] = $hashedPassword;
             $data['is_temporary_password'] = true;
@@ -55,6 +56,8 @@ class UserService
         }
         if ($role->slug === 'admin') {
             Mail::to($user->email)->queue(new AdminAccessEmail($user, $generatedPassword));
+        } elseif ($role->slug === 'marketer') {
+            Mail::to($user->email)->queue(new MarketerAccessEmail($user, $generatedPassword));
         }
         return $user->load('role', 'subservices.items');
     }
@@ -122,11 +125,20 @@ class UserService
 
             $oldRole = $user->role->slug;
 
-            if ($oldRole !== 'admin' && $role->slug === 'admin') {
-                if (!$this->canAddAdmins(1)) {
+            if (!in_array($oldRole, ['admin', 'marketer']) && in_array($role->slug, ['admin', 'marketer'])) {
+                if ($role->slug === 'admin' && !$this->canAddAdmins(1)) {
                     throw new \Illuminate\Http\Exceptions\HttpResponseException(
                         \App\Services\ApiResponse::error(
                             ['role' => [__('errors.staff.admin_limit')]],
+                            __('validation.failed'),
+                            422
+                        )
+                    );
+                }
+                if ($role->slug === 'marketer' && !$this->canAddMarketers(1)) {
+                    throw new \Illuminate\Http\Exceptions\HttpResponseException(
+                        \App\Services\ApiResponse::error(
+                            ['role' => [__('errors.staff.marketer_limit')]],
                             __('validation.failed'),
                             422
                         )
@@ -144,7 +156,11 @@ class UserService
                 }
 
                 $accessLink = config('app.url') . '/admin/login';
-                Mail::to($user->email)->queue(new AdminAccessEmail($user, $generatedPassword, $accessLink));
+                if ($role->slug === 'admin') {
+                    Mail::to($user->email)->queue(new AdminAccessEmail($user, $generatedPassword, $accessLink));
+                } elseif ($role->slug === 'marketer') {
+                    Mail::to($user->email)->queue(new MarketerAccessEmail($user, $generatedPassword, $accessLink));
+                }
             }
 
             $this->updateUser($user, $fields);
@@ -219,6 +235,13 @@ class UserService
         $existingAdminsCount = $this->userRepository->countAdmins();
 
         return ($existingAdminsCount + $newAdminsCount) <= 2;
+    }
+
+    public function canAddMarketers(int $newMarketersCount): bool
+    {
+        $existingMarketersCount = $this->userRepository->countMarketers();
+
+        return ($existingMarketersCount + $newMarketersCount) <= 2;
     }
 
     public function getPaginatedStaff(int $perPage = 10, int $page = 1): LengthAwarePaginator

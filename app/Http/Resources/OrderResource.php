@@ -83,7 +83,7 @@ class OrderResource extends JsonResource
                 $shippingAddress->address,
                 $shippingAddress->additional_address,
                 $shippingAddress->city,
-                $shippingAddress->state,
+                $shippingAddress->country?->name ?? ($shippingAddress->country_id ? 'Country #' . $shippingAddress->country_id : null),
                 $shippingAddress->zip_code,
             ]);
             $addressString = $parts ? implode(', ', $parts) : null;
@@ -233,12 +233,12 @@ class OrderResource extends JsonResource
                 'email' => $customerEmail,
                 'phone' => $customerPhone,
             ],
-            'client' => $this->when($this->user_id, [
+            'client' => [
                 'id' => $this->user_id,
                 'name' => $clientName,
                 'email' => $clientEmail,
                 'phone' => $clientPhone,
-            ]),
+            ],
             'purchaseDate' => $this->created_at?->format('Y-m-d'),
             'purchaseTime' => $this->created_at?->format('H:i:s'),
             'purchaseDateTime' => $this->created_at?->format('Y-m-d H:i:s'),
@@ -256,7 +256,12 @@ class OrderResource extends JsonResource
                     'address' => $this->shippingAddress->address,
                     'additionalAddress' => $this->shippingAddress->additional_address,
                     'city' => $this->shippingAddress->city,
-                    'state' => $this->shippingAddress->state,
+                    'country' => $this->shippingAddress->country ? [
+                        'id' => $this->shippingAddress->country->id,
+                        'name' => $this->shippingAddress->country->name,
+                        'nameAr' => $this->shippingAddress->country->name_ar,
+                        'code' => $this->shippingAddress->country->code,
+                    ] : null,
                     'zipCode' => $this->shippingAddress->zip_code,
                 ];
             }),

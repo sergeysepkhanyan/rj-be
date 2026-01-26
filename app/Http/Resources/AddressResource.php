@@ -14,8 +14,8 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * @property mixed $address
  * @property mixed $additional_address
  * @property mixed $city
+ * @property mixed $country
  * @property mixed $zip_code
- * @property mixed $state
  */
 class AddressResource extends JsonResource
 {
@@ -31,17 +31,17 @@ class AddressResource extends JsonResource
             'address' => $this->address,
             'additionalAddress' => $this->additional_address ?? null,
             'city' => $this->city,
-            'state' => $this->state,
+            'country' => $this->whenLoaded('country', function () {
+                return [
+                    'id' => $this->country->id,
+                    'name' => $this->country->name,
+                    'nameAr' => $this->country->name_ar,
+                    'code' => $this->country->code,
+                ];
+            }, function () {
+                return $this->country_id ? ['id' => $this->country_id] : null;
+            }),
             'zipCode' => $this->zip_code,
-
-//            'order' => $this->whenLoaded('order', function () {
-//                return [
-//                    'id' => $this->order->id,
-//                    'status' => $this->order->status,
-//                    'total' => $this->order->total ?? null,
-//                    'created_at' => $this->order->created_at?->toDateTimeString(),
-//                ];
-//            }),
         ];
     }
 }

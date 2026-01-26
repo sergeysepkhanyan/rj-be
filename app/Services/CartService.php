@@ -374,12 +374,12 @@ class CartService
                 'address' => $address->address,
                 'additional_address' => $address->additional_address,
                 'city' => $address->city,
-                'state' => $address->state,
+                'country_id' => $address->country_id,
                 'zip_code' => $address->zip_code,
             ];
         }
 
-        $required = ['name', 'mobile', 'address', 'city', 'state', 'zip_code'];
+        $required = ['name', 'mobile', 'address', 'city', 'country_id', 'zip_code'];
         foreach ($required as $field) {
             if (empty($addressData[$field])) {
                 $this->throwValidation(['address' => __('validation.cart.address_required')]);
@@ -393,7 +393,7 @@ class CartService
             'address' => $addressData['address'],
             'additional_address' => $addressData['additional_address'] ?? null,
             'city' => $addressData['city'],
-            'state' => $addressData['state'],
+            'country_id' => $addressData['country_id'] ?? $addressData['countryId'] ?? null,
             'zip_code' => $addressData['zip_code'],
         ];
     }
@@ -411,7 +411,7 @@ class CartService
             'address' => $data['address'],
             'additional_address' => $data['additional_address'] ?? null,
             'city' => $data['city'],
-            'state' => $data['state'],
+            'country_id' => $data['country_id'] ?? $data['countryId'] ?? null,
             'zip_code' => $data['zip_code'],
         ]);
     }

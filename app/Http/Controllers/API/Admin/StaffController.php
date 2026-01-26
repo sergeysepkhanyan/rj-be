@@ -52,6 +52,14 @@ class StaffController extends Controller
             );
         }
 
+        if (($data['role'] ?? null) === 'marketer' && !$this->userService->canAddMarketers(1)) {
+            return ApiResponse::error(
+                ['role' => [__('errors.staff.marketer_limit')]],
+                __('validation.failed'),
+                422
+            );
+        }
+
         $staff = $this->userService->createUser($data);
 
         return ApiResponse::success([

@@ -12,6 +12,7 @@ class UpdateAddressRequest extends BaseFormRequest
         'lastName' => 'last_name',
         'additionalAddress' => 'additional_address',
         'zipCode' => 'zip_code',
+        'countryId' => 'country_id',
         'setDefaultShipping' => 'set_default_shipping',
         'setDefaultBilling'  => 'set_default_billing',
     ];
@@ -28,8 +29,8 @@ class UpdateAddressRequest extends BaseFormRequest
             'address' => 'required|string|max:255',
             'additionalAddress' => 'nullable|string|max:100',
             'city' => 'required|string|max:100',
-            'state' => 'required|string|max:100',
-            'zipCode' => 'required|string|max:20',
+            'countryId' => ['required', 'integer', 'exists:countries,id'],
+            'zipCode' => 'nullable|string|max:20',
             'setDefaultShipping' => ['sometimes', 'boolean'],
             'setDefaultBilling'  => ['sometimes', 'boolean'],
         ];

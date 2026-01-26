@@ -47,7 +47,7 @@ class OrderDeliveryStatusUpdatedMail extends Mailable implements ShouldQueue
                 'lastName' => $order->shippingAddress->last_name,
                 'address' => $order->shippingAddress->address,
                 'city' => $order->shippingAddress->city,
-                'state' => $order->shippingAddress->state,
+                'country' => $order->shippingAddress->country?->name ?? ($order->shippingAddress->country_id ? 'Country #' . $order->shippingAddress->country_id : null),
                 'zipCode' => $order->shippingAddress->zip_code,
             ] : null,
         ];

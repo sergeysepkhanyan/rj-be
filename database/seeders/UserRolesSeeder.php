@@ -30,12 +30,14 @@ class UserRolesSeeder extends Seeder
                 ['name' => $name]
             );
            if($slug == 'superadmin'){
-               User::create([
-                   'user_role_id' => $role->id,
-                   'name' => 'Super Admin',
-                   'email' => 'super@admin.com',
-                   'password' => bcrypt(env('SUPER_ADMIN_PASSWORD', 'password')),
-               ]);
+               User::firstOrCreate(
+                   ['email' => 'super@admin.com'],
+                   [
+                       'user_role_id' => $role->id,
+                       'name' => 'Super Admin',
+                       'password' => bcrypt(env('SUPER_ADMIN_PASSWORD', 'password')),
+                   ]
+               );
            }
         }
     }

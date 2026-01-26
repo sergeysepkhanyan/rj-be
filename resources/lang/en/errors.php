@@ -4,6 +4,7 @@ return [
 
     'staff' => [
         'admin_limit' => 'You can only have up to 2 admin users.',
+        'marketer_limit' => 'You can only have up to 2 marketer users.',
         'cannot_delete_user_type' => 'You cannot delete this type of user.',
     ],
 

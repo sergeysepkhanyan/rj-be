@@ -15,7 +15,7 @@ class ContactController extends Controller
     public function store(StoreContactRequest $request): JsonResponse
     {
         $this->service->submit(
-            payload: $request->validated(),
+            payload: $request->all(),
             ip: $request->ip(),
             userAgent: $request->userAgent()
         );

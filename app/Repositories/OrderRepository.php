@@ -43,8 +43,8 @@ class OrderRepository implements OrderRepositoryInterface
             ->with([
                 'user',
                 'items.product.files',
-                'shippingAddress',
-                'billingAddress',
+                'shippingAddress.country',
+                'billingAddress.country',
                 'orderable',
                 'latestPayment.paymentMethod',
             ]);
@@ -64,8 +64,8 @@ class OrderRepository implements OrderRepositoryInterface
             ->with([
                 'user',
                 'items.product.files',
-                'shippingAddress',
-                'billingAddress',
+                'shippingAddress.country',
+                'billingAddress.country',
                 'orderable',
                 'latestPayment',
             ]);

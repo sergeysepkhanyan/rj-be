@@ -18,7 +18,7 @@ class AddressController extends Controller
 
     public function index(): JsonResponse
     {
-        $addresses = $this->addressService->listForUser(auth()->id());
+        $addresses = $this->addressService->listForUser(auth()->id())->load('country');
 
         return ApiResponse::success([
             'addresses' => AddressResource::collection($addresses),
@@ -33,7 +33,7 @@ class AddressController extends Controller
         $data = $request->only(array_merge($fillable, $meta));
         $data['user_id'] = auth()->id();
 
-        $address = $this->addressService->createAddress($data);
+        $address = $this->addressService->createAddress($data)->load('country');
 
         return ApiResponse::success([
             'address' => new AddressResource($address),
@@ -51,7 +51,7 @@ class AddressController extends Controller
         $meta = ['set_default_shipping', 'set_default_billing', 'is_default'];
 
         $data = $request->only(array_merge($fillable, $meta));
-        $address = $this->addressService->updateAddress($address, $data);
+        $address = $this->addressService->updateAddress($address, $data)->load('country');
 
         return ApiResponse::success([
             'address' => new AddressResource($address),

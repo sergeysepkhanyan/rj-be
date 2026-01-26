@@ -108,7 +108,7 @@ class BookingsController extends Controller
     {
         $this->authorize('update', $booking);
 
-        $result = $this->bookingService->cancelBooking($booking, $request->validated());
+        $result = $this->bookingService->cancelBooking($booking, $request->all());
         $this->bookingService->sendBookingCancellation($result);
 
         return ApiResponse::success([

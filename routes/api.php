@@ -36,10 +36,14 @@ use App\Http\Controllers\API\Admin\StaffController as AdminStaffController;
 use App\Http\Controllers\API\Admin\BookingsController as AdminBookingsController;
 use App\Http\Controllers\API\Admin\ContactMessageController as AdminContactMessageController;
 use App\Http\Controllers\API\Admin\OrdersController as AdminOrdersController;
+use App\Http\Controllers\API\Admin\PageSeoController;
+use App\Http\Controllers\API\Admin\TrackingConfigController;
+use App\Http\Controllers\API\Admin\DiscountSettingController;
 use App\Http\Controllers\API\Webhook\StripeWebhookController;
 use App\Http\Controllers\API\Webhook\TabbyWebhookController;
 use App\Http\Controllers\API\WeekdaysController;
 use App\Http\Controllers\API\WorkingHoursController;
+use App\Http\Controllers\API\CountriesController;
 use App\Http\Controllers\API\Admin\WorkingHoursController as AdminWorkingHoursController;
 use App\Http\Resources\UserResource;
 use App\Models\User;
@@ -68,6 +72,7 @@ Route::middleware(['set.locale'])->group(function () {
     Route::get('/products', [ProductsController::class, 'index']);
     Route::get('/products/by-slug/{slug}', [ProductsController::class, 'getBySlug']);
     Route::get('/product-categories', [ProductCategoriesController::class, 'index']);
+    Route::get('/countries', [CountriesController::class, 'index']);
     Route::get('/cart', [CartController::class, 'index']);
     Route::post('/cart/items', [CartController::class, 'store']);
     Route::post('/cart/items/{product}/increment', [CartController::class, 'increment']);
@@ -179,6 +184,24 @@ Route::middleware(['set.locale'])->group(function () {
         Route::get('/admin/reports/top-products', [AdminReportsController::class, 'topProducts']);
     });
 
+    Route::middleware(['jwt.custom', 'verified', 'role:superadmin,admin,marketer'])->group(function () {
+        Route::post('/admin/post/create', [AdminPostsController::class, 'store']);
+        Route::put('/admin/post/update/{post}', [AdminPostsController::class, 'update']);
+        Route::delete('/admin/post/delete/{post}', [AdminPostsController::class, 'destroy']);
+
+        Route::put('/admin/pages', [AdminPagesController::class, 'update']);
+
+        Route::get('/admin/page-seo', [PageSeoController::class, 'index']);
+        Route::get('/admin/page-seo/{page_key}', [PageSeoController::class, 'show']);
+        Route::put('/admin/page-seo/{page_key}', [PageSeoController::class, 'update']);
+
+        Route::get('/admin/tracking-config', [TrackingConfigController::class, 'index']);
+        Route::put('/admin/tracking-config', [TrackingConfigController::class, 'update']);
+
+        Route::get('/admin/discount-setting', [DiscountSettingController::class, 'show']);
+        Route::put('/admin/discount-setting', [DiscountSettingController::class, 'update']);
+    });
+
     Route::middleware(['jwt.custom', 'verified', 'role:superadmin,admin'])->group(function () {
         Route::get('/admin/products', [AdminProductsController::class, 'index']);
         Route::get('/admin/categories', [AdminCategoriesController::class, 'index']);
@@ -191,13 +214,9 @@ Route::middleware(['set.locale'])->group(function () {
         Route::post('/admin/product/bulk-delete', [AdminProductsController::class, 'bulkDelete']);
         Route::post('/admin/product/bulk-status', [AdminProductsController::class, 'bulkStatus']);
 
-        Route::post('/admin/post/create', [AdminPostsController::class, 'store']);
-        Route::put('/admin/post/update/{post}', [AdminPostsController::class, 'update']);
-        Route::delete('/admin/post/delete/{post}', [AdminPostsController::class, 'destroy']);
-
         Route::get('/referrals', [ReferralsController::class, 'index']);
 
-        Route::put('/admin/pages', [AdminPagesController::class, 'update']);
+        Route::post('/admin/orders', [AdminOrdersController::class, 'store']);
 
         Route::get('/admin/contact-messages', [AdminContactMessageController::class, 'index']);
         Route::patch('/admin/contact-messages/{contactMessage}/read', [AdminContactMessageController::class, 'markRead']);
@@ -223,16 +242,13 @@ Route::middleware(['set.locale'])->group(function () {
         Route::get('/admin/orders/{order}/invoice/xlsx', [AdminOrdersController::class, 'downloadInvoiceXlsx']);
         Route::get('/admin/orders/export/pdf', [AdminOrdersController::class, 'exportOrdersPdf']);
         Route::get('/admin/orders/export/xlsx', [AdminOrdersController::class, 'exportOrdersXlsx']);
-
-        Route::post('/admin/post/create', [AdminPostsController::class, 'store']);
-        Route::put('/admin/post/update/{post}', [AdminPostsController::class, 'update']);
-
-        Route::get('/referrals', [ReferralsController::class, 'index']);
     });
 
     Route::get('/masters', [StaffController::class, 'getMasters']);
     Route::get('/weekdays', [WeekdaysController::class, 'index']);
     Route::get('working-hours', [WorkingHoursController::class, 'index']);
+
+    Route::get('/tracking-config/public', [TrackingConfigController::class, 'public']);
 });
 
 Route::post('/webhooks/tabby', [TabbyWebhookController::class, 'handle']);

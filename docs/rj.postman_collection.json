@@ -1710,7 +1710,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n    \"role\": \"master\",\n    \"name\": \"Charlie Master\",\n    \"nameAr\": \"Charlie Master\",\n    \"email\": \"chardleiae1a.master@example.com\",\n    \"mobile\": \"333233332333331\",\n    \"subservices\": [\n        1,\n        2\n    ],\n    \"weekends\": [\n        6,\n        7\n    ]\n}",
+                  "raw": "{\n    \"role\": \"admin\",\n    \"name\": \"John Admin\",\n    \"nameAr\": \"John Admin\",\n    \"email\": \"admin@example.com\",\n    \"mobile\": \"+971501234567\"\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -1728,7 +1728,8 @@
                     "staff",
                     "create"
                   ]
-                }
+                },
+                "description": "Create a new staff member. Role options: 'admin', 'master', 'marketer'. For admin/marketer: email and mobile are required, temporary password is generated and sent via email (admin receives 'Admin Access' email, marketer receives 'Marketer Access' email). For master: subservices and weekends can be assigned. Maximum 2 admins and 2 marketers allowed. Access: Admin, SuperAdmin."
               },
               "response": []
             },
@@ -2788,7 +2789,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{url}}/api/admin/products/?availability=On%20Stock&status=active&month=august&year=2025&page=1&per_page=15",
+                  "raw": "{{url}}/api/admin/products/?search=&availability=On%20Stock&status=active&month=august&year=2025&page=1&per_page=15",
                   "host": [
                     "{{url}}"
                   ],
@@ -2798,6 +2799,11 @@
                     "products"
                   ],
                   "query": [
+                    {
+                      "key": "search",
+                      "value": "",
+                      "description": "Search term (searches in name, name_ar, description, description_ar, sku_id)"
+                    },
                     {
                       "key": "availability",
                       "value": "On Stock"
@@ -2828,6 +2834,38 @@
               "response": []
             },
             {
+              "name": "get product by slug",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Accept-Language",
+                    "value": "en",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{url}}/api/products/by-slug/product-slug-name",
+                  "host": [
+                    "{{url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "products",
+                    "by-slug",
+                    "product-slug-name"
+                  ]
+                },
+                "description": "Get product by slug. Returns product details including SEO fields. Use this for product detail pages with SEO-friendly URLs."
+              },
+              "response": []
+            },
+            {
               "name": "public products",
               "request": {
                 "method": "GET",
@@ -2844,7 +2882,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{url}}/api/products?page=1&per_page=15",
+                  "raw": "{{url}}/api/products?search=&page=1&per_page=15",
                   "host": [
                     "{{url}}"
                   ],
@@ -2853,6 +2891,11 @@
                     "products"
                   ],
                   "query": [
+                    {
+                      "key": "search",
+                      "value": "",
+                      "description": "Search term (searches in name, name_ar, description, description_ar, sku_id)"
+                    },
                     {
                       "key": "page",
                       "value": "1"
@@ -2863,6 +2906,31 @@
                     }
                   ]
                 }
+              },
+              "response": []
+            },
+            {
+              "name": "get countries",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{url}}/api/countries",
+                  "host": [
+                    "{{url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "countries"
+                  ]
+                },
+                "description": "Get all enabled countries. Returns list of countries with id, name, nameAr, code, code3. No authentication required. Use this to populate country dropdown in address forms."
               },
               "response": []
             },
@@ -3518,7 +3586,7 @@
                 "delivery-status"
               ]
             },
-            "description": "Update delivery status for an ecommerce order. Valid values: 'ordered', 'out_for_delivery', 'arriving', 'delivered'. When status is set to 'delivered', the order status is automatically updated to 'fulfilled'."
+            "description": "Update delivery status for an ecommerce order. Valid values: 'ordered', 'out_of_delivery', 'delivered', 'canceled'. When status is set to 'delivered', the order status is automatically updated to 'fulfilled'."
           },
           "response": []
         },
@@ -3566,6 +3634,51 @@
               ]
             },
             "description": "Update order status. Valid statuses: 'pending', 'pending_payment', 'processing', 'shipped', 'paid', 'refunded', 'cancelled', 'fulfilled'. Status flow: pending → processing → shipped → out_for_delivery → delivered. 'cancelled' and 'refunded' can be set from any stage. Optional 'note' field can be included."
+          },
+          "response": []
+        },
+        {
+          "name": "create order manually",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerName\": \"John Doe\",\n  \"customerEmail\": \"john@example.com\",\n  \"customerPhone\": \"+971501234567\",\n  \"items\": [\n    {\n      \"product_id\": 1,\n      \"name\": \"Product Name\",\n      \"price\": 100.00,\n      \"quantity\": 2,\n      \"image\": \"path/to/image.jpg\"\n    }\n  ],\n  \"subtotal\": 200.00,\n  \"tax\": 10.00,\n  \"total\": 210.00,\n  \"currency\": \"AED\",\n  \"discountType\": \"percentage\",\n  \"discountValue\": 10,\n  \"discountLabel\": \"10% Discount\",\n  \"discountAmount\": 20.00,\n  \"notes\": \"Special order notes\",\n  \"shippingAddress\": {\n    \"name\": \"John Doe\",\n    \"lastName\": \"Smith\",\n    \"mobile\": \"+971501234567\",\n    \"address\": \"123 Main St\",\n    \"additionalAddress\": \"Apt 4B\",\n    \"city\": \"Dubai\",\n    \"country\": \"United Arab Emirates\",\n    \"zipCode\": \"12345\"\n  },\n  \"billingSameAsShipping\": true,\n  \"sendEmail\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{url}}/api/admin/orders",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "orders"
+              ]
+            },
+            "description": "Create an order manually as admin. Requires customer info (name, email, phone), items with product_id, name, price, quantity, and shipping address with country field. Product quantities are automatically decremented. Returns created order with customer and client info."
           },
           "response": []
         },
@@ -3714,6 +3827,308 @@
               ]
             },
             "description": "Export multiple orders as Excel (XLSX) file. Can filter by 'ids' parameter (comma-separated) or use filters (search, status, month, year). Returns an Excel file with a table of all selected orders named 'orders-export-{date}.xlsx'."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "page-seo",
+      "item": [
+        {
+          "name": "get all page seo",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{url}}/api/admin/page-seo",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "page-seo"
+              ]
+            },
+            "description": "Get all page SEO settings. Returns object with page_key as keys. Access: Admin, SuperAdmin, Marketer."
+          },
+          "response": []
+        },
+        {
+          "name": "get page seo by key",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{url}}/api/admin/page-seo/homepage",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "page-seo",
+                "homepage"
+              ]
+            },
+            "description": "Get SEO settings for a specific page by page_key. Access: Admin, SuperAdmin, Marketer."
+          },
+          "response": []
+        },
+        {
+          "name": "update page seo",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"metaTitle\": \"Home Page Title\",\n  \"metaTitleAr\": \"عنوان الصفحة الرئيسية\",\n  \"metaDescription\": \"Home page description\",\n  \"metaDescriptionAr\": \"وصف الصفحة الرئيسية\",\n  \"keywords\": \"keyword1, keyword2\",\n  \"keywordsAr\": \"كلمة1، كلمة2\",\n  \"ogImage\": \"path/to/image.jpg\",\n  \"canonicalUrl\": \"https://example.com/homepage\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{url}}/api/admin/page-seo/homepage",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "page-seo",
+                "homepage"
+              ]
+            },
+            "description": "Update SEO settings for a specific page. All fields are optional. Access: Admin, SuperAdmin, Marketer."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "tracking-config",
+      "item": [
+        {
+          "name": "get tracking config",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{url}}/api/admin/tracking-config",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "tracking-config"
+              ]
+            },
+            "description": "Get tracking configuration (admin view). Returns tracking IDs and custom scripts. Access: Admin, SuperAdmin, Marketer."
+          },
+          "response": []
+        },
+        {
+          "name": "update tracking config",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"googleAnalyticsId\": \"UA-123456\",\n  \"googleTagManagerId\": \"GTM-ABC123\",\n  \"facebookPixelId\": \"123456789\",\n  \"snapchatPixelId\": \"snapchat-pixel-id\",\n  \"customScripts\": [\n    {\n      \"id\": \"uuid-here\",\n      \"name\": \"Custom Script Name\",\n      \"code\": \"<script>console.log('test');</script>\",\n      \"position\": \"head\",\n      \"enabled\": true\n    },\n    {\n      \"_delete\": true,\n      \"id\": \"uuid-to-delete\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{url}}/api/admin/tracking-config",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "tracking-config"
+              ]
+            },
+            "description": "Update tracking configuration. Include custom scripts with id for updates, or _delete flag for deletion. Position options: head, body_start, body_end. Access: Admin, SuperAdmin, Marketer."
+          },
+          "response": []
+        },
+        {
+          "name": "get public tracking config",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{url}}/api/tracking-config/public",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "tracking-config",
+                "public"
+              ]
+            },
+            "description": "Get public tracking configuration (no auth required). Returns tracking IDs and scripts grouped by position (head_scripts, body_start_scripts, body_end_scripts). Use this to inject scripts in frontend."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "discount-setting",
+      "item": [
+        {
+          "name": "get discount setting",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{url}}/api/admin/discount-setting",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "discount-setting"
+              ]
+            },
+            "description": "Get discount settings. Returns quantity threshold, discount percentage, label, and enabled status. Access: Admin, SuperAdmin, Marketer."
+          },
+          "response": []
+        },
+        {
+          "name": "update discount setting",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantityThreshold\": 10,\n  \"discountPercentage\": 10.00,\n  \"discountLabel\": \"Bulk Discount\",\n  \"enabled\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{url}}/api/admin/discount-setting",
+              "host": [
+                "{{url}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "discount-setting"
+              ]
+            },
+            "description": "Update discount settings. When enabled and cart quantity >= quantityThreshold, automatic discount is applied. Access: Admin, SuperAdmin, Marketer."
           },
           "response": []
         }
@@ -3871,7 +4286,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n    \"type\": \"shipping\",\n    \"setDefaultShipping\": true,\n    \"setDefaultBilling\": true,\n    \"name\": \"John\",\n    \"lastName\": \"Doe\",\n    \"mobile\": \"+1234567890\",\n    \"address\": \"123 Main St\",\n    \"additionalAddress\": \"Apt 4B\",\n    \"city\": \"New York\",\n    \"state\": \"NY\",\n    \"zipCode\": \"10001\",\n    \"isDefault\": true\n}",
+                  "raw": "{\n    \"type\": \"shipping\",\n    \"setDefaultShipping\": true,\n    \"setDefaultBilling\": true,\n    \"name\": \"John\",\n    \"lastName\": \"Doe\",\n    \"mobile\": \"+1234567890\",\n    \"address\": \"123 Main St\",\n    \"additionalAddress\": \"Apt 4B\",\n    \"city\": \"Dubai\",\n    \"country\": \"United Arab Emirates\",\n    \"zipCode\": \"12345\",\n    \"isDefault\": true\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -3914,7 +4329,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n    \"_method\": \"PUT\",\n    \"type\": \"shipping\",\n    \"setDefaultShipping\": true,\n    \"setDefaultBilling\": true,\n    \"name\": \"John\",\n    \"lastName\": \"Doe\",\n    \"mobile\": \"+1234567890\",\n    \"address\": \"123 Main St\",\n    \"additionalAddress\": \"Apt 4B\",\n    \"city\": \"New York\",\n    \"state\": \"NY\",\n    \"zipCode\": \"10001\",\n    \"isDefault\": true\n}",
+                  "raw": "{\n    \"_method\": \"PUT\",\n    \"type\": \"shipping\",\n    \"setDefaultShipping\": true,\n    \"setDefaultBilling\": true,\n    \"name\": \"John\",\n    \"lastName\": \"Doe\",\n    \"mobile\": \"+1234567890\",\n    \"address\": \"123 Main St\",\n    \"additionalAddress\": \"Apt 4B\",\n    \"city\": \"Dubai\",\n    \"country\": \"United Arab Emirates\",\n    \"zipCode\": \"12345\",\n    \"isDefault\": true\n}",
                   "options": {
                     "raw": {
                       "language": "json"

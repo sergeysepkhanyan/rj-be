@@ -56,7 +56,7 @@ class AddressRepository implements AddressRepositoryInterface
             'user_id',
             'name','last_name','mobile',
             'address','additional_address',
-            'city','state','zip_code',
+            'city','country_id','zip_code',
         ]);
 
         $data['type'] = $type;

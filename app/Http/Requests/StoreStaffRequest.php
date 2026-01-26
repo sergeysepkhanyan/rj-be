@@ -13,7 +13,7 @@ class StoreStaffRequest extends BaseFormRequest
     public function rules(): array
     {
         return [
-            'role' => 'required|in:admin,master',
+            'role' => 'required|in:admin,master,marketer',
             'name' => 'required|string',
             'nameAr' => 'nullable|string',
             'email' => [

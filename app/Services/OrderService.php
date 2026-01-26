@@ -8,11 +8,13 @@ use App\Enums\OrderType;
 use App\Filters\OrderFilter;
 use App\Mail\OrderConfirmedMail;
 use App\Mail\OrderDeliveryStatusUpdatedMail;
+use App\Models\Address;
 use App\Models\Booking;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderStatusHistory;
 use App\Models\Product;
+use App\Repositories\Interfaces\AddressRepositoryInterface;
 use App\Repositories\Interfaces\BookingRepositoryInterface;
 use App\Repositories\Interfaces\OrderRepositoryInterface;
 use App\Services\ApiResponse;
@@ -30,8 +32,116 @@ class OrderService
     public function __construct(
         protected OrderRepositoryInterface $orderRepository,
         protected BookingRepositoryInterface $bookingRepository,
-        protected PaymentService $paymentService
+        protected PaymentService $paymentService,
+        protected AddressRepositoryInterface $addressRepository
     ) {}
+
+    public function createManually(array $data, bool $sendEmail = false): Order
+    {
+        return DB::transaction(function () use ($data, $sendEmail) {
+            $customerName = $data['customer_name'];
+            $customerEmail = $data['customer_email'];
+            $customerPhone = $data['customer_phone'];
+            $items = $data['items'];
+            $total = (float) $data['total'];
+            $currency = $data['currency'] ?? 'AED';
+            $shippingAddress = $data['shipping_address'];
+            $billingAddress = $data['billing_address'] ?? null;
+            $billingSameAsShipping = (bool) ($data['billing_same_as_shipping'] ?? false);
+
+            foreach ($items as $item) {
+                $product = Product::find($item['product_id']);
+                if (!$product) {
+                    throw new \Illuminate\Validation\ValidationException(
+                        \Illuminate\Support\Facades\Validator::make([], []),
+                        ['items' => [__('validation.product_not_found', ['id' => $item['product_id']])]]
+                    );
+                }
+
+                $available = (int) $product->max_quantity;
+                if ($item['quantity'] > $available) {
+                    throw new \Illuminate\Validation\ValidationException(
+                        \Illuminate\Support\Facades\Validator::make([], []),
+                        ['items' => [__('validation.insufficient_stock', ['available' => $available])]]
+                    );
+                }
+            }
+
+            $order = $this->orderRepository->create([
+                'user_id' => null,
+                'type' => OrderType::Ecommerce,
+                'orderable_type' => null,
+                'orderable_id' => null,
+                'amount' => $total,
+                'currency' => $currency,
+                'status' => OrderStatus::Pending->value,
+                'delivery_status' => 'ordered',
+                'delivery_status_updated_at' => now(),
+                'reference' => $this->makeReference(),
+                'meta' => [
+                    'customer_name' => $customerName,
+                    'customer_email' => $customerEmail,
+                    'customer_phone' => $customerPhone,
+                    'discount_type' => $data['discount_type'] ?? null,
+                    'discount_value' => $data['discount_value'] ?? null,
+                    'discount_label' => $data['discount_label'] ?? null,
+                    'discount_amount' => $data['discount_amount'] ?? null,
+                    'notes' => $data['notes'] ?? null,
+                ],
+            ]);
+
+            $this->createOrderAddress($order, null, $shippingAddress, 'shipping');
+
+            if ($billingSameAsShipping) {
+                $this->createOrderAddress($order, null, $shippingAddress, 'billing');
+            } elseif ($billingAddress) {
+                $this->createOrderAddress($order, null, $billingAddress, 'billing');
+            }
+
+            foreach ($items as $item) {
+                $product = Product::find($item['product_id']);
+                $unitPrice = (float) $item['price'];
+                $quantity = (int) $item['quantity'];
+                $subtotal = $unitPrice * $quantity;
+
+                OrderItem::create([
+                    'order_id' => $order->id,
+                    'product_id' => $product->id,
+                    'quantity' => $quantity,
+                    'unit_price' => $unitPrice,
+                    'subtotal' => $subtotal,
+                    'currency' => $currency,
+                    'image' => $item['image'] ?? null,
+                ]);
+
+                $product->decrement('max_quantity', $quantity);
+            }
+
+            if ($sendEmail) {
+                $this->sendOrderConfirmation($order);
+            }
+
+            return $order->load(['items.product', 'shippingAddress', 'billingAddress']);
+        });
+    }
+
+    protected function createOrderAddress(Order $order, ?int $userId, array $data, string $type): void
+    {
+        $this->addressRepository->create([
+            'user_id' => $userId,
+            'order_id' => $order->id,
+            'type' => $type,
+            'is_default' => false,
+            'name' => $data['name'],
+            'last_name' => $data['last_name'] ?? $data['lastName'] ?? null,
+            'mobile' => $data['mobile'],
+            'address' => $data['address'],
+            'additional_address' => $data['additional_address'] ?? $data['additionalAddress'] ?? null,
+            'city' => $data['city'],
+            'country_id' => $data['country_id'] ?? $data['countryId'] ?? null,
+            'zip_code' => $data['zip_code'] ?? $data['zipCode'] ?? null,
+        ]);
+    }
 
     public function createForBooking(Booking $booking, string $paymentMode): Order
     {

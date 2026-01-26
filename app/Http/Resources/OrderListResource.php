@@ -72,7 +72,7 @@ class OrderListResource extends JsonResource
             $address->address,
             $address->additional_address,
             $address->city,
-            $address->state,
+            $address->country?->name ?? ($address->country_id ? 'Country #' . $address->country_id : null),
             $address->zip_code,
         ]);
 

@@ -14,6 +14,7 @@ class OrderItem extends Model
         'unit_price',
         'subtotal',
         'currency',
+        'image',
     ];
 
     public function order(): BelongsTo
