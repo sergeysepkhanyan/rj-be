@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Country;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use Tests\TestCase;
@@ -11,6 +12,11 @@ class AdminOrderCreationTest extends TestCase
     public function test_admin_can_create_order_manually(): void
     {
         $this->actingAsAdmin();
+
+        $country = Country::firstOrCreate(
+            ['code' => 'AE'],
+            ['name' => 'United Arab Emirates', 'enabled' => true]
+        );
 
         $category = ProductCategory::factory()->create();
         $product = Product::create([
@@ -42,7 +48,7 @@ class AdminOrderCreationTest extends TestCase
                 'mobile' => '+971501234567',
                 'address' => '123 Main St',
                 'city' => 'Dubai',
-                'country' => 'United Arab Emirates',
+                'countryId' => $country->id,
             ],
             'billingSameAsShipping' => true,
         ]);
@@ -62,6 +68,11 @@ class AdminOrderCreationTest extends TestCase
     public function test_order_creation_validates_quantity(): void
     {
         $this->actingAsAdmin();
+
+        $country = Country::firstOrCreate(
+            ['code' => 'AE'],
+            ['name' => 'United Arab Emirates', 'enabled' => true]
+        );
 
         $category = ProductCategory::factory()->create();
         $product = Product::create([
@@ -93,7 +104,7 @@ class AdminOrderCreationTest extends TestCase
                 'mobile' => '+971501234567',
                 'address' => '123 Main St',
                 'city' => 'Dubai',
-                'country' => 'United Arab Emirates',
+                'countryId' => $country->id,
             ],
         ]);
 

@@ -15,7 +15,7 @@ class TrackingConfigRepository implements TrackingConfigRepositoryInterface
             $config = TrackingConfig::create(['id' => 1]);
         }
         
-        return $config;
+        return $config->fresh();
     }
 
     public function update(TrackingConfig $config, array $data): TrackingConfig

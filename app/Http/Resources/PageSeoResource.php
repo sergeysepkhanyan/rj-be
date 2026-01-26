@@ -11,16 +11,16 @@ class PageSeoResource extends BaseResource
         $data = parent::toArray($request);
         
         return [
-            'id' => $this->id ?? null,
-            'pageKey' => $data['page_key'] ?? $this->page_key ?? null,
-            'metaTitle' => $data['meta_title'] ?? $this->meta_title ?? null,
-            'metaTitleAr' => $data['meta_title_ar'] ?? $this->meta_title_ar ?? null,
-            'metaDescription' => $data['meta_description'] ?? $this->meta_description ?? null,
-            'metaDescriptionAr' => $data['meta_description_ar'] ?? $this->meta_description_ar ?? null,
-            'keywords' => $data['keywords'] ?? $this->keywords ?? null,
-            'keywordsAr' => $data['keywords_ar'] ?? $this->keywords_ar ?? null,
-            'ogImage' => $data['og_image'] ?? $this->og_image ?? null,
-            'canonicalUrl' => $data['canonical_url'] ?? $this->canonical_url ?? null,
+            'id' => $this->resource->id ?? null,
+            'pageKey' => $this->resource->page_key ?? null,
+            'metaTitle' => $this->resource->meta_title ?? null,
+            'metaTitleAr' => $this->resource->meta_title_ar ?? null,
+            'metaDescription' => $this->resource->meta_description ?? null,
+            'metaDescriptionAr' => $this->resource->meta_description_ar ?? null,
+            'keywords' => $this->resource->keywords ?? null,
+            'keywordsAr' => $this->resource->keywords_ar ?? null,
+            'ogImage' => $this->resource->og_image ?? null,
+            'canonicalUrl' => $this->resource->canonical_url ?? null,
         ];
     }
 }

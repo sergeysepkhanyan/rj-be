@@ -19,9 +19,9 @@ class TrackingConfigController extends Controller
     {
         $config = $this->trackingConfigService->get();
 
-        return ApiResponse::success([
-            'data' => new TrackingConfigResource($config),
-        ]);
+        return ApiResponse::success(
+            (new TrackingConfigResource($config))->resolve()
+        );
     }
 
     public function update(UpdateTrackingConfigRequest $request): JsonResponse
@@ -30,9 +30,10 @@ class TrackingConfigController extends Controller
 
         $config = $this->trackingConfigService->update($data);
 
-        return ApiResponse::success([
-            'data' => new TrackingConfigResource($config),
-        ], __('success.tracking_config.updated'));
+        return ApiResponse::success(
+            (new TrackingConfigResource($config))->resolve(),
+            __('success.tracking_config.updated')
+        );
     }
 
     public function public(): JsonResponse

@@ -19,9 +19,9 @@ class DiscountSettingController extends Controller
     {
         $setting = $this->discountSettingService->get();
 
-        return ApiResponse::success([
-            'data' => new DiscountSettingResource($setting),
-        ]);
+        return ApiResponse::success(
+            (new DiscountSettingResource($setting))->resolve()
+        );
     }
 
     public function update(UpdateDiscountSettingRequest $request): JsonResponse
@@ -29,8 +29,9 @@ class DiscountSettingController extends Controller
         $data = $request->all();
         $setting = $this->discountSettingService->update($data);
 
-        return ApiResponse::success([
-            'data' => new DiscountSettingResource($setting),
-        ], __('success.discount_setting.updated'));
+        return ApiResponse::success(
+            (new DiscountSettingResource($setting))->resolve(),
+            __('success.discount_setting.updated')
+        );
     }
 }

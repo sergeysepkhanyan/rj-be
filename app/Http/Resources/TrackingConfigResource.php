@@ -11,10 +11,10 @@ class TrackingConfigResource extends BaseResource
         $data = parent::toArray($request);
         
         return [
-            'googleAnalyticsId' => $data['google_analytics_id'] ?? $this->google_analytics_id ?? null,
-            'googleTagManagerId' => $data['google_tag_manager_id'] ?? $this->google_tag_manager_id ?? null,
-            'facebookPixelId' => $data['facebook_pixel_id'] ?? $this->facebook_pixel_id ?? null,
-            'snapchatPixelId' => $data['snapchat_pixel_id'] ?? $this->snapchat_pixel_id ?? null,
+            'googleAnalyticsId' => $this->resource->google_analytics_id ?? null,
+            'googleTagManagerId' => $this->resource->google_tag_manager_id ?? null,
+            'facebookPixelId' => $this->resource->facebook_pixel_id ?? null,
+            'snapchatPixelId' => $this->resource->snapchat_pixel_id ?? null,
             'customScripts' => $this->whenLoaded('customScripts', function () {
                 return $this->customScripts->map(function ($script) {
                     return [

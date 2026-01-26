@@ -21,7 +21,7 @@ class DiscountSettingRepository implements DiscountSettingRepositoryInterface
             ]);
         }
         
-        return $setting;
+        return $setting->fresh();
     }
 
     public function update(DiscountSetting $setting, array $data): DiscountSetting

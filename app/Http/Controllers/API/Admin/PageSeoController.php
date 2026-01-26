@@ -19,9 +19,7 @@ class PageSeoController extends Controller
     {
         $pages = $this->pageSeoService->getAll();
 
-        return ApiResponse::success([
-            'data' => $pages,
-        ]);
+        return ApiResponse::success($pages);
     }
 
     public function show(string $pageKey): JsonResponse
@@ -32,9 +30,9 @@ class PageSeoController extends Controller
             return ApiResponse::error(null, __('messages.resource_not_found'), 404);
         }
 
-        return ApiResponse::success([
-            'data' => new PageSeoResource($pageSeo),
-        ]);
+        return ApiResponse::success(
+            (new PageSeoResource($pageSeo))->resolve()
+        );
     }
 
     public function update(UpdatePageSeoRequest $request, string $pageKey): JsonResponse
@@ -43,8 +41,9 @@ class PageSeoController extends Controller
 
         $pageSeo = $this->pageSeoService->updateByKey($pageKey, $data);
 
-        return ApiResponse::success([
-            'data' => new PageSeoResource($pageSeo),
-        ], __('success.page_seo.updated'));
+        return ApiResponse::success(
+            (new PageSeoResource($pageSeo))->resolve(),
+            __('success.page_seo.updated')
+        );
     }
 }

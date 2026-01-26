@@ -11,11 +11,11 @@ class DiscountSettingResource extends BaseResource
         $data = parent::toArray($request);
         
         return [
-            'id' => $this->id ?? null,
-            'quantityThreshold' => $data['quantity_threshold'] ?? $this->quantity_threshold ?? 10,
-            'discountPercentage' => $data['discount_percentage'] ?? $this->discount_percentage ?? 10.00,
-            'discountLabel' => $data['discount_label'] ?? $this->discount_label ?? 'Bulk Discount',
-            'enabled' => $data['enabled'] ?? $this->enabled ?? true,
+            'id' => $this->resource->id ?? null,
+            'quantityThreshold' => $this->resource->quantity_threshold ?? 10,
+            'discountPercentage' => (float) ($this->resource->discount_percentage ?? 10.00),
+            'discountLabel' => $this->resource->discount_label ?? 'Bulk Discount',
+            'enabled' => (bool) ($this->resource->enabled ?? true),
         ];
     }
 }

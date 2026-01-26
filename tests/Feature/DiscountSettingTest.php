@@ -25,7 +25,7 @@ class DiscountSettingTest extends TestCase
 
         $response->assertStatus(200)
             ->assertJsonPath('data.quantityThreshold', 10)
-            ->assertJsonPath('data.discountPercentage', 10.00);
+            ->assertJsonPath('data.discountPercentage', 10);
     }
 
     public function test_admin_can_update_discount_settings(): void
@@ -43,6 +43,6 @@ class DiscountSettingTest extends TestCase
 
         $response->assertStatus(200)
             ->assertJsonPath('data.quantityThreshold', 15)
-            ->assertJsonPath('data.discountPercentage', 15.00);
+            ->assertJsonPath('data.discountPercentage', 15);
     }
 }
