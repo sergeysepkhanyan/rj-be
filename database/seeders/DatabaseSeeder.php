@@ -23,7 +23,6 @@ class DatabaseSeeder extends Seeder
             PageSeoSeeder::class,
             TrackingConfigSeeder::class,
             DiscountSettingSeeder::class,
-            PagesSeeder::class,
             WorkingHoursSeeder::class,
         ]);
     }
