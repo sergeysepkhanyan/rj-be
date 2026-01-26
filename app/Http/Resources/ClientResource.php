@@ -34,7 +34,10 @@ class ClientResource extends BaseResource
             'role' => $this->role->name ?? null,
             'bookingsCount' => $this->clientBookings->count(),
             'ordersCount' => 0,
-            'referral' => $this->referral ? new ReferralResource($this->referral) : null
+            'referral' => $this->referral ? new ReferralResource($this->referral) : null,
+            'manualReferral' => $this->whenLoaded('manualReferral', function () {
+                return new ReferralResource($this->manualReferral);
+            })
         ];
     }
 }

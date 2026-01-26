@@ -42,6 +42,7 @@ class ClientsController extends Controller
     public function addReferral(AddReferralRequest $request, User $user): JsonResponse
     {
         $client = $this->userService->updateUser($user, $request->all());
+        $client->load(['referral', 'manualReferral']);
 
         return ApiResponse::success([
             'user' => new ClientResource($client),

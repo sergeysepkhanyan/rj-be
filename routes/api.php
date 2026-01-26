@@ -214,7 +214,8 @@ Route::middleware(['set.locale'])->group(function () {
         Route::post('/admin/product/bulk-delete', [AdminProductsController::class, 'bulkDelete']);
         Route::post('/admin/product/bulk-status', [AdminProductsController::class, 'bulkStatus']);
 
-        Route::get('/referrals', [ReferralsController::class, 'index']);
+        Route::get('/admin/referrals', [ReferralsController::class, 'index']);
+        Route::put('/admin/referrals/{id}', [ReferralsController::class, 'update']);
 
         Route::post('/admin/orders', [AdminOrdersController::class, 'store']);
 

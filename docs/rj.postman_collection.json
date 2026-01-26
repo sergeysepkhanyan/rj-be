@@ -1946,7 +1946,7 @@
           "name": "crm",
           "item": [
             {
-              "name": "add referral",
+              "name": "assign discount tier to client",
               "request": {
                 "method": "PATCH",
                 "header": [
@@ -1968,7 +1968,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n    \"referral_id\": 1\n}",
+                  "raw": "{\n    \"referralId\": 1,\n    \"manualReferralId\": null\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -1987,7 +1987,8 @@
                     "3",
                     "add-referral"
                   ]
-                }
+                },
+                "description": "Assign discount tier to a client. referralId: automatic tier (requires visit threshold). manualReferralId: manual tier (bypasses visit count, takes precedence). Set manualReferralId to null to remove manual assignment. Access: Admin, SuperAdmin."
               },
               "response": []
             },
@@ -2048,15 +2049,63 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{url}}/api/referrals",
+                  "raw": "{{url}}/api/admin/referrals",
                   "host": [
                     "{{url}}"
                   ],
                   "path": [
                     "api",
+                    "admin",
                     "referrals"
                   ]
-                }
+                },
+                "description": "Get all discount tiers (Bronze, Silver, Gold). Returns id, name, nameAr, value, type, visitThreshold, and enabled status. Access: Admin, SuperAdmin."
+              },
+              "response": []
+            },
+            {
+              "name": "update discount tier",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{jwt_token}}",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"visitThreshold\": 15,\n    \"enabled\": true\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{url}}/api/admin/referrals/1",
+                  "host": [
+                    "{{url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "referrals",
+                    "1"
+                  ]
+                },
+                "description": "Update discount tier visit threshold and enabled status. visitThreshold: minimum paid bookings required to qualify. enabled: whether this tier is active. Access: Admin, SuperAdmin."
               },
               "response": []
             }

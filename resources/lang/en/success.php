@@ -107,9 +107,6 @@ return [
     'orders' => [
         'listed' => 'Orders retrieved successfully.',
     ],
-    'order' => [
-        'updated' => 'Order updated successfully.',
-    ],
     'payments' => [
         'listed' => 'Payments retrieved successfully.',
     ],
@@ -117,6 +114,22 @@ return [
     'user' => [
         'updated' => 'Profile updated successfully.',
         'password_changed' => 'Password updated successfully.',
+    ],
+    'referral' => [
+        'updated' => 'Discount tier updated successfully.',
+    ],
+    'order' => [
+        'created' => 'Order created successfully.',
+        'updated' => 'Order updated successfully.',
+    ],
+    'discount_setting' => [
+        'updated' => 'Discount settings updated successfully.',
+    ],
+    'tracking_config' => [
+        'updated' => 'Tracking configuration updated successfully.',
+    ],
+    'page_seo' => [
+        'updated' => 'Page SEO updated successfully.',
     ],
 
 ];

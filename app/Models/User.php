@@ -47,6 +47,7 @@ class User extends Authenticatable implements JWTSubject, CanResetPasswordContra
         'temporary_password_hash',
         'temporary_password_used_at',
         'referral_id',
+        'manual_referral_id',
         'description',
         'description_ar',
         'image',
@@ -132,6 +133,11 @@ class User extends Authenticatable implements JWTSubject, CanResetPasswordContra
     public function referral(): BelongsTo
     {
         return $this->belongsTo(Referral::class);
+    }
+
+    public function manualReferral(): BelongsTo
+    {
+        return $this->belongsTo(Referral::class, 'manual_referral_id');
     }
     public function scopeMasters($query)
     {

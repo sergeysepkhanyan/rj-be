@@ -6,12 +6,14 @@ class AddReferralRequest extends BaseFormRequest
 {
     protected array $fieldMap = [
         'referralId' => 'referral_id',
+        'manualReferralId' => 'manual_referral_id',
     ];
 
     public function rules(): array
     {
         return [
             'referral_id' => 'nullable|exists:referrals,id',
+            'manual_referral_id' => 'nullable|exists:referrals,id',
         ];
     }
 

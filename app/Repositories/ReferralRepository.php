@@ -21,5 +21,11 @@ class ReferralRepository implements ReferralRepositoryInterface
     {
         return Referral::where('name', $name)->first();
     }
+
+    public function update(Referral $referral, array $data): Referral
+    {
+        $referral->update($data);
+        return $referral->fresh();
+    }
 }
 

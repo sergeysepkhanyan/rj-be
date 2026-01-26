@@ -76,7 +76,7 @@ class UserRepository implements UserRepositoryInterface
         return User::whereHas('role', function ($q) {
             $q->where('slug', 'client');
         })
-            ->with(['role'])
+            ->with(['role', 'referral', 'manualReferral'])
             ->orderByDesc('created_at')
             ->paginate($perPage, ['*'], 'page', $page);
     }

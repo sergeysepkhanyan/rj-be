@@ -16,10 +16,13 @@ class ReferralResource extends BaseResource
     {
         $data = parent::toArray($request);
         return [
-            'id' => $data['id'] ?? null,
-            'name' => $data['name'] ?? null,
-            'value' => $data['value'] ?? null,
-            'type' => $data['type'] === 'percentage' ? '%' : 'Fixed',
+            'id' => $this->resource->id ?? null,
+            'name' => $data['name'] ?? $this->resource->name ?? null,
+            'nameAr' => $data['name_ar'] ?? $this->resource->name_ar ?? null,
+            'value' => $data['value'] ?? $this->resource->value ?? null,
+            'type' => $data['type'] ?? $this->resource->type ?? null,
+            'visitThreshold' => $this->resource->visit_threshold ?? null,
+            'enabled' => (bool) ($this->resource->enabled ?? true),
         ];
     }
 }

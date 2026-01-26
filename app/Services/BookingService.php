@@ -696,34 +696,38 @@ class BookingService
         $user = auth()->user();
         
         if ($user && $user->id) {
-            if ($user->referral_id) {
-                $user->loadMissing('referral');
-                if ($user->referral) {
-                    $referral = $user->referral;
-                    if ($referral->type === 'percentage' && $referral->value > 0) {
-                        $visitCount = Booking::where('user_id', $user->id)
-                            ->where('type', 'booking')
-                            ->where('status', '!=', 'cancelled')
-                            ->where('payment_status', 'paid')
-                            ->count();
+            $user->loadMissing(['manualReferral', 'referral']);
+            
+            $referral = null;
+            $bypassVisitCheck = false;
+            
+            if ($user->manual_referral_id && $user->manualReferral) {
+                $referral = $user->manualReferral;
+                $bypassVisitCheck = true;
+            } elseif ($user->referral_id && $user->referral) {
+                $referral = $user->referral;
+            }
+            
+            if ($referral && $referral->enabled && $referral->type === 'percentage' && $referral->value > 0) {
+                if ($bypassVisitCheck) {
+                    return [
+                        'discount_percent' => (float) $referral->value,
+                        'discount_label' => $referral->name . ' Tier Discount',
+                    ];
+                }
+                
+                if ($referral->visit_threshold !== null) {
+                    $visitCount = Booking::where('user_id', $user->id)
+                        ->where('type', 'booking')
+                        ->where('status', '!=', 'cancelled')
+                        ->where('payment_status', 'paid')
+                        ->count();
 
-                        $tierName = $referral->name;
-                        $hasEnoughVisits = false;
-
-                        if ($tierName === 'Gold' && $visitCount >= 50) {
-                            $hasEnoughVisits = true;
-                        } elseif ($tierName === 'Silver' && $visitCount >= 25) {
-                            $hasEnoughVisits = true;
-                        } elseif ($tierName === 'Bronze' && $visitCount >= 11) {
-                            $hasEnoughVisits = true;
-                        }
-
-                        if ($hasEnoughVisits) {
-                            return [
-                                'discount_percent' => (float) $referral->value,
-                                'discount_label' => $referral->name . ' Tier Discount',
-                            ];
-                        }
+                    if ($visitCount >= $referral->visit_threshold) {
+                        return [
+                            'discount_percent' => (float) $referral->value,
+                            'discount_label' => $referral->name . ' Tier Discount',
+                        ];
                     }
                 }
             }

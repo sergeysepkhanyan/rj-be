@@ -22,27 +22,39 @@ class ReferralsSeeder extends Seeder
                 'name' => 'Bronze',
                 'name_ar' => 'البرونزي',
                 'value' => 10,
-                'type' => 'percentage'
+                'type' => 'percentage',
+                'visit_threshold' => 11,
+                'enabled' => true,
             ],
             'silver' => [
                 'name' => 'Silver',
                 'name_ar' => 'الفضي',
                 'value' => 15,
-                'type' => 'percentage'
+                'type' => 'percentage',
+                'visit_threshold' => 25,
+                'enabled' => true,
             ],
             'gold' => [
                 'name' => 'Gold',
                 'name_ar' => 'الذهبي',
                 'value' => 20,
-                'type' => 'percentage'
+                'type' => 'percentage',
+                'visit_threshold' => 50,
+                'enabled' => true,
             ]
         ];
 
 
         foreach ($referrals as $referral) {
-            Referral::firstOrCreate(
+            Referral::updateOrCreate(
                 ['name' => $referral['name']],
-                ['name_ar' => $referral['name_ar'], 'value' => $referral['value'], 'type' => $referral['type']]
+                [
+                    'name_ar' => $referral['name_ar'],
+                    'value' => $referral['value'],
+                    'type' => $referral['type'],
+                    'visit_threshold' => $referral['visit_threshold'],
+                    'enabled' => $referral['enabled'],
+                ]
             );
         }
     }
