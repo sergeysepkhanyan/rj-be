@@ -128,6 +128,11 @@ class DiscountTierTest extends TestCase
     public function test_automatic_discount_applies_based_on_visit_threshold(): void
     {
         $user = User::factory()->create(['email_verified_at' => now()]);
+        $master = User::factory()->create(['email_verified_at' => now()]);
+        $masterRole = UserRole::where('slug', 'master')->first();
+        if ($masterRole) {
+            $master->update(['user_role_id' => $masterRole->id]);
+        }
         $this->authToken = \Tymon\JWTAuth\Facades\JWTAuth::fromUser($user);
 
         $bronzeReferral = Referral::create([
@@ -142,7 +147,7 @@ class DiscountTierTest extends TestCase
 
         Booking::create([
             'user_id' => $user->id,
-            'master_id' => 1,
+            'master_id' => $master->id,
             'type' => 'booking',
             'date' => now()->subDays(10),
             'start_time' => '10:00',
@@ -155,7 +160,7 @@ class DiscountTierTest extends TestCase
 
         Booking::create([
             'user_id' => $user->id,
-            'master_id' => 1,
+            'master_id' => $master->id,
             'type' => 'booking',
             'date' => now()->subDays(5),
             'start_time' => '10:00',
