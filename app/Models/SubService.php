@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\DeletesImages;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -17,7 +18,7 @@ use Illuminate\Support\HigherOrderCollectionProxy;
  */
 class SubService extends Model
 {
-    use SoftDeletes;
+    use SoftDeletes, DeletesImages;
     protected $fillable = [
         'service_id',
         'name',

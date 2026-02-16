@@ -27,7 +27,7 @@ use Illuminate\Contracts\Auth\CanResetPassword as CanResetPasswordContract;
 class User extends Authenticatable implements JWTSubject, CanResetPasswordContract, MustVerifyEmail
 {
 
-    use HasFactory, Notifiable, SoftDeletes, CanResetPassword;
+    use HasFactory, Notifiable, SoftDeletes, CanResetPassword, \App\Traits\DeletesImages;
 
     /**
      * The attributes that are mass assignable.
