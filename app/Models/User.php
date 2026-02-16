@@ -35,6 +35,8 @@ class User extends Authenticatable implements JWTSubject, CanResetPasswordContra
      * @var list<string>
      */
     protected $fillable = [
+        'first_name',
+        'last_name',
         'name',
         'name_ar',
         'email',

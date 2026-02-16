@@ -25,7 +25,8 @@ class UserResource extends BaseResource
 
         return [
             'id' => $data['id'] ?? null,
-            'name' => $data['name'] ?? null,
+            'firstName' => $data['first_name'] ?? null,
+            'lastName' => $data['last_name'] ?? null,
             'email' => $data['email'] ?? null,
             'mobile' => $data['mobile'] ?? null,
             'dateOfBirth' => $data['date_of_birth'] ?? null,
