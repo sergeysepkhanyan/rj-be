@@ -44,7 +44,9 @@ use App\Http\Controllers\API\Webhook\TabbyWebhookController;
 use App\Http\Controllers\API\WeekdaysController;
 use App\Http\Controllers\API\WorkingHoursController;
 use App\Http\Controllers\API\CountriesController;
+use App\Http\Controllers\API\FaqController;
 use App\Http\Controllers\API\Admin\WorkingHoursController as AdminWorkingHoursController;
+use App\Http\Controllers\API\Admin\FaqController as AdminFaqController;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Services\ApiResponse;
@@ -225,6 +227,14 @@ Route::middleware(['set.locale'])->group(function () {
         Route::put('/admin/working-hours', [AdminWorkingHoursController::class, 'bulkUpdate']);
         Route::put('/admin/working-hours/{day}', [AdminWorkingHoursController::class, 'updateDay']);
 
+        // FAQ management
+        Route::get('/admin/faqs', [AdminFaqController::class, 'index']);
+        Route::post('/admin/faqs', [AdminFaqController::class, 'store']);
+        Route::get('/admin/faqs/{id}', [AdminFaqController::class, 'show']);
+        Route::put('/admin/faqs/{id}', [AdminFaqController::class, 'update']);
+        Route::delete('/admin/faqs/{id}', [AdminFaqController::class, 'destroy']);
+        Route::post('/admin/faqs/reorder', [AdminFaqController::class, 'reorder']);
+
         Route::patch('/admin/clients/{user}/add-referral', [ClientsController::class, 'addReferral']);
         Route::get('/admin/clients', [ClientsController::class, 'index']);
 
@@ -248,6 +258,7 @@ Route::middleware(['set.locale'])->group(function () {
     Route::get('/masters', [StaffController::class, 'getMasters']);
     Route::get('/weekdays', [WeekdaysController::class, 'index']);
     Route::get('working-hours', [WorkingHoursController::class, 'index']);
+    Route::get('/faqs', [FaqController::class, 'index']);
 
     Route::get('/tracking-config/public', [TrackingConfigController::class, 'public']);
 });
