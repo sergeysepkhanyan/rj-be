@@ -27,13 +27,13 @@ class SignupRequest extends BaseFormRequest
             'email' => [
                 'required',
                 'email',
-                Rule::unique('users', 'email')->whereNull('deleted_at'),
+                Rule::unique('users', 'email'),
             ],
             'mobile' => [
                 'required',
                 'string',
                 'regex:/^[+\-0-9]+$/',
-                Rule::unique('users', 'mobile')->whereNull('deleted_at'),
+                Rule::unique('users', 'mobile'),
             ],
             'date_of_birth' => 'nullable|date|date_format:Y-m-d|before_or_equal:' . now()->subYears(18)->format('Y-m-d'),
             'password' => ['required', 'string', 'min:6', 'same:passwordConfirmation'],

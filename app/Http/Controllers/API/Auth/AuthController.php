@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Auth\GoogleAuthRequest;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\SignupRequest;
 use App\Http\Resources\UserResource;
@@ -12,6 +13,7 @@ use App\Models\UserRole;
 use App\Services\ApiResponse;
 use App\Services\BookingSelectionService;
 use App\Services\CartService;
+use App\Services\GoogleAuthService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
@@ -105,6 +107,69 @@ class AuthController extends Controller
             ?? $request->header('X-Guest-Session-Id')
             ?? $request->header('X-Guest-Session')
             ?? $request->cookie('guest_session_id');
+        if ($guestSessionId) {
+            $bookingSelectionService->attachGuestSelectionsToUser($guestSessionId, $user->id);
+            $cartService->mergeGuestCartToUser($guestSessionId, $user->id);
+        }
+
+        return ApiResponse::success([
+            'user' => new UserResource($user),
+            'token' => $token,
+        ], __('success.auth.logged_in'));
+    }
+
+    public function google(
+        GoogleAuthRequest $request,
+        GoogleAuthService $googleAuthService,
+        BookingSelectionService $bookingSelectionService,
+        CartService $cartService
+    ): JsonResponse
+    {
+        $credential = $request->input('credential');
+
+        // Verify Google token and get user info
+        $googleUser = $googleAuthService->verifyAccessToken($credential);
+
+        if (!$googleUser) {
+            return ApiResponse::error(
+                ['auth' => [__('errors.auth.google_auth_failed')]],
+                __('errors.auth.google_auth_failed'),
+                401
+            );
+        }
+
+        // Find or create user
+        $user = $googleAuthService->findOrCreateUser($googleUser);
+
+        // Check if user is active
+        if (($user->status ?? null) !== 'active') {
+            return ApiResponse::error(
+                ['auth' => [__('errors.auth.account_inactive')]],
+                __('errors.auth.account_inactive'),
+                401
+            );
+        }
+
+        // Generate JWT token
+        $token = auth()->login($user);
+
+        if (!$token) {
+            return ApiResponse::error(
+                ['auth' => [__('errors.auth.google_auth_failed')]],
+                __('errors.auth.google_auth_failed'),
+                401
+            );
+        }
+
+        $user = auth()->user()->load('role');
+
+        // Handle guest session merging
+        $guestSessionId = $request->input('guest_session_id')
+            ?? $request->input('guestSessionId')
+            ?? $request->header('X-Guest-Session-Id')
+            ?? $request->header('X-Guest-Session')
+            ?? $request->cookie('guest_session_id');
+
         if ($guestSessionId) {
             $bookingSelectionService->attachGuestSelectionsToUser($guestSessionId, $user->id);
             $cartService->mergeGuestCartToUser($guestSessionId, $user->id);

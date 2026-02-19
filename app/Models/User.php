@@ -40,6 +40,7 @@ class User extends Authenticatable implements JWTSubject, CanResetPasswordContra
         'name',
         'name_ar',
         'email',
+        'google_id',
         'stripe_customer_id',
         'mobile',
         'password',
@@ -54,7 +55,8 @@ class User extends Authenticatable implements JWTSubject, CanResetPasswordContra
         'description_ar',
         'image',
         'timezone',
-        'email_verified_at'
+        'email_verified_at',
+        'status',
     ];
 
     protected $casts = [
@@ -119,6 +121,26 @@ class User extends Authenticatable implements JWTSubject, CanResetPasswordContra
     public function clientBookings(): HasMany
     {
         return $this->hasMany(Booking::class, 'user_id');
+    }
+
+    public function orders(): HasMany
+    {
+        return $this->hasMany(Order::class, 'user_id');
+    }
+
+    public function notes(): HasMany
+    {
+        return $this->hasMany(ClientNote::class, 'client_id');
+    }
+
+    public function addresses(): HasMany
+    {
+        return $this->hasMany(Address::class, 'user_id');
+    }
+
+    public function isLocked(): bool
+    {
+        return $this->status === 'locked';
     }
 
 

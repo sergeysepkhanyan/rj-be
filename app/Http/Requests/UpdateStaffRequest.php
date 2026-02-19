@@ -12,7 +12,32 @@ class UpdateStaffRequest extends BaseFormRequest
 
     public function rules(): array
     {
-        $id = $this->route('id');
+        $id = $this->route('user')?->id ?? $this->route('id');
+        $role = $this->input('role');
+
+        // Get role IDs for the uniqueness check
+        $masterRoleId = \App\Models\UserRole::where('slug', 'master')->value('id');
+        $adminRoleIds = \App\Models\UserRole::whereIn('slug', ['admin', 'marketer', 'superadmin'])->pluck('id')->toArray();
+
+        // Define which roles share email/mobile uniqueness
+        // Masters can use emails/mobiles that admins/marketers have (separate pools)
+        if ($role === 'master') {
+            // Masters: only check uniqueness among other masters
+            $emailUniqueRule = Rule::unique('users', 'email')
+                ->ignore($id)
+                ->where('user_role_id', $masterRoleId);
+            $mobileUniqueRule = Rule::unique('users', 'mobile')
+                ->ignore($id)
+                ->where('user_role_id', $masterRoleId);
+        } else {
+            // Admins and marketers must have unique emails/mobiles among themselves
+            $emailUniqueRule = Rule::unique('users', 'email')
+                ->ignore($id)
+                ->whereIn('user_role_id', $adminRoleIds);
+            $mobileUniqueRule = Rule::unique('users', 'mobile')
+                ->ignore($id)
+                ->whereIn('user_role_id', $adminRoleIds);
+        }
 
         return [
             'role' => 'required|in:admin,master,marketer',
@@ -21,16 +46,14 @@ class UpdateStaffRequest extends BaseFormRequest
             'email' => [
                 'required_if:role,admin,marketer',
                 'email',
-                Rule::unique('users', 'email')
-                    ->ignore($id),
+                $emailUniqueRule,
             ],
 
             'mobile' => [
                 'required_if:role,admin,marketer',
                 'string',
                 'regex:/^[+\-0-9]+$/',
-                Rule::unique('users', 'mobile')
-                    ->ignore($id),
+                $mobileUniqueRule,
             ],
             'subservices' => 'nullable|array',
             'subservices.*' => 'exists:sub_services,id',

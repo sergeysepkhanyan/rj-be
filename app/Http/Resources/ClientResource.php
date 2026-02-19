@@ -23,9 +23,18 @@ class ClientResource extends BaseResource
     public function toArray($request): array
     {
         $data = parent::toArray($request);
+
+        // Build full name from first_name + last_name if name is empty
+        $fullName = $data['name'] ?? null;
+        if (empty($fullName)) {
+            $firstName = $data['first_name'] ?? '';
+            $lastName = $data['last_name'] ?? '';
+            $fullName = trim($firstName . ' ' . $lastName) ?: null;
+        }
+
         return [
             'id' => $data['id'] ?? null,
-            'name' => $data['name'] ?? null,
+            'name' => $fullName,
             'description' => $data['description'] ?? null,
             'image' => $this->image ? asset('storage/' . $this->image) : null,
             'email' => $data['email'] ?? null,

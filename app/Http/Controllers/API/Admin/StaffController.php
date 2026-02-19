@@ -79,7 +79,8 @@ class StaffController extends Controller
 
     public function destroy(User $user): JsonResponse
     {
-        if (in_array($user->role->slug, ['superadmin', 'client'], true)) {
+        // Super admin cannot delete admins, superadmins, or clients
+        if (in_array($user->role->slug, ['superadmin', 'admin', 'client'], true)) {
             return ApiResponse::error(
                 ['role' => [__('errors.staff.cannot_delete_user_type')]],
                 __('errors.common.forbidden'),
@@ -90,6 +91,22 @@ class StaffController extends Controller
         $this->userService->deleteUser($user);
 
         return ApiResponse::success([], __('success.staff.deleted'));
+    }
+
+    public function resetPassword(User $user): JsonResponse
+    {
+        // Cannot reset password for superadmin
+        if ($user->role->slug === 'superadmin') {
+            return ApiResponse::error(
+                ['role' => [__('errors.staff.cannot_reset_superadmin_password')]],
+                __('errors.common.forbidden'),
+                403
+            );
+        }
+
+        $this->userService->resetStaffPassword($user);
+
+        return ApiResponse::success([], __('success.staff.password_reset'));
     }
 
     public function restore(int $id): JsonResponse

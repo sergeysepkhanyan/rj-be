@@ -269,5 +269,38 @@ class UserService
         return $this->userRepository->restore($id);
     }
 
+    /**
+     * Reset staff password and send email with new credentials
+     */
+    public function resetStaffPassword(User $user): void
+    {
+        $generatedPassword = Str::random(8);
+        $hashedPassword = Hash::make($generatedPassword);
+
+        $this->userRepository->update($user, [
+            'password' => $hashedPassword,
+            'is_temporary_password' => true,
+            'temporary_password_hash' => $hashedPassword,
+            'temporary_password_used_at' => null,
+        ]);
+
+        \Log::info('Resetting password for user', [
+            'user_id' => $user->id,
+            'email' => $user->email,
+            'role' => $user->role->slug,
+        ]);
+
+        // Send email with new credentials based on role
+        if ($user->role->slug === 'admin') {
+            \Log::info('Sending admin access email to: ' . $user->email);
+            Mail::to($user->email)->send(new AdminAccessEmail($user, $generatedPassword));
+            \Log::info('Admin access email sent successfully');
+        } elseif ($user->role->slug === 'marketer') {
+            \Log::info('Sending marketer access email to: ' . $user->email);
+            Mail::to($user->email)->send(new MarketerAccessEmail($user, $generatedPassword));
+            \Log::info('Marketer access email sent successfully');
+        }
+    }
+
 }
 

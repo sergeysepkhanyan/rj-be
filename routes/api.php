@@ -87,6 +87,7 @@ Route::middleware(['set.locale'])->group(function () {
     Route::prefix('auth')->group(function () {
         Route::post('signup', [AuthController::class, 'signup']);
         Route::post('login', [AuthController::class, 'login']);
+        Route::post('google', [AuthController::class, 'google']);
 
         Route::get('email/verify/{id}/{hash}', [EmailVerificationController::class, 'verify'])
             ->middleware(['signed', 'throttle:6,1'])
@@ -176,10 +177,11 @@ Route::middleware(['set.locale'])->group(function () {
 
         Route::post('/admin/staff/create', [AdminStaffController::class, 'store']);
         Route::put('/admin/staff/update/{user}', [AdminStaffController::class, 'update']);
-        Route::delete('/admin/staff/delete/{user}', [AdminStaffController::class, 'destroy']);;
+        Route::delete('/admin/staff/delete/{user}', [AdminStaffController::class, 'destroy']);
         Route::post('/admin/staff/create-many', [AdminStaffController::class, 'createMany']);
         Route::post('/admin/staff/update-many', [AdminStaffController::class, 'updateMany']);
         Route::patch('/admin/staff/{id}/restore', [AdminStaffController::class, 'restore']);
+        Route::post('/admin/staff/{user}/reset-password', [AdminStaffController::class, 'resetPassword']);
 
         Route::get('/admin/reports/today-turnover', [AdminReportsController::class, 'todaysTurnover']);
         Route::get('/admin/reports/top-services', [AdminReportsController::class, 'topServices']);
@@ -237,6 +239,12 @@ Route::middleware(['set.locale'])->group(function () {
 
         Route::patch('/admin/clients/{user}/add-referral', [ClientsController::class, 'addReferral']);
         Route::get('/admin/clients', [ClientsController::class, 'index']);
+        Route::get('/admin/clients/{user}', [ClientsController::class, 'show']);
+        Route::get('/admin/clients/{user}/bookings', [ClientsController::class, 'bookings']);
+        Route::get('/admin/clients/{user}/orders', [ClientsController::class, 'orders']);
+        Route::patch('/admin/clients/{user}/toggle-lock', [ClientsController::class, 'toggleLock']);
+        Route::post('/admin/clients/{user}/notes', [ClientsController::class, 'addNote']);
+        Route::delete('/admin/clients/{user}/notes/{note}', [ClientsController::class, 'deleteNote']);
 
 
         Route::post('/admin/booking/break', [AdminBookingsController::class, 'storeBreak']);
@@ -259,6 +267,7 @@ Route::middleware(['set.locale'])->group(function () {
     Route::get('/weekdays', [WeekdaysController::class, 'index']);
     Route::get('working-hours', [WorkingHoursController::class, 'index']);
     Route::get('/faqs', [FaqController::class, 'index']);
+    Route::get('/referrals', [ReferralsController::class, 'index']);
 
     Route::get('/tracking-config/public', [TrackingConfigController::class, 'public']);
 });

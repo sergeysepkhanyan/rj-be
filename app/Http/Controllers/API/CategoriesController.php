@@ -21,12 +21,17 @@ class CategoriesController
 
     public function index(Request $request): JsonResponse
     {
-        $filters = [
-            'id'   => $request->query('id'),
-            'name' => $request->query('name'),
-        ];
+        $gender = $request->query('gender');
 
-        $categories = $this->categoryService->getAllCategories($filters);
+        if ($gender) {
+            $categories = $this->categoryService->getByGender($gender);
+        } else {
+            $filters = [
+                'id'   => $request->query('id'),
+                'name' => $request->query('name'),
+            ];
+            $categories = $this->categoryService->getAllCategories($filters);
+        }
 
         return ApiResponse::success([
             'categories' => CategoryResource::collection($categories),

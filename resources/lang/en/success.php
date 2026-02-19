@@ -44,6 +44,7 @@ return [
         'deleted' => 'Staff member deleted successfully.',
         'restored' => 'User activated successfully.',
         'masters_listed' => 'Masters retrieved successfully.',
+        'password_reset' => 'Password reset email sent successfully.',
     ],
     'subservice_item' => [
         'deleted' => 'Subservice item deleted successfully.',
