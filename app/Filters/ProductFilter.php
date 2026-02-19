@@ -39,6 +39,10 @@ class ProductFilter
             $this->filterBySearch();
         }
 
+        if ($this->request->has('alert')) {
+            $this->filterByAlert();
+        }
+
         return $this->query;
     }
 
@@ -125,5 +129,53 @@ class ProductFilter
                 ->orWhere('description_ar', 'like', "%{$search}%")
                 ->orWhere('sku_id', 'like', "%{$search}%");
         });
+    }
+
+    protected function filterByAlert(): void
+    {
+        $alert = strtolower(trim((string) $this->request->alert));
+
+        switch ($alert) {
+            case 'low_stock':
+                // Low stock: max_quantity > 0 AND max_quantity <= reorder_point
+                $this->query->where('max_quantity', '>', 0)
+                    ->whereColumn('max_quantity', '<=', 'reorder_point');
+                break;
+
+            case 'expiring_soon':
+                // Expiring soon: expiry_date is within next 30 days and in the future
+                $this->query->whereNotNull('expiry_date')
+                    ->where('expiry_date', '>', now())
+                    ->where('expiry_date', '<=', now()->addDays(30));
+                break;
+
+            case 'expired':
+                // Expired: expiry_date is in the past
+                $this->query->whereNotNull('expiry_date')
+                    ->where('expiry_date', '<', now());
+                break;
+
+            case 'any':
+                // Any alert: low stock OR expiring soon OR expired
+                $this->query->where(function ($q) {
+                    // Low stock
+                    $q->where(function ($sub) {
+                        $sub->where('max_quantity', '>', 0)
+                            ->whereColumn('max_quantity', '<=', 'reorder_point');
+                    })
+                    // OR Expiring soon
+                    ->orWhere(function ($sub) {
+                        $sub->whereNotNull('expiry_date')
+                            ->where('expiry_date', '>', now())
+                            ->where('expiry_date', '<=', now()->addDays(30));
+                    })
+                    // OR Expired
+                    ->orWhere(function ($sub) {
+                        $sub->whereNotNull('expiry_date')
+                            ->where('expiry_date', '<', now());
+                    });
+                });
+                break;
+        }
     }
 }

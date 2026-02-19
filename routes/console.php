@@ -9,3 +9,6 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('bookings:expire-pending')->everyFiveMinutes();
+
+// Send inventory alerts daily at 9 AM
+Schedule::command('inventory:send-alerts')->dailyAt('09:00');

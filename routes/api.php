@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\API\Admin\ClientsController;
+use App\Http\Controllers\API\Admin\SuppliersController;
+use App\Http\Controllers\API\Admin\ProductCategoriesController as AdminProductCategoriesController;
 use App\Http\Controllers\API\Admin\PagesController as AdminPagesController;
 use App\Http\Controllers\API\BookingsController;
 use App\Http\Controllers\API\Client\AddressController;
@@ -83,6 +85,10 @@ Route::middleware(['set.locale'])->group(function () {
     Route::delete('/cart/items/{product}', [CartController::class, 'destroy']);
     Route::delete('/cart', [CartController::class, 'clear']);
     Route::post('/cart/checkout', [CartController::class, 'checkout']);
+
+    // Payment verification for orders (works for both guests and authenticated users)
+    Route::get('/orders/{order}', [OrdersController::class, 'show']);
+    Route::post('/orders/{order}/verify-payment', [OrdersController::class, 'verifyPayment']);
 
     Route::prefix('auth')->group(function () {
         Route::post('signup', [AuthController::class, 'signup']);
@@ -218,10 +224,28 @@ Route::middleware(['set.locale'])->group(function () {
         Route::post('/admin/product/bulk-delete', [AdminProductsController::class, 'bulkDelete']);
         Route::post('/admin/product/bulk-status', [AdminProductsController::class, 'bulkStatus']);
 
+        // Suppliers management
+        Route::get('/admin/suppliers', [SuppliersController::class, 'index']);
+        Route::get('/admin/suppliers/dropdown', [SuppliersController::class, 'dropdown']);
+        Route::post('/admin/suppliers', [SuppliersController::class, 'store']);
+        Route::get('/admin/suppliers/{supplier}', [SuppliersController::class, 'show']);
+        Route::put('/admin/suppliers/{supplier}', [SuppliersController::class, 'update']);
+        Route::delete('/admin/suppliers/{supplier}', [SuppliersController::class, 'destroy']);
+
+        // Product Categories management
+        Route::get('/admin/product-categories', [AdminProductCategoriesController::class, 'index']);
+        Route::get('/admin/product-categories/dropdown', [AdminProductCategoriesController::class, 'dropdown']);
+        Route::post('/admin/product-categories', [AdminProductCategoriesController::class, 'store']);
+        Route::get('/admin/product-categories/{productCategory}', [AdminProductCategoriesController::class, 'show']);
+        Route::put('/admin/product-categories/{productCategory}', [AdminProductCategoriesController::class, 'update']);
+        Route::delete('/admin/product-categories/{productCategory}', [AdminProductCategoriesController::class, 'destroy']);
+        Route::post('/admin/product-categories/reorder', [AdminProductCategoriesController::class, 'reorder']);
+
         Route::get('/admin/referrals', [ReferralsController::class, 'index']);
         Route::put('/admin/referrals/{id}', [ReferralsController::class, 'update']);
 
         Route::post('/admin/orders', [AdminOrdersController::class, 'store']);
+        Route::post('/admin/orders/in-store', [AdminOrdersController::class, 'storeInStore']);
 
         Route::get('/admin/contact-messages', [AdminContactMessageController::class, 'index']);
         Route::patch('/admin/contact-messages/{contactMessage}/read', [AdminContactMessageController::class, 'markRead']);

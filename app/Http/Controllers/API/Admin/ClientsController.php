@@ -57,9 +57,9 @@ class ClientsController extends Controller
         $bookingsCount = $confirmedBookings->count();
         $bookingsTotal = $confirmedBookings->sum('final_price');
 
-        // Get confirmed orders count and total
+        // Get confirmed orders count and total (paid, fulfilled, processing, shipped)
         $confirmedOrders = Order::where('user_id', $user->id)
-            ->where('status', 'paid')
+            ->whereIn('status', ['paid', 'fulfilled', 'processing', 'shipped'])
             ->get();
 
         $ordersCount = $confirmedOrders->count();
@@ -104,12 +104,45 @@ class ClientsController extends Controller
         $perPage = (int) $request->get('per_page', 10);
 
         $orders = Order::where('user_id', $user->id)
-            ->with(['items.product', 'shippingAddress'])
+            ->with(['items.product', 'shippingAddress.country'])
             ->orderBy('created_at', 'desc')
             ->paginate($perPage);
 
+        $formattedOrders = collect($orders->items())->map(function ($order) {
+            return [
+                'id' => $order->id,
+                'reference' => $order->reference,
+                'amount' => $order->amount,
+                'currency' => $order->currency,
+                'type' => $order->type, // 'product' or 'booking'
+                'status' => $order->status,
+                'payment_status' => $order->paid_at ? 'paid' : ($order->status === 'cancelled' ? 'cancelled' : 'unpaid'),
+                'delivery_status' => $order->delivery_status,
+                'created_at' => $order->created_at,
+                'paid_at' => $order->paid_at,
+                'items' => $order->items->map(function ($item) {
+                    return [
+                        'id' => $item->id,
+                        'quantity' => $item->quantity,
+                        'price' => $item->unit_price,
+                        'product' => $item->product ? [
+                            'id' => $item->product->id,
+                            'name' => $item->product->name,
+                            'image' => $item->product->main_image
+                                ? asset('storage/' . $item->product->main_image)
+                                : null,
+                        ] : null,
+                    ];
+                }),
+                'shippingAddress' => $order->shippingAddress ? [
+                    'city' => $order->shippingAddress->city,
+                    'state' => $order->shippingAddress->country?->name ?? null,
+                ] : null,
+            ];
+        });
+
         return ApiResponse::success([
-            'orders' => $orders->items(),
+            'orders' => $formattedOrders,
             'meta' => [
                 'current_page' => $orders->currentPage(),
                 'last_page' => $orders->lastPage(),

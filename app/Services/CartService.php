@@ -170,7 +170,7 @@ class CartService
         }
 
         $currency = null;
-        $total = 0.0;
+        $subtotal = 0.0;
 
         foreach ($items as $item) {
             $product = $item->product;
@@ -191,8 +191,13 @@ class CartService
             }
             $currency = $itemCurrency;
 
-            $total += ((float) $product->price) * (int) $item->quantity;
+            $subtotal += $product->getFinalPrice() * (int) $item->quantity;
         }
+
+        // Add VAT (5%) to the subtotal
+        $vatRate = 0.05;
+        $tax = $subtotal * $vatRate;
+        $total = $subtotal + $tax;
 
         $user = $userId ? User::find($userId) : null;
 
@@ -259,7 +264,7 @@ class CartService
             if (!$product) {
                 continue;
             }
-            $unit = (float) $product->price;
+            $unit = $product->getFinalPrice();
             $subtotal = $unit * (int) $item->quantity;
             OrderItem::create([
                 'order_id' => $order->id,
@@ -268,6 +273,9 @@ class CartService
                 'unit_price' => $unit,
                 'subtotal' => $subtotal,
                 'currency' => $product->currency ?: 'AED',
+                'original_price' => $product->hasDiscount() ? (float) $product->price : null,
+                'discount_type' => $product->hasDiscount() ? $product->discount_type : null,
+                'discount_amount' => $product->hasDiscount() ? (float) $product->discount_amount : null,
             ]);
         }
 
@@ -275,7 +283,7 @@ class CartService
         [$stripeCustomerId, $stripePaymentMethodId] = $this->resolvePaymentMethod($user, $paymentMethodId);
         $this->paymentService->startStripePaymentIntentForOrder(
             $order,
-            $email,
+            $customerEmail,
             $meta,
             $stripeCustomerId,
             $stripePaymentMethodId
@@ -283,7 +291,7 @@ class CartService
 
         $this->cartRepository->deleteBySession($userId, $guestSessionId);
 
-        return $order->load(['latestPayment', 'shippingAddress', 'billingAddress']);
+        return $order->load(['latestPayment', 'shippingAddress.country', 'billingAddress.country']);
     }
 
     protected function resolveSession(?string $guestSessionId): array

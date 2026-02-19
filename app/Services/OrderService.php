@@ -6,8 +6,10 @@ use App\Enums\DeliveryStatus;
 use App\Enums\OrderStatus;
 use App\Enums\OrderType;
 use App\Filters\OrderFilter;
+use App\Mail\NewOrderAdminNotificationMail;
 use App\Mail\OrderConfirmedMail;
 use App\Mail\OrderDeliveryStatusUpdatedMail;
+use App\Models\User;
 use App\Models\Address;
 use App\Models\Booking;
 use App\Models\Order;
@@ -52,18 +54,16 @@ class OrderService
             foreach ($items as $item) {
                 $product = Product::find($item['product_id']);
                 if (!$product) {
-                    throw new \Illuminate\Validation\ValidationException(
-                        \Illuminate\Support\Facades\Validator::make([], []),
-                        ['items' => [__('validation.product_not_found', ['id' => $item['product_id']])]]
-                    );
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'items' => [__('validation.product_not_found', ['id' => $item['product_id']])]
+                    ]);
                 }
 
                 $available = (int) $product->max_quantity;
                 if ($item['quantity'] > $available) {
-                    throw new \Illuminate\Validation\ValidationException(
-                        \Illuminate\Support\Facades\Validator::make([], []),
-                        ['items' => [__('validation.insufficient_stock', ['available' => $available])]]
-                    );
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'items' => [__('validation.insufficient_stock', ['available' => $available])]
+                    ]);
                 }
             }
 
@@ -121,7 +121,7 @@ class OrderService
                 $this->sendOrderConfirmation($order);
             }
 
-            return $order->load(['items.product', 'shippingAddress', 'billingAddress']);
+            return $order->load(['items.product', 'shippingAddress.country', 'billingAddress.country']);
         });
     }
 
@@ -141,6 +141,87 @@ class OrderService
             'country_id' => $data['country_id'] ?? $data['countryId'] ?? null,
             'zip_code' => $data['zip_code'] ?? $data['zipCode'] ?? null,
         ]);
+    }
+
+    public function createInStore(array $data, bool $sendEmail = false): Order
+    {
+        return DB::transaction(function () use ($data, $sendEmail) {
+            $customerName = $data['customer_name'];
+            $customerEmail = $data['customer_email'] ?? null;
+            $customerPhone = $data['customer_phone'] ?? null;
+            $items = $data['items'];
+            $total = (float) $data['total'];
+            $currency = $data['currency'] ?? 'AED';
+            $paymentMethod = $data['payment_method'] ?? 'cash';
+
+            foreach ($items as $item) {
+                $product = Product::find($item['product_id']);
+                if (!$product) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'items' => [__('validation.product_not_found', ['id' => $item['product_id']])]
+                    ]);
+                }
+
+                $available = (int) $product->max_quantity;
+                if ($item['quantity'] > $available) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'items' => [__('validation.insufficient_stock', ['available' => $available])]
+                    ]);
+                }
+            }
+
+            $order = $this->orderRepository->create([
+                'user_id' => null,
+                'type' => OrderType::Ecommerce,
+                'orderable_type' => null,
+                'orderable_id' => null,
+                'amount' => $total,
+                'currency' => $currency,
+                'status' => OrderStatus::Paid->value, // In-store orders are paid immediately
+                'paid_at' => now(),
+                'delivery_status' => 'delivered', // In-store = delivered immediately
+                'delivery_status_updated_at' => now(),
+                'reference' => $this->makeReference(),
+                'meta' => [
+                    'customer_name' => $customerName,
+                    'customer_email' => $customerEmail,
+                    'customer_phone' => $customerPhone,
+                    'payment_method' => $paymentMethod,
+                    'order_type' => 'in_store',
+                    'discount_type' => $data['discount_type'] ?? null,
+                    'discount_value' => $data['discount_value'] ?? null,
+                    'discount_label' => $data['discount_label'] ?? null,
+                    'discount_amount' => $data['discount_amount'] ?? null,
+                    'notes' => $data['notes'] ?? null,
+                ],
+            ]);
+
+            foreach ($items as $item) {
+                $product = Product::find($item['product_id']);
+                $unitPrice = (float) $item['price'];
+                $quantity = (int) $item['quantity'];
+                $subtotal = $unitPrice * $quantity;
+
+                OrderItem::create([
+                    'order_id' => $order->id,
+                    'product_id' => $product->id,
+                    'quantity' => $quantity,
+                    'unit_price' => $unitPrice,
+                    'subtotal' => $subtotal,
+                    'currency' => $currency,
+                    'image' => $item['image'] ?? null,
+                ]);
+
+                // Decrease stock immediately
+                $product->decrement('max_quantity', $quantity);
+            }
+
+            if ($sendEmail && $customerEmail) {
+                $this->sendOrderConfirmation($order);
+            }
+
+            return $order->load(['items.product']);
+        });
     }
 
     public function createForBooking(Booking $booking, string $paymentMode): Order
@@ -245,6 +326,20 @@ class OrderService
         }
 
         Mail::to($email)->queue(new OrderConfirmedMail($order, $email));
+
+        // Also notify admin
+        $this->sendAdminOrderNotification($order);
+    }
+
+    public function sendAdminOrderNotification(Order $order): void
+    {
+        // Get Super Admin email
+        $superAdmin = User::where('role', 'Super Admin')->first();
+        if (!$superAdmin || !$superAdmin->email) {
+            return;
+        }
+
+        Mail::to($superAdmin->email)->queue(new NewOrderAdminNotificationMail($order));
     }
 
     public function updateDeliveryStatus(Order $order, string $deliveryStatus): Order

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API\Admin;
 use App\Filters\OrderFilter;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreOrderRequest;
+use App\Http\Requests\StoreInStoreOrderRequest;
 use App\Http\Requests\UpdateOrderDeliveryStatusRequest;
 use App\Http\Requests\UpdateOrderStatusRequest;
 use App\Http\Resources\AdminOrderResource;
@@ -30,6 +31,19 @@ class OrdersController extends Controller
         $sendEmail = (bool) ($data['send_email'] ?? false);
 
         $order = $this->orderService->createManually($data, $sendEmail);
+        $this->loadOrderForDetail($order);
+
+        return ApiResponse::success([
+            'order' => new OrderResource($order),
+        ], __('success.order.created'));
+    }
+
+    public function storeInStore(StoreInStoreOrderRequest $request): JsonResponse
+    {
+        $data = $request->all();
+        $sendEmail = (bool) ($data['send_email'] ?? false);
+
+        $order = $this->orderService->createInStore($data, $sendEmail);
         $this->loadOrderForDetail($order);
 
         return ApiResponse::success([

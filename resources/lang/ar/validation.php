@@ -3,6 +3,7 @@
 return [
     'failed' => 'فشل التحقق من البيانات.',
     'insufficient_stock' => 'المخزون غير كافٍ. المتاح: :available.',
+    'product_not_found' => 'المنتج غير موجود (الرقم: :id).',
     'cart' => [
         'guest_session_required' => 'معرّف جلسة الضيف مطلوب.',
         'empty' => 'السلة فارغة.',

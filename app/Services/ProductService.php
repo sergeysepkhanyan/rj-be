@@ -42,7 +42,7 @@ class ProductService
                 $this->productDetailRepository->createForProduct($product, $detail);
             }
 
-            return $product->load('details', 'files', 'productCategory');
+            return $product->load('details', 'files', 'productCategory', 'supplier');
         });
     }
 
@@ -90,7 +90,7 @@ class ProductService
                     }
                 }
             }
-            return $product->load('details', 'files', 'productCategory');
+            return $product->load('details', 'files', 'productCategory', 'supplier');
         });
     }
 

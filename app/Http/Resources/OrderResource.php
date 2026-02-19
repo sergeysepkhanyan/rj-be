@@ -50,27 +50,36 @@ class OrderResource extends JsonResource
         $tax = 0;
         $quantity = 0;
 
-        if ($this->type === 'ecommerce' && $this->relationLoaded('items')) {
+        // VAT rate (5%)
+        $vatRate = 0.05;
+
+        if ($this->type === 'ecommerce' && $this->relationLoaded('items') && $this->items->isNotEmpty()) {
             foreach ($this->items as $item) {
                 $itemSubtotal = (float) $item->subtotal;
-                $vatRate = 0.05;
-                $itemBasePrice = $itemSubtotal / (1 + $vatRate);
-                $itemTax = $itemSubtotal - $itemBasePrice;
+                // Tax is added on top of the price (tax-exclusive pricing)
+                $itemTax = $itemSubtotal * $vatRate;
 
-                $subtotal += $itemBasePrice;
+                $subtotal += $itemSubtotal;
                 $tax += $itemTax;
                 $quantity += (int) $item->quantity;
             }
+        } elseif ($this->type === 'ecommerce') {
+            // Items not loaded - calculate from stored amount
+            // Total = Subtotal + Tax = Subtotal * 1.05
+            // Therefore: Subtotal = Total / 1.05
+            $totalAmount = (float) $this->amount;
+            $subtotal = round($totalAmount / (1 + $vatRate), 2);
+            $tax = round($totalAmount - $subtotal, 2);
+            $quantity = 1; // Default quantity when items aren't loaded
         } elseif ($this->type === 'booking' && $this->relationLoaded('orderable')) {
             $booking = $this->orderable;
             if ($booking instanceof Booking && $booking->relationLoaded('services')) {
                 foreach ($booking->services as $service) {
                     $servicePrice = (float) ($service->final_price ?? $service->price ?? 0);
-                    $vatRate = 0.05;
-                    $basePrice = $servicePrice / (1 + $vatRate);
-                    $serviceTax = $servicePrice - $basePrice;
+                    // Tax is added on top of the price (tax-exclusive pricing)
+                    $serviceTax = $servicePrice * $vatRate;
 
-                    $subtotal += $basePrice;
+                    $subtotal += $servicePrice;
                     $tax += $serviceTax;
                     $quantity += 1;
                 }
@@ -199,8 +208,8 @@ class OrderResource extends JsonResource
                         return $booking->services->map(function ($service) {
                             $servicePrice = (float) ($service->final_price ?? $service->price ?? 0);
                             $vatRate = 0.05;
-                            $basePrice = $servicePrice / (1 + $vatRate);
-                            $serviceTax = $servicePrice - $basePrice;
+                            // Tax is added on top (tax-exclusive pricing)
+                            $serviceTax = $servicePrice * $vatRate;
 
                             $serviceImage = null;
                             $bookable = $service->bookable;

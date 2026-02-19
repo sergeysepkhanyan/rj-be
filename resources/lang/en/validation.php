@@ -3,6 +3,7 @@
 return [
     'failed' => 'Validation failed.',
     'insufficient_stock' => 'Insufficient stock. Available: :available.',
+    'product_not_found' => 'Product not found (ID: :id).',
     'cart' => [
         'guest_session_required' => 'Guest session id is required.',
         'empty' => 'Cart is empty.',

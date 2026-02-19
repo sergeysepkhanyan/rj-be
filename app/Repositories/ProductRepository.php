@@ -16,7 +16,7 @@ class ProductRepository implements ProductRepositoryInterface
 
     public function allForExport(?array $ids = null)
     {
-        return Product::with(['productCategory'])
+        return Product::with(['productCategory', 'supplier'])
             ->when($ids && count($ids) > 0, function ($query) use ($ids) {
                 $query->whereIn('id', $ids);
             })
@@ -54,7 +54,7 @@ class ProductRepository implements ProductRepositoryInterface
 
     public function paginateProducts(?ProductFilter $filter = null, int $perPage = 10, int $page = 1): LengthAwarePaginator
     {
-        $query = Product::with(['details', 'files', 'productCategory'])
+        $query = Product::with(['details', 'files', 'productCategory', 'supplier'])
             ->orderByDesc('created_at');
 
         if ($filter) {

@@ -6,19 +6,22 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class ProductCategory extends Model
+class Supplier extends Model
 {
     use HasFactory;
 
     protected $fillable = [
         'name',
-        'name_ar',
-        'sort_order',
+        'contact_name',
+        'email',
+        'phone',
+        'address',
+        'notes',
         'status',
     ];
 
     protected $casts = [
-        'sort_order' => 'integer',
+        'status' => 'string',
     ];
 
     public function products(): HasMany
@@ -29,10 +32,5 @@ class ProductCategory extends Model
     public function scopeActive($query)
     {
         return $query->where('status', 'active');
-    }
-
-    public function scopeOrdered($query)
-    {
-        return $query->orderBy('sort_order', 'asc')->orderBy('name', 'asc');
     }
 }
