@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Filters\ProductFilter;
+use App\Jobs\Zoho\SyncProductToZohoJob;
 use App\Models\Product;
 use App\Repositories\FileRepository;
 use App\Repositories\Interfaces\ProductDetailRepositoryInterface;
@@ -41,6 +42,8 @@ class ProductService
             foreach ($detailsData as $detail) {
                 $this->productDetailRepository->createForProduct($product, $detail);
             }
+
+            SyncProductToZohoJob::dispatch($product);
 
             return $product->load('details', 'files', 'productCategory', 'supplier');
         });
@@ -90,6 +93,8 @@ class ProductService
                     }
                 }
             }
+            SyncProductToZohoJob::dispatch($product);
+
             return $product->load('details', 'files', 'productCategory', 'supplier');
         });
     }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API\Webhook;
 
 use App\Http\Controllers\Controller;
 use App\Integrations\Tabby\TabbyClient;
+use App\Jobs\Zoho\SyncOrderToZohoJob;
 use App\Repositories\Interfaces\PaymentRepositoryInterface;
 use App\Services\BookingService;
 use App\Services\OrderService;
@@ -97,6 +98,8 @@ class TabbyWebhookController extends Controller
                     $payment->refresh();
 
                     DB::commit();
+
+                    SyncOrderToZohoJob::dispatch($order);
                 } catch (\Throwable $e) {
                     DB::rollBack();
                     throw $e;

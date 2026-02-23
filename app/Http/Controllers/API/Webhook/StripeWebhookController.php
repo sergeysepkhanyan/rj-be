@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API\Webhook;
 
 use App\Http\Controllers\Controller;
 use App\Integrations\Stripe\StripeClient;
+use App\Jobs\Zoho\SyncOrderToZohoJob;
 use App\Repositories\Interfaces\BookingRepositoryInterface;
 use App\Repositories\Interfaces\PaymentRepositoryInterface;
 use App\Enums\OrderStatus;
@@ -139,6 +140,8 @@ class StripeWebhookController extends Controller
                     $payment->refresh();
 
                     DB::commit();
+
+                    SyncOrderToZohoJob::dispatch($order);
 
                 } catch (\Throwable $e) {
                     DB::rollBack();
