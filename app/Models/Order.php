@@ -102,4 +102,33 @@ class Order extends Model
     {
         return $this->type instanceof \BackedEnum ? $this->type->value : (string) $this->type;
     }
+
+    /**
+     * Get all bookings for this order (including batch bookings).
+     * For batch bookings, returns all bookings with the same batch_id.
+     * For single bookings, returns the orderable booking.
+     */
+    public function getAllBookings(): \Illuminate\Support\Collection
+    {
+        if ($this->getTypeValue() !== 'booking') {
+            return collect();
+        }
+
+        $booking = $this->orderable;
+        if (!$booking) {
+            return collect();
+        }
+
+        // If booking has a batch_id, get all bookings in the batch
+        if ($booking->batch_id) {
+            return Booking::where('batch_id', $booking->batch_id)
+                ->with(['services.bookable', 'master'])
+                ->orderBy('id')
+                ->get();
+        }
+
+        // Single booking - return as collection
+        $booking->loadMissing(['services.bookable', 'master']);
+        return collect([$booking]);
+    }
 }

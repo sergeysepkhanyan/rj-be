@@ -30,11 +30,20 @@ class PaymentMethodsController extends Controller
 
     public function store(StorePaymentMethodRequest $request): JsonResponse
     {
+        \Log::info('[PaymentMethodsController] store called', [
+            'request_all' => $request->all(),
+            'user_id' => auth()->id(),
+        ]);
+
         $data = $request->all();
         $data = array_intersect_key($data, array_flip((new PaymentMethod)->getFillable()));
         $data['user_id'] = auth()->id();
 
+        \Log::info('[PaymentMethodsController] filtered data', ['data' => $data]);
+
         $method = $this->paymentMethodService->createPaymentMethod($data);
+
+        \Log::info('[PaymentMethodsController] payment method created', ['method_id' => $method->id]);
 
         return ApiResponse::success(
             [

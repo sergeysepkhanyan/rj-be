@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API\Webhook;
 
 use App\Http\Controllers\Controller;
 use App\Integrations\Stripe\StripeClient;
+use App\Mail\PaymentFailedMail;
 use App\Jobs\Zoho\SyncOrderToZohoJob;
 use App\Repositories\Interfaces\BookingRepositoryInterface;
 use App\Repositories\Interfaces\PaymentRepositoryInterface;
@@ -13,6 +14,7 @@ use App\Services\OrderService;
 use App\Services\PaymentMethodService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Symfony\Component\HttpFoundation\Response;
 
 class StripeWebhookController extends Controller
@@ -129,7 +131,18 @@ class StripeWebhookController extends Controller
                             'payment_status' => 'paid',
                         ]);
                         $booking->refresh();
-                        $this->bookingService->sendBookingConfirmation($booking);
+
+                        // If this booking is part of a batch, mark all bookings in the batch as paid
+                        if ($booking->batch_id) {
+                            $this->bookingService->markBatchBookingsPaid($booking->batch_id);
+                            // Send confirmation for all bookings in batch
+                            $batchBookings = $this->bookingService->getBookingsByBatchId($booking->batch_id);
+                            foreach ($batchBookings as $batchBooking) {
+                                $this->bookingService->sendBookingConfirmation($batchBooking);
+                            }
+                        } else {
+                            $this->bookingService->sendBookingConfirmation($booking);
+                        }
                     }
 
                     if ($order->getTypeValue() === 'ecommerce') {
@@ -156,6 +169,9 @@ class StripeWebhookController extends Controller
                     $order = $this->orderService->cancel($order, ['reason' => 'payment_failed']);
                     $order->refresh();
                     $this->orderService->cancelBookingForOrder($order);
+
+                    // Send payment failed notification
+                    $this->sendPaymentFailedNotification($order, $object);
                 }
                 break;
 
@@ -225,5 +241,32 @@ class StripeWebhookController extends Controller
         }
 
         return false;
+    }
+
+    private function sendPaymentFailedNotification($order, array $stripeObject): void
+    {
+        try {
+            $customerEmail = $this->orderService->getCustomerEmail($order);
+
+            if (!$customerEmail) {
+                return;
+            }
+
+            $booking = null;
+            if ($order->orderable && $order->getTypeValue() === 'booking') {
+                $booking = $order->orderable;
+            }
+
+            $failureReason = data_get($stripeObject, 'last_payment_error.message')
+                ?? data_get($stripeObject, 'cancellation_reason')
+                ?? 'Payment could not be processed';
+
+            Mail::to($customerEmail)->queue(new PaymentFailedMail($order, $booking, $failureReason));
+        } catch (\Throwable $e) {
+            \Log::error('[stripe][webhook] Failed to send payment failed notification', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 }

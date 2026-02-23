@@ -129,4 +129,22 @@ return [
         array_map('trim', explode(',', env('FRONTEND_URLS', '')))
     ),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Company Information
+    |--------------------------------------------------------------------------
+    |
+    | Company details used in invoices, emails, and other official documents.
+    |
+    */
+
+    'company' => [
+        'name' => env('COMPANY_NAME', 'R&J Beauty Lounge'),
+        'tagline' => env('COMPANY_TAGLINE', 'Where Beauty Meets Elegance'),
+        'address' => env('COMPANY_ADDRESS', 'Dubai, United Arab Emirates'),
+        'phone' => env('COMPANY_PHONE', ''),
+        'email' => env('COMPANY_EMAIL', ''),
+        'website' => env('COMPANY_WEBSITE', ''),
+    ],
+
 ];

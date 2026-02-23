@@ -4,7 +4,11 @@ namespace App\Services;
 
 use App\Filters\BookingFilter;
 use App\Mail\BookingCancelledMail;
+use App\Mail\BookingCancelledAdminNotificationMail;
 use App\Mail\BookingConfirmedMail;
+use App\Mail\BookingRescheduledMail;
+use App\Mail\BookingRescheduledAdminNotificationMail;
+use App\Mail\NewBookingAdminNotificationMail;
 use App\Models\Booking;
 use App\Models\User;
 use App\Models\Weekday;
@@ -1055,7 +1059,181 @@ class BookingService
 
     protected function makeBookingReference(): string
     {
-        return 'BK-' . now()->format('Ymd') . '-' . Str::upper(Str::random(6));
+        return 'BK-' . now()->format('Ymd') . '-' . Str::upper(bin2hex(random_bytes(4)));
+    }
+
+    protected function makeBatchId(): string
+    {
+        return Str::uuid()->toString();
+    }
+
+    /**
+     * Create multiple bookings from an array of services, sharing a single order/payment.
+     * Each service becomes its own booking for cleaner tracking.
+     *
+     * @param array $data Contains: date, timezone, customerName, customerPhone, customerEmail, notes, paymentMode, services[]
+     * @return array{bookings: array, order: \App\Models\Order, batchId: string}
+     */
+    public function createBatchBookings(array $data): array
+    {
+        $user = auth()->user();
+
+        $tz = $data['timezone'] ?? 'UTC';
+        $date = trim($data['date'] ?? '');
+
+        $rawServices = $data['services'] ?? [];
+        if (!is_array($rawServices) || count($rawServices) === 0) {
+            $this->throwValidation(
+                ['services' => __('validation.booking.services_required')],
+                'validation.failed'
+            );
+        }
+
+        // Assign and validate masters for all services
+        $rawServices = $this->masterAssignmentService->assignAndValidateMasters(
+            date: $date,
+            tz: $tz,
+            services: $rawServices
+        );
+
+        // Build service segments with validation
+        $segments = $this->buildServiceSegmentsFromRequest($date, $rawServices, $tz);
+        $this->validateSegmentsBasic($segments, $tz);
+
+        // Calculate total pricing across all services
+        $pricing = $this->buildPricingData([
+            ...$data,
+            'services' => $this->normalizeServicesForPricing($segments),
+        ]);
+
+        return DB::transaction(function () use ($data, $user, $tz, $date, $segments, $pricing) {
+            $batchId = $this->makeBatchId();
+            $bookings = [];
+            $totalPrice = 0;
+            $totalFinalPrice = 0;
+
+            // Create a booking for each service segment
+            foreach ($segments as $index => $seg) {
+                $segmentStart = substr($seg['start_time'], 0, 5);
+                $segmentEnd = substr($seg['end_time'], 0, 5);
+
+                $bookingData = [
+                    'user_id'        => $user?->id,
+                    'type'           => 'booking',
+                    'reference'      => $this->makeBookingReference(),
+                    'batch_id'       => $batchId,
+                    'date'           => $seg['date'],
+                    'timezone'       => $tz,
+                    'start_time'     => $segmentStart,
+                    'end_time'       => $segmentEnd,
+                    'duration'       => $seg['duration_minutes'],
+                    'duration_unit'  => 'minutes',
+                    'price'          => $seg['price'],
+                    'discount_type'  => $pricing['discount_type'],
+                    'discount_value' => $pricing['discount_value'],
+                    'discount_label' => $pricing['discount_label'],
+                    'final_price'    => $seg['final_price'],
+                    'payment_mode'   => $pricing['payment_mode'],
+                    'payment_status' => $pricing['payment_status'],
+                    'status'         => $pricing['payment_mode'] === 'pay_now' ? 'pending_payment' : 'confirmed',
+                    'expires_at'     => $pricing['payment_mode'] === 'pay_now'
+                        ? now()->addMinutes((int) config('payment.booking_hold_minutes', 10))
+                        : null,
+                    'customer_name'  => $data['customer_name'] ?? $data['customerName'],
+                    'customer_phone' => $data['customer_phone'] ?? $data['customerPhone'],
+                    'customer_email' => $data['customer_email'] ?? $data['customerEmail'],
+                    'notes'          => $data['notes'] ?? null,
+                    'master_id'      => (int) $seg['master_id'],
+                ];
+
+                $booking = $this->bookingRepository->create($bookingData);
+
+                // Attach the single service to this booking
+                $this->attachServiceToBookingWithSegment($booking, $seg, 1);
+
+                $totalPrice += $seg['price'];
+                $totalFinalPrice += $seg['final_price'];
+                $bookings[] = $booking;
+            }
+
+            $this->clearSelectionsAfterBooking($user?->id, $data['guest_session_id'] ?? null);
+
+            // Create order for the first booking (primary booking)
+            // The order total should cover all bookings
+            $primaryBooking = $bookings[0];
+
+            // Temporarily set the primary booking's price to total for order creation
+            $originalPrice = $primaryBooking->price;
+            $originalFinalPrice = $primaryBooking->final_price;
+            $primaryBooking->price = $totalPrice;
+            $primaryBooking->final_price = $pricing['final_price']; // Use calculated final price with discount
+
+            $order = $this->orderService->createForBooking($primaryBooking, $primaryBooking->payment_mode);
+
+            // Restore original values
+            $primaryBooking->price = $originalPrice;
+            $primaryBooking->final_price = $originalFinalPrice;
+
+            if ($primaryBooking->payment_mode === 'pay_later') {
+                // Mark all bookings as confirmed
+                foreach ($bookings as $booking) {
+                    $this->bookingRepository->update($booking, ['status' => 'confirmed']);
+                }
+
+                // Load relationships
+                foreach ($bookings as $booking) {
+                    $booking->refresh()->load(['services.bookable', 'master']);
+                }
+
+                return [
+                    'bookings' => $bookings,
+                    'order' => $order,
+                    'batchId' => $batchId,
+                ];
+            }
+
+            // Create payment intent for pay_now
+            $this->paymentService->startStripePaymentIntent($order, $primaryBooking);
+
+            // Load relationships
+            foreach ($bookings as $booking) {
+                $booking->load(['services.bookable', 'services.master', 'master']);
+            }
+            $primaryBooking->load('order.latestPayment');
+
+            return [
+                'bookings' => $bookings,
+                'order' => $order->fresh(['latestPayment']),
+                'batchId' => $batchId,
+            ];
+        });
+    }
+
+    /**
+     * Mark all bookings in a batch as paid.
+     */
+    public function markBatchBookingsPaid(string $batchId): void
+    {
+        $bookings = Booking::where('batch_id', $batchId)->get();
+
+        foreach ($bookings as $booking) {
+            if ($booking->payment_status !== 'paid') {
+                $booking->update([
+                    'status' => 'confirmed',
+                    'payment_status' => 'paid',
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Get all bookings in a batch.
+     */
+    public function getBookingsByBatchId(string $batchId): Collection
+    {
+        return Booking::where('batch_id', $batchId)
+            ->with(['services.bookable', 'services.master', 'master'])
+            ->get();
     }
 
     protected function throwValidation(array $errors, string $messageKey, array $replace = [], int $status = 422): void
@@ -1079,14 +1257,68 @@ class BookingService
         if ($email) {
             Mail::to($email)->queue(new BookingConfirmedMail($booking));
         }
+
+        // Send admin notification
+        $this->sendAdminBookingNotification($booking, 'new');
     }
 
-    public function sendBookingCancellation(Booking $booking): void
+    public function sendBookingCancellation(Booking $booking, ?string $reason = null): void
     {
         $email = $booking->customer_email;
 
         if ($email) {
             Mail::to($email)->queue(new BookingCancelledMail($booking));
+        }
+
+        // Send admin notification
+        $this->sendAdminBookingNotification($booking, 'cancelled', $reason);
+    }
+
+    public function sendBookingRescheduled(
+        Booking $booking,
+        ?string $previousDate = null,
+        ?string $previousStartTime = null,
+        ?string $previousEndTime = null
+    ): void {
+        $email = $booking->customer_email;
+
+        if ($email) {
+            Mail::to($email)->queue(new BookingRescheduledMail(
+                $booking,
+                $previousDate,
+                $previousStartTime,
+                $previousEndTime
+            ));
+        }
+
+        // Send admin notification
+        $admin = User::whereHas('role', fn($q) => $q->where('name', 'Super Admin'))->first();
+        if ($admin && $admin->email) {
+            Mail::to($admin->email)->queue(new BookingRescheduledAdminNotificationMail(
+                $booking,
+                $previousDate,
+                $previousStartTime,
+                $previousEndTime
+            ));
+        }
+    }
+
+    protected function sendAdminBookingNotification(Booking $booking, string $type, ?string $reason = null): void
+    {
+        $admin = User::whereHas('role', fn($q) => $q->where('name', 'Super Admin'))->first();
+
+        if (!$admin || !$admin->email) {
+            return;
+        }
+
+        $mail = match ($type) {
+            'new' => new NewBookingAdminNotificationMail($booking),
+            'cancelled' => new BookingCancelledAdminNotificationMail($booking, $reason),
+            default => null,
+        };
+
+        if ($mail) {
+            Mail::to($admin->email)->queue($mail);
         }
     }
 }

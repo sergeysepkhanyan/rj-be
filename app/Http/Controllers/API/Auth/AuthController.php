@@ -92,7 +92,7 @@ class AuthController extends Controller
             );
         }
 
-        $user = auth()->user()->load('role');
+        $user = auth()->user()->load(['role', 'referral'])->loadCount('clientBookings');
 
         if ($user->is_temporary_password && !$user->temporary_password_used_at && $user->temporary_password_hash) {
             $isUsingTemporaryPassword = Hash::check($credentials['password'], $user->temporary_password_hash);
@@ -161,7 +161,7 @@ class AuthController extends Controller
             );
         }
 
-        $user = auth()->user()->load('role');
+        $user = auth()->user()->load(['role', 'referral'])->loadCount('clientBookings');
 
         // Handle guest session merging
         $guestSessionId = $request->input('guest_session_id')

@@ -20,6 +20,10 @@ class OrderFilter
     {
         $this->query = $query;
 
+        if ($this->request->has('type')) {
+            $this->filterByType();
+        }
+
         if ($this->request->has('status')) {
             $this->filterByStatus();
         }
@@ -37,6 +41,15 @@ class OrderFilter
         }
 
         return $this->query;
+    }
+
+    protected function filterByType(): void
+    {
+        $type = strtolower(trim((string) $this->request->type));
+        $allowed = ['product', 'booking'];
+        if (in_array($type, $allowed, true)) {
+            $this->query->where('type', $type);
+        }
     }
 
     protected function filterByStatus(): void
