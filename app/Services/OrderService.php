@@ -334,7 +334,7 @@ class OrderService
     public function sendAdminOrderNotification(Order $order): void
     {
         // Get Super Admin email
-        $superAdmin = User::where('role', 'Super Admin')->first();
+        $superAdmin = User::whereHas('role', fn($q) => $q->where('name', 'Super Admin'))->first();
         if (!$superAdmin || !$superAdmin->email) {
             return;
         }
@@ -429,7 +429,7 @@ class OrderService
 
     protected function makeReference(): string
     {
-        return 'ORD-' . now()->format('Ymd') . '-' . Str::upper(Str::random(6));
+        return 'ORD-' . now()->format('Ymd') . '-' . Str::upper(bin2hex(random_bytes(4)));
     }
 
     protected function decreaseProductQuantities(Order $order): void

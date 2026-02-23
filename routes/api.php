@@ -5,6 +5,7 @@ use App\Http\Controllers\API\Admin\SuppliersController;
 use App\Http\Controllers\API\Admin\ProductCategoriesController as AdminProductCategoriesController;
 use App\Http\Controllers\API\Admin\PagesController as AdminPagesController;
 use App\Http\Controllers\API\BookingsController;
+use App\Http\Controllers\API\BookingPaymentController;
 use App\Http\Controllers\API\Client\AddressController;
 use App\Http\Controllers\API\Client\PaymentMethodsController;
 use App\Http\Controllers\API\ContactController;
@@ -111,6 +112,7 @@ Route::middleware(['set.locale'])->group(function () {
     });
 
     Route::post('/bookings', [BookingsController::class, 'store']);
+    Route::post('/bookings/batch', [BookingsController::class, 'storeBatch']);
 
     Route::middleware(['jwt.custom', 'verified'])->group(function () {
 
@@ -120,11 +122,7 @@ Route::middleware(['set.locale'])->group(function () {
         Route::patch('/user/details', [UsersController::class, 'updateDetails']);
         Route::patch('/user/change-password', [UsersController::class, 'changePassword']);
         Route::middleware('auth:api')->get('me', function () {
-            $user = auth()->user()->load([
-                'role',
-                'referral',
-                 'clientBookings',
-            ]);
+            $user = auth()->user()->load(['role', 'referral'])->loadCount('clientBookings');
             return ApiResponse::success([
                 'user' => new UserResource($user)
             ]);
@@ -133,6 +131,8 @@ Route::middleware(['set.locale'])->group(function () {
         Route::get('/bookings', [BookingsController::class, 'index']);
         Route::put('/bookings/{booking}', [BookingsController::class, 'update']);
         Route::patch('/bookings/cancel/{booking}', [BookingsController::class, 'cancel']);
+        Route::post('/bookings/{booking}/pay', [BookingPaymentController::class, 'initiatePayment']);
+        Route::post('/bookings/{booking}/confirm-payment', [BookingPaymentController::class, 'confirmPayment']);
 
         Route::get('/orders', [OrdersController::class, 'index']);
 
@@ -152,6 +152,9 @@ Route::middleware(['set.locale'])->group(function () {
     Route::get('/bookings/available-slots', [BookingsController::class, 'availableSlots']);
     Route::post('/bookings/selection', [BookingsController::class, 'selectSlot'])
         ->middleware('jwt.optional');
+    // Note: This route must come AFTER /bookings/available-slots to avoid wildcard matching issues
+    Route::get('/bookings/{booking}', [BookingsController::class, 'show'])
+        ->middleware(['jwt.custom', 'verified']);
     Route::get('/categories', [CategoriesController::class, 'index']);
     Route::get('/categories/{id}', [CategoriesController::class, 'show']);
     Route::get('/services', [ServicesController::class, 'index']);

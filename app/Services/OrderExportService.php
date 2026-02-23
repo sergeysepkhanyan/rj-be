@@ -243,25 +243,53 @@ class OrderExportService
                 $subtotal += $itemSubtotal;
             }
         } elseif ($order->type === 'booking' && $order->orderable instanceof Booking) {
-            $booking = $order->orderable;
-            if ($booking->services->isNotEmpty()) {
-                foreach ($booking->services as $service) {
-                    $price = (float) ($service->final_price ?? $service->price ?? 0);
-                    
-                    $items[] = [
-                        'name' => $service->bookable?->name ?? 'N/A',
-                        'quantity' => 1,
-                        'unitPrice' => $price,
-                        'subtotal' => $price,
-                    ];
-                    
-                    $subtotal += $price;
+            // Get all bookings (including batch bookings)
+            $allBookings = $order->getAllBookings();
+            foreach ($allBookings as $booking) {
+                $booking->loadMissing('services.bookable');
+                if ($booking->services->isNotEmpty()) {
+                    foreach ($booking->services as $service) {
+                        // Use base_price for subtotal, vat_amount for tax
+                        $basePrice = (float) ($service->base_price ?? $service->price ?? 0);
+                        $vatAmount = (float) ($service->vat_amount ?? 0);
+
+                        $items[] = [
+                            'name' => $service->bookable?->name ?? 'N/A',
+                            'quantity' => 1,
+                            'unitPrice' => $basePrice,
+                            'subtotal' => $basePrice,
+                        ];
+
+                        $subtotal += $basePrice;
+                        $tax += $vatAmount;
+                    }
                 }
             }
         }
 
-        $tax = $order->amount - $subtotal;
+        // For ecommerce orders, calculate tax as 5% of subtotal
+        if ($order->type === 'ecommerce') {
+            $tax = $subtotal * 0.05;
+        }
         $total = $order->amount;
+
+        // Calculate discount
+        $discount = 0;
+        $discountLabel = null;
+        if ($order->type === 'booking' && $order->orderable instanceof Booking) {
+            $allBookings = $order->getAllBookings();
+            foreach ($allBookings as $booking) {
+                // Get discount label from first booking that has one
+                if (!$discountLabel && $booking->discount_label) {
+                    $discountLabel = $booking->discount_label;
+                }
+            }
+            // Total order discount = subtotal + tax - actual total
+            $expectedTotal = $subtotal + $tax;
+            if ($expectedTotal > $total) {
+                $discount = $expectedTotal - $total;
+            }
+        }
 
         $paymentMethod = null;
         if ($order->latestPayment?->paymentMethod) {
@@ -278,6 +306,8 @@ class OrderExportService
             'items' => $items,
             'subtotal' => $subtotal,
             'tax' => $tax,
+            'discount' => $discount,
+            'discountLabel' => $discountLabel,
             'total' => $total,
             'paymentMethod' => $paymentMethod,
             'reference' => $order->reference ?? "#{$order->id}",

@@ -72,16 +72,70 @@ class BookingsController extends Controller
     public function store(StoreBookingRequest $request): JsonResponse
     {
         $booking = $this->bookingService->createBooking($request->all());
-        
+
         // Only send email immediately for pay_later bookings (immediately confirmed)
         // For pay_now bookings, email will be sent via webhook after payment success
         if ($booking->payment_mode === 'pay_later') {
             $this->bookingService->sendBookingConfirmation($booking);
         }
-        
+
         return ApiResponse::success([
             'booking' => new BookingResource($booking)
         ], __('success.booking.created'));
+    }
+
+    /**
+     * Create multiple bookings from services array, sharing a single order/payment.
+     * Each service becomes its own booking for cleaner tracking.
+     */
+    public function storeBatch(StoreBookingRequest $request): JsonResponse
+    {
+        $result = $this->bookingService->createBatchBookings($request->all());
+
+        // Only send email immediately for pay_later bookings
+        if ($result['bookings'][0]->payment_mode === 'pay_later') {
+            foreach ($result['bookings'] as $booking) {
+                $this->bookingService->sendBookingConfirmation($booking);
+            }
+        }
+
+        $order = $result['order'];
+        $clientSecret = null;
+        if ($order && $order->latestPayment && $order->latestPayment->provider === 'stripe') {
+            $clientSecret = data_get($order->latestPayment->raw, 'client_secret');
+        }
+
+        return ApiResponse::success([
+            'bookings' => BookingResource::collection($result['bookings']),
+            'batchId' => $result['batchId'],
+            'order' => $order ? [
+                'id' => $order->id,
+                'reference' => $order->reference,
+                'total' => $order->total,
+                'clientSecret' => $clientSecret,
+            ] : null,
+        ], __('success.booking.created'));
+    }
+
+    /**
+     * Get a specific booking by ID
+     *
+     * @throws AuthorizationException
+     */
+    public function show(Booking $booking): JsonResponse
+    {
+        $this->authorize('view', $booking);
+
+        $booking->load([
+            'services.bookable',
+            'services.master',
+            'master',
+            'order.latestPayment',
+        ]);
+
+        return ApiResponse::success([
+            'booking' => new BookingResource($booking),
+        ], __('success.booking.loaded'));
     }
 
     /**

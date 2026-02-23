@@ -72,16 +72,26 @@ class OrderResource extends JsonResource
             $tax = round($totalAmount - $subtotal, 2);
             $quantity = 1; // Default quantity when items aren't loaded
         } elseif ($this->type === 'booking' && $this->relationLoaded('orderable')) {
-            $booking = $this->orderable;
-            if ($booking instanceof Booking && $booking->relationLoaded('services')) {
-                foreach ($booking->services as $service) {
-                    $servicePrice = (float) ($service->final_price ?? $service->price ?? 0);
-                    // Tax is added on top of the price (tax-exclusive pricing)
-                    $serviceTax = $servicePrice * $vatRate;
+            // Get all bookings (including batch bookings)
+            $allBookings = $this->resource->getAllBookings();
+            foreach ($allBookings as $booking) {
+                if ($booking instanceof Booking) {
+                    $booking->loadMissing('services');
+                    foreach ($booking->services as $service) {
+                        // Use base_price (without VAT) and vat_amount separately
+                        $basePrice = (float) ($service->base_price ?? 0);
+                        $vatAmount = (float) ($service->vat_amount ?? 0);
 
-                    $subtotal += $servicePrice;
-                    $tax += $serviceTax;
-                    $quantity += 1;
+                        // If base_price not set, derive from final_price
+                        if ($basePrice == 0 && $service->final_price) {
+                            $basePrice = (float) $service->final_price / (1 + $vatRate);
+                            $vatAmount = (float) $service->final_price - $basePrice;
+                        }
+
+                        $subtotal += $basePrice;
+                        $tax += $vatAmount;
+                        $quantity += 1;
+                    }
                 }
             }
         }
@@ -155,13 +165,26 @@ class OrderResource extends JsonResource
         $orderDiscountAmount = null;
 
         if ($this->type === 'booking' && $this->relationLoaded('orderable')) {
-            $booking = $this->orderable;
-            if ($booking instanceof Booking) {
-                $orderDiscountType = $booking->discount_type;
-                $orderDiscountValue = $booking->discount_value;
-                $orderDiscountLabel = $booking->discount_label;
-                if ($booking->price && $booking->final_price) {
-                    $orderDiscountAmount = (float) $booking->price - (float) $booking->final_price;
+            // Get discount info from all batch bookings
+            $allBookings = $this->resource->getAllBookings();
+            foreach ($allBookings as $booking) {
+                if ($booking instanceof Booking) {
+                    // Use first booking's discount type/value/label as they should be same across batch
+                    if (!$orderDiscountType && $booking->discount_type && $booking->discount_type !== 'none') {
+                        $orderDiscountType = $booking->discount_type;
+                        $orderDiscountValue = $booking->discount_value;
+                        $orderDiscountLabel = $booking->discount_label;
+                    }
+                }
+            }
+
+            // Calculate discount amount: (subtotal + tax) - order total
+            // This accounts for batch-level discounts
+            if ($orderDiscountType && $orderDiscountValue) {
+                $expectedTotal = $subtotal + $tax;
+                $actualTotal = (float) $this->amount;
+                if ($expectedTotal > $actualTotal) {
+                    $orderDiscountAmount = round($expectedTotal - $actualTotal, 2);
                 }
             }
         }
@@ -196,6 +219,16 @@ class OrderResource extends JsonResource
                 $booking->loadMissing('services.bookable', 'master', 'cancelledBy');
                 return new BookingResource($booking);
             }),
+            'bookings' => $this->when($this->type === 'booking' && $this->relationLoaded('orderable') && $this->orderable instanceof Booking, function () {
+                $allBookings = $this->resource->getAllBookings();
+                return BookingResource::collection($allBookings);
+            }),
+            'isBatchOrder' => $this->when($this->type === 'booking' && $this->relationLoaded('orderable') && $this->orderable instanceof Booking, function () {
+                return !empty($this->orderable->batch_id);
+            }),
+            'batchId' => $this->when($this->type === 'booking' && $this->relationLoaded('orderable') && $this->orderable instanceof Booking, function () {
+                return $this->orderable->batch_id;
+            }),
             'items' => $this->when($this->type === 'ecommerce' && $this->relationLoaded('items'), function () {
                 if (!$this->items->every(fn($item) => $item->relationLoaded('product'))) {
                     $this->items->loadMissing('product.files');
@@ -203,34 +236,45 @@ class OrderResource extends JsonResource
                 return OrderItemResource::collection($this->items);
             }, function () {
                 if ($this->type === 'booking' && $this->relationLoaded('orderable')) {
-                    $booking = $this->orderable;
-                    if ($booking instanceof Booking && $booking->relationLoaded('services')) {
-                        return $booking->services->map(function ($service) {
-                            $servicePrice = (float) ($service->final_price ?? $service->price ?? 0);
-                            $vatRate = 0.05;
-                            // Tax is added on top (tax-exclusive pricing)
-                            $serviceTax = $servicePrice * $vatRate;
+                    // Get all bookings (including batch bookings)
+                    $allBookings = $this->resource->getAllBookings();
+                    $allServices = collect();
 
-                            $serviceImage = null;
-                            $bookable = $service->bookable;
-                            if ($bookable && isset($bookable->image) && $bookable->image) {
-                                $serviceImage = asset('storage/' . $bookable->image);
+                    foreach ($allBookings as $booking) {
+                        if ($booking instanceof Booking) {
+                            $booking->loadMissing('services.bookable');
+                            foreach ($booking->services as $service) {
+                                $servicePrice = (float) ($service->final_price ?? $service->price ?? 0);
+                                $vatRate = 0.05;
+                                // Tax is added on top (tax-exclusive pricing)
+                                $serviceTax = $servicePrice * $vatRate;
+
+                                $serviceImage = null;
+                                $bookable = $service->bookable;
+                                if ($bookable && isset($bookable->image) && $bookable->image) {
+                                    $serviceImage = asset('storage/' . $bookable->image);
+                                }
+
+                                $allServices->push([
+                                    'id' => $service->id,
+                                    'productId' => $service->bookable_id ?? $service->id,
+                                    'name' => $bookable?->name ?? 'Unknown Service',
+                                    'image' => $serviceImage,
+                                    'quantity' => 1,
+                                    'unitPrice' => (string) $servicePrice,
+                                    'subtotal' => (string) $servicePrice,
+                                    'finalPrice' => (string) $servicePrice,
+                                    'tax' => (string) round($serviceTax, 2),
+                                    'type' => 'service',
+                                    'bookingReference' => $booking->reference,
+                                    'startTime' => $service->start_time,
+                                    'endTime' => $service->end_time,
+                                ]);
                             }
-
-                            return [
-                                'id' => $service->id,
-                                'productId' => $service->bookable_id ?? $service->id,
-                                'name' => $bookable?->name ?? 'Unknown Service',
-                                'image' => $serviceImage,
-                                'quantity' => 1,
-                                'unitPrice' => (string) $servicePrice,
-                                'subtotal' => (string) $servicePrice,
-                                'finalPrice' => (string) $servicePrice,
-                                'tax' => (string) round($serviceTax, 2),
-                                'type' => 'service',
-                            ];
-                        })->all();
+                        }
                     }
+
+                    return $allServices->all();
                 }
                 return [];
             }),
@@ -276,6 +320,7 @@ class OrderResource extends JsonResource
             }),
             'quantity' => $quantity > 0 ? $quantity : 1,
             'price' => (string) round($subtotal, 2),
+            'subtotal' => (string) round($subtotal, 2),
             'tax' => (string) round($tax, 2),
             'total' => (string) $this->amount,
             'deliveryStatuses' => $deliveryStatuses,

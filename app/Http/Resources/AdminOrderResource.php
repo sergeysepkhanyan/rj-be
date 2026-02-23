@@ -37,6 +37,7 @@ class AdminOrderResource extends JsonResource
         $displayStatus = $this->displayStatus();
         $paymentStatus = $this->paymentStatus();
         [$subtotal, $tax] = $this->calculateSubtotalAndTax();
+        [$discountType, $discountValue, $discountLabel, $discountAmount] = $this->calculateDiscount($subtotal, $tax);
 
         return [
             'id' => $this->id,
@@ -63,6 +64,10 @@ class AdminOrderResource extends JsonResource
             'customerPhone' => $customerPhone,
             'deliveryStatus' => $this->delivery_status,
             'currency' => $this->currency ?? 'AED',
+            'discountType' => $discountType,
+            'discountValue' => $discountValue,
+            'discountLabel' => $discountLabel,
+            'discountAmount' => $discountAmount,
         ];
     }
 
@@ -88,15 +93,24 @@ class AdminOrderResource extends JsonResource
                 $tax = round($totalAmount - $subtotal, 2);
             }
         } elseif ($this->type === 'booking' && $this->orderable instanceof Booking) {
-            $this->ensureBookingServicesLoaded();
-            $booking = $this->orderable;
-            if ($booking->services->isNotEmpty()) {
-                foreach ($booking->services as $service) {
-                    $servicePrice = (float) ($service->final_price ?? $service->price ?? 0);
-                    $subtotal += $servicePrice;
-                    $tax += $servicePrice * $vatRate;
+            // Get all bookings (including batch bookings)
+            $allBookings = $this->resource->getAllBookings();
+            $hasServices = false;
+
+            foreach ($allBookings as $booking) {
+                $booking->loadMissing('services.bookable');
+                if ($booking->services->isNotEmpty()) {
+                    $hasServices = true;
+                    foreach ($booking->services as $service) {
+                        $basePrice = (float) ($service->base_price ?? 0);
+                        $vatAmount = (float) ($service->vat_amount ?? 0);
+                        $subtotal += $basePrice;
+                        $tax += $vatAmount;
+                    }
                 }
-            } else {
+            }
+
+            if (!$hasServices) {
                 // Services not loaded - calculate from stored amount
                 $totalAmount = (float) $this->amount;
                 $subtotal = round($totalAmount / (1 + $vatRate), 2);
@@ -123,14 +137,32 @@ class AdminOrderResource extends JsonResource
                 $quantity = (int) $this->items->sum('quantity');
             }
         } elseif ($this->type === 'booking' && $this->orderable instanceof Booking) {
-            $this->ensureBookingServicesLoaded();
-            $booking = $this->orderable;
-            if ($booking->services->isNotEmpty()) {
-                $first = $booking->services->first();
-                $productName = $first->bookable?->name;
-                $productId = $first->bookable_id;
-                $quantity = $booking->services->count();
+            // Get all bookings (including batch bookings)
+            $allBookings = $this->resource->getAllBookings();
+            $serviceNames = [];
+            $totalServices = 0;
+
+            foreach ($allBookings as $booking) {
+                $booking->loadMissing('services.bookable');
+                foreach ($booking->services as $service) {
+                    $serviceName = $service->bookable?->name;
+                    if ($serviceName) {
+                        $serviceNames[] = $serviceName;
+                    }
+                    if (!$productId) {
+                        $productId = $service->bookable_id;
+                    }
+                    $totalServices++;
+                }
             }
+
+            // Show all service names joined, or first one if too long
+            if (count($serviceNames) > 0) {
+                $productName = count($serviceNames) > 2
+                    ? $serviceNames[0] . ' +' . (count($serviceNames) - 1) . ' more'
+                    : implode(', ', $serviceNames);
+            }
+            $quantity = $totalServices;
         }
 
         return [$productName, $productId, $quantity];
@@ -271,5 +303,40 @@ class AdminOrderResource extends JsonResource
             'fulfilled' => 'paid',
             default => (string) $this->status,
         };
+    }
+
+    /** @return array{0: ?string, 1: ?float, 2: ?string, 3: ?float} [discountType, discountValue, discountLabel, discountAmount] */
+    protected function calculateDiscount(float $subtotal, float $tax): array
+    {
+        $discountType = null;
+        $discountValue = null;
+        $discountLabel = null;
+        $discountAmount = null;
+
+        if ($this->type === 'booking' && $this->orderable instanceof Booking) {
+            // Get all bookings (including batch bookings)
+            $allBookings = $this->resource->getAllBookings();
+            foreach ($allBookings as $booking) {
+                if ($booking instanceof Booking) {
+                    // Use first booking's discount type/value/label
+                    if (!$discountType && $booking->discount_type && $booking->discount_type !== 'none') {
+                        $discountType = $booking->discount_type;
+                        $discountValue = (float) $booking->discount_value;
+                        $discountLabel = $booking->discount_label;
+                    }
+                }
+            }
+
+            // Calculate discount amount: (subtotal + tax) - order total
+            if ($discountType && $discountValue) {
+                $expectedTotal = $subtotal + $tax;
+                $actualTotal = (float) $this->amount;
+                if ($expectedTotal > $actualTotal) {
+                    $discountAmount = round($expectedTotal - $actualTotal, 2);
+                }
+            }
+        }
+
+        return [$discountType, $discountValue, $discountLabel, $discountAmount];
     }
 }

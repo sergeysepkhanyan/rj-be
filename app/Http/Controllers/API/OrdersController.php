@@ -7,9 +7,12 @@ use App\Filters\OrderFilter;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\OrderResource;
 use App\Integrations\Stripe\StripeClient;
+use App\Models\Booking;
 use App\Models\Order;
+use App\Repositories\Interfaces\BookingRepositoryInterface;
 use App\Repositories\Interfaces\PaymentRepositoryInterface;
 use App\Services\ApiResponse;
+use App\Services\BookingService;
 use App\Services\OrderService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -20,6 +23,8 @@ class OrdersController extends Controller
         protected OrderService $orderService,
         protected PaymentRepositoryInterface $paymentRepo,
         protected StripeClient $stripeClient,
+        protected BookingRepositoryInterface $bookingRepo,
+        protected BookingService $bookingService,
     ) {}
 
     public function index(Request $request, OrderFilter $filter): JsonResponse
@@ -64,7 +69,7 @@ class OrdersController extends Controller
         }
 
         // Find the order
-        $order = Order::with(['latestPayment', 'items', 'shippingAddress.country', 'billingAddress.country'])->find($orderId);
+        $order = Order::with(['latestPayment', 'items', 'shippingAddress.country', 'billingAddress.country', 'orderable'])->find($orderId);
 
         if (!$order) {
             return ApiResponse::error(
@@ -105,13 +110,35 @@ class OrdersController extends Controller
                     'verified_via' => 'api',
                 ]);
 
-                // Send confirmation email for ecommerce orders
+                // Handle order type specific actions
                 if ($order->getTypeValue() === 'ecommerce') {
+                    // Send confirmation email for ecommerce orders
                     $this->orderService->sendOrderConfirmation($order);
+                } elseif ($order->getTypeValue() === 'booking' && $order->orderable instanceof Booking) {
+                    // Update booking status for booking orders
+                    $booking = $order->orderable;
+                    $this->bookingRepo->update($booking, [
+                        'status' => 'confirmed',
+                        'payment_status' => 'paid',
+                    ]);
+                    $booking->refresh();
+
+                    // If this booking is part of a batch, mark all bookings in the batch as paid
+                    if ($booking->batch_id) {
+                        $this->bookingService->markBatchBookingsPaid($booking->batch_id);
+                        // Send confirmation for all bookings in batch
+                        $batchBookings = $this->bookingService->getBookingsByBatchId($booking->batch_id);
+                        foreach ($batchBookings as $batchBooking) {
+                            $this->bookingService->sendBookingConfirmation($batchBooking);
+                        }
+                    } else {
+                        // Send booking confirmation email
+                        $this->bookingService->sendBookingConfirmation($booking);
+                    }
                 }
 
                 $order->refresh();
-                $order->load(['items', 'shippingAddress.country', 'billingAddress.country']);
+                $order->load(['items', 'shippingAddress.country', 'billingAddress.country', 'orderable']);
 
                 return ApiResponse::success([
                     'order' => new OrderResource($order),

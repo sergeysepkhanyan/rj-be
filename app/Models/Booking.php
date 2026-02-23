@@ -38,10 +38,13 @@ class Booking extends Model
         'user_id',
         'master_id',
         'type',
+        'reference',
+        'batch_id',
         'date',
         'start_time',
         'end_time',
         'duration',
+        'duration_unit',
         'customer_name',
         'customer_phone',
         'customer_email',
@@ -59,7 +62,6 @@ class Booking extends Model
         'notes',
         'timezone',
         'expires_at',
-        'reference',
     ];
 
     protected $casts = [
@@ -73,6 +75,14 @@ class Booking extends Model
 
 
     public function client(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
+    /**
+     * Alias for client() relationship - used by email notifications
+     */
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
     }

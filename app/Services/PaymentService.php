@@ -354,6 +354,24 @@ class PaymentService
         ]);
     }
 
+    /**
+     * Creates a payment for an existing booking (Pay Later -> Pay Now conversion)
+     *
+     * @return array{clientSecret: string, paymentIntentId: string, payment: Payment}
+     */
+    public function createPaymentForExistingBooking(Booking $booking, Order $order): array
+    {
+        $payment = $this->startStripePaymentIntent($order, $booking);
+
+        return [
+            'clientSecret' => data_get($payment->raw, 'client_secret'),
+            'paymentIntentId' => $payment->external_id,
+            'payment' => $payment,
+            'amount' => $order->amount,
+            'currency' => $order->currency ?? 'AED',
+        ];
+    }
+
     public function refundOrderPayment(Order $order, array $meta = []): array
     {
         $payment = $order->latestPayment;
