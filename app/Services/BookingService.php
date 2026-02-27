@@ -874,7 +874,10 @@ class BookingService
             }
         }
 
+        // Load order relation if not already loaded
+        $booking->loadMissing('order');
         $order = $booking->order?->load('latestPayment');
+
         if ($booking->payment_status === 'paid' && $order && $canRefund) {
             $this->paymentService->refundOrderPayment($order, [
                 'booking_id' => (string) $booking->id,
@@ -883,7 +886,21 @@ class BookingService
             $this->orderService->refund($order, ['reason' => 'booking_cancelled']);
             $booking->payment_status = 'refunded';
         } elseif ($booking->payment_status === 'paid' && !$canRefund) {
-            $booking->payment_status = 'unpaid';
+            // Booking was paid but can't be refunded (less than 24h before appointment)
+            // Keep payment_status as 'paid' - the money was collected
+            // Update order status to cancelled
+            if ($order) {
+                $order->update([
+                    'status' => 'cancelled',
+                    'cancelled_at' => now(),
+                ]);
+            }
+        } elseif ($order) {
+            // Update order status to cancelled for unpaid bookings
+            $order->update([
+                'status' => 'cancelled',
+                'cancelled_at' => now(),
+            ]);
         }
 
         $booking->update([

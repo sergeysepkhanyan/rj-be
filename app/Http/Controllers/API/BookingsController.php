@@ -145,10 +145,40 @@ class BookingsController extends Controller
     {
         $this->authorize('update', $booking);
 
+        // Capture previous booking details before update
+        $previousDate = $booking->date?->format('Y-m-d');
+        $previousStartTime = $booking->start_time;
+        $previousEndTime = $booking->end_time;
+        $previousMasterId = $booking->master_id;
+        // Get master IDs from services for multi-master bookings
+        $previousServiceMasterIds = $booking->services->pluck('master_id')->sort()->values()->toArray();
+
         $updated = $this->bookingService->updateBooking(
             $booking,
             $request->all()
         );
+
+        // Check if date/time/master changed and send notification
+        $newDate = $updated->date?->format('Y-m-d');
+        $newStartTime = $updated->start_time;
+        $newEndTime = $updated->end_time;
+        $newMasterId = $updated->master_id;
+        $newServiceMasterIds = $updated->services->pluck('master_id')->sort()->values()->toArray();
+
+        $isRescheduled = $previousDate !== $newDate
+            || $previousStartTime !== $newStartTime
+            || $previousEndTime !== $newEndTime
+            || $previousMasterId !== $newMasterId
+            || $previousServiceMasterIds !== $newServiceMasterIds;
+
+        if ($isRescheduled) {
+            $this->bookingService->sendBookingRescheduled(
+                $updated,
+                $previousDate,
+                $previousStartTime,
+                $previousEndTime
+            );
+        }
 
         return ApiResponse::success([
             'booking' => new BookingResource($updated),

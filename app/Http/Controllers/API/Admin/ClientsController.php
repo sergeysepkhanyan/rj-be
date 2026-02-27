@@ -57,6 +57,28 @@ class ClientsController extends Controller
         $bookingsCount = $confirmedBookings->count();
         $bookingsTotal = $confirmedBookings->sum('final_price');
 
+        // Get cancelled bookings count (cancelled by the user themselves)
+        $cancelledByUserCount = Booking::where('user_id', $user->id)
+            ->where('type', 'booking')
+            ->where('status', 'cancelled')
+            ->where('cancelled_by_user_id', $user->id)
+            ->count();
+
+        // Get total cancelled bookings (including cancellations by admin)
+        $totalCancelledCount = Booking::where('user_id', $user->id)
+            ->where('type', 'booking')
+            ->where('status', 'cancelled')
+            ->count();
+
+        // Get no-show count (bookings that were marked as no-show or expired due to non-payment)
+        $noShowCount = Booking::where('user_id', $user->id)
+            ->where('type', 'booking')
+            ->where(function ($query) {
+                $query->where('cancel_reason', 'no_show')
+                    ->orWhere('cancel_reason', 'payment_timeout');
+            })
+            ->count();
+
         // Get confirmed orders count and total (paid, fulfilled, processing, shipped)
         $confirmedOrders = Order::where('user_id', $user->id)
             ->whereIn('status', ['paid', 'fulfilled', 'processing', 'shipped'])
@@ -70,6 +92,9 @@ class ClientsController extends Controller
             'stats' => [
                 'bookings_count' => $bookingsCount,
                 'bookings_total' => (float) $bookingsTotal,
+                'cancelled_by_user_count' => $cancelledByUserCount,
+                'total_cancelled_count' => $totalCancelledCount,
+                'no_show_count' => $noShowCount,
                 'orders_count' => $ordersCount,
                 'orders_total' => (float) $ordersTotal,
                 'total_spent' => (float) ($bookingsTotal + $ordersTotal),
@@ -83,7 +108,7 @@ class ClientsController extends Controller
 
         $bookings = Booking::where('user_id', $user->id)
             ->where('type', 'booking')
-            ->with(['master', 'services.subService', 'services.subServiceItem'])
+            ->with(['master', 'services.bookable', 'services.master'])
             ->orderBy('date', 'desc')
             ->orderBy('start_time', 'desc')
             ->paginate($perPage);

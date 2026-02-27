@@ -20,6 +20,8 @@
     }
 
     $cancelReason = $b['cancelReason'] ?? null;
+    $frontendUrl = config('app.frontend_url', 'https://rjbeautylounge.com');
+    $bookingUrl = $frontendUrl . '/en/booking';
 @endphp
 
     <!doctype html>
@@ -27,7 +29,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Booking cancelled</title>
+    <title>Booking Cancelled</title>
 </head>
 <body style="margin:0; padding:0; background:#f6f7fb; font-family: Arial, sans-serif; color:#111;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f6f7fb; padding:24px 12px;">
@@ -35,8 +37,8 @@
         <td align="center">
             <table role="presentation" width="640" cellpadding="0" cellspacing="0" style="background:#fff; border-radius:14px; overflow:hidden; box-shadow:0 8px 30px rgba(0,0,0,0.06);">
                 <tr>
-                    <td style="padding:22px 24px; background:#8b0000; color:#fff;">
-                        <div style="font-size:18px; font-weight:700;">❌ Booking cancelled</div>
+                    <td style="padding:22px 24px; background:#4C3715; color:#fff;">
+                        <div style="font-size:18px; font-weight:700;">Booking Update</div>
                         <div style="font-size:13px; opacity:0.92; margin-top:6px;">
                             Booking {{ $b['reference'] ?? ('#' . ($b['id'] ?? '')) }} • {{ $b['date'] ?? '' }} • {{ $b['startTime'] ?? '' }}–{{ $b['endTime'] ?? '' }}
                         </div>
@@ -46,13 +48,13 @@
                 <tr>
                     <td style="padding:22px 24px;">
                         <div style="font-size:16px; font-weight:700; margin-bottom:8px;">
-                            Hi {{ $b['customerName'] ?? 'there' }} 👋
+                            Hi {{ $b['customerName'] ?? 'there' }},
                         </div>
 
                         <div style="font-size:14px; line-height:1.6; color:#333;">
-                            Your booking has been cancelled.
+                            Your booking has been cancelled. We understand plans change, and we're here whenever you're ready to reschedule.
                             @if($cancelledByName)
-                                <span style="color:#555;">Cancelled by: <strong>{{ $cancelledByName }}</strong>.</span>
+                                <br><span style="color:#555; font-size:12px;">Cancelled by: {{ $cancelledByName }}</span>
                             @endif
                         </div>
 
@@ -64,7 +66,7 @@
 
                         <div style="height:16px;"></div>
 
-                        <div style="font-size:15px; font-weight:700; margin-bottom:10px;">Cancelled services summary</div>
+                        <div style="font-size:15px; font-weight:700; margin-bottom:10px;">Cancelled Services</div>
 
                         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:separate; border-spacing:0 10px;">
                             @foreach($services as $s)
@@ -148,18 +150,35 @@
                             </tr>
                         </table>
 
-                        <div style="height:18px;"></div>
+                        <div style="height:24px;"></div>
 
-                        <div style="font-size:12px; color:#666; line-height:1.6;">
-                            If this cancellation was a mistake, please contact us and we'll help you rebook.
-                            Mention booking {{ $b['reference'] ?? ('#' . ($b['id'] ?? '')) }}.
+                        <!-- Rebook Section - Friendly and welcoming -->
+                        <div style="background:linear-gradient(135deg, #EFE6D8 0%, #F5EEE5 100%); border-radius:16px; padding:28px 24px; text-align:center; border:1px solid #D4C5B0;">
+                            <div style="font-size:24px; margin-bottom:8px;">💆‍♀️</div>
+                            <div style="font-size:17px; font-weight:700; color:#4C3715; margin-bottom:10px;">
+                                We'd Love to See You Again!
+                            </div>
+                            <div style="font-size:13px; color:#666; margin-bottom:20px; line-height:1.5;">
+                                Life happens, and we completely understand. When you're ready,<br>
+                                we'll be here to pamper you.
+                            </div>
+                            <a href="{{ $bookingUrl }}" style="display:inline-block; background:#4C3715; color:#fff; text-decoration:none; padding:14px 36px; border-radius:10px; font-size:15px; font-weight:600; box-shadow:0 4px 12px rgba(76,55,21,0.2);">
+                                ✨ Book New Appointment
+                            </a>
+                        </div>
+
+                        <div style="height:16px;"></div>
+
+                        <div style="font-size:12px; color:#666; line-height:1.6; text-align:center;">
+                            Questions? Contact us at <a href="mailto:info@rjbeautylounge.com" style="color:#4C3715;">info@rjbeautylounge.com</a>
+                            or call <a href="tel:+971509039020" style="color:#4C3715;">+971 50 903 9020</a>
                         </div>
                     </td>
                 </tr>
 
                 <tr>
-                    <td style="padding:18px 24px; background:#f6f7fb; font-size:12px; color:#666;">
-                        Thank you 💛<br>
+                    <td style="padding:18px 24px; background:#f6f7fb; font-size:12px; color:#666; text-align:center;">
+                        Thank you for choosing Romeo & Juliet Beauty Lounge<br>
                         <span style="color:#999;">This is an automated email.</span>
                     </td>
                 </tr>

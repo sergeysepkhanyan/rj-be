@@ -17,8 +17,8 @@
         <td align="center">
             <table role="presentation" width="640" cellpadding="0" cellspacing="0" style="background:#fff; border-radius:14px; overflow:hidden; box-shadow:0 8px 30px rgba(0,0,0,0.06);">
                 <tr>
-                    <td style="padding:22px 24px; background:#DC3545; color:#fff;">
-                        <div style="font-size:18px; font-weight:700;">Booking Cancelled</div>
+                    <td style="padding:22px 24px; background:#4C3715; color:#fff;">
+                        <div style="font-size:18px; font-weight:700;">📅 Booking Cancelled</div>
                         <div style="font-size:13px; opacity:0.9; margin-top:6px;">
                             Booking {{ $b['reference'] ?? ('#' . ($b['id'] ?? '')) }} - {{ $b['date'] ?? '' }}
                         </div>
@@ -97,11 +97,11 @@
                         </table>
                         @endif
 
-                        <div style="border-top:2px solid #DC3545; margin:16px 0; padding-top:16px;">
+                        <div style="border-top:2px solid #4C3715; margin:16px 0; padding-top:16px;">
                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                                 <tr>
                                     <td style="font-size:16px; color:#666; font-weight:800;">Total (Cancelled)</td>
-                                    <td align="right" style="font-size:20px; color:#DC3545; font-weight:900; text-decoration:line-through;">
+                                    <td align="right" style="font-size:20px; color:#666; font-weight:900; text-decoration:line-through;">
                                         {{ $fmt($b['totalPrice'] ?? 0) }} AED
                                     </td>
                                 </tr>
