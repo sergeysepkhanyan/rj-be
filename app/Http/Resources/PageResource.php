@@ -45,8 +45,8 @@ class PageResource extends JsonResource
 
         if (is_array($data)) {
             foreach ($data as $key => $value) {
-                if (in_array($key, ['image', 'src', 'backgroundImage'])) {
-                    if (!empty($value) && !str_starts_with($value, 'http')) {
+                if (in_array($key, ['image', 'src', 'backgroundImage', 'background_image'])) {
+                    if (!empty($value) && is_string($value) && !str_starts_with($value, 'http')) {
                         $data[$key] = $this->withStorage($base, $value);
                     }
                 } else {
@@ -58,8 +58,8 @@ class PageResource extends JsonResource
 
         if (is_object($data)) {
             foreach ($data as $key => $value) {
-                if (in_array($key, ['image', 'src', 'backgroundImage'])) {
-                    if (!empty($value) && !str_starts_with($value, 'http')) {
+                if (in_array($key, ['image', 'src', 'backgroundImage', 'background_image'])) {
+                    if (!empty($value) && is_string($value) && !str_starts_with($value, 'http')) {
                         $data->$key = $this->withStorage($base, $value);
                     }
                 } else {
