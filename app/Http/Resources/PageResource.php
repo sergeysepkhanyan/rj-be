@@ -13,8 +13,30 @@ class PageResource extends JsonResource
     public function toArray($request): array
     {
         return [
-            $this->slug => $this->transformImages($this->content)
+            $this->slug => $this->transformKeys($this->transformImages($this->content))
         ];
+    }
+
+    /**
+     * Recursively convert snake_case keys to camelCase
+     */
+    protected function transformKeys($data): array|string|null
+    {
+        if (!is_array($data)) {
+            return $data;
+        }
+
+        $result = [];
+        foreach ($data as $key => $value) {
+            $camelKey = is_string($key) ? $this->snakeToCamel($key) : $key;
+            $result[$camelKey] = is_array($value) ? $this->transformKeys($value) : $value;
+        }
+        return $result;
+    }
+
+    protected function snakeToCamel(string $string): string
+    {
+        return lcfirst(str_replace('_', '', ucwords($string, '_')));
     }
 
     protected function transformImages($data): array|string|null
