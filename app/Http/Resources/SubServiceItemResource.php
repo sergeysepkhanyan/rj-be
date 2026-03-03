@@ -24,6 +24,7 @@ class SubServiceItemResource extends BaseResource
             'name' => $data['name'] ?? null,
             'duration' => $this->duration ?? null,
             'durationUnit' => $this->duration_unit ?? null,
+            'showDuration' => (bool) ($this->show_duration ?? true),
             'price' => $this->price ?? null,
             'currency' => $this->currency ?? null,
             'vatEnabled' => (bool) ($this->vat_enabled ?? false),

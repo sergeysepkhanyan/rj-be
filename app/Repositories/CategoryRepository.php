@@ -11,7 +11,7 @@ class CategoryRepository implements CategoryRepositoryInterface
     public function all(array $filters = []): \Illuminate\Database\Eloquent\Collection
     {
 
-        $query = Category::query()->with('services.subServices.items');
+        $query = Category::query()->with(['services.subServices.items', 'services.files']);
 
         return $query->when(!empty($filters['id']), function ($query) use ($filters) {
             $query->where('id', (int) $filters['id']);
@@ -25,7 +25,7 @@ class CategoryRepository implements CategoryRepositoryInterface
 
     public function find($id)
     {
-        return Category::findOrFail($id);
+        return Category::with(['services.subServices.items', 'services.files'])->findOrFail($id);
     }
 
     public function create(array $data)
@@ -57,7 +57,7 @@ class CategoryRepository implements CategoryRepositoryInterface
 
     public function getByGender(string $gender = 'Female'): \Illuminate\Database\Eloquent\Collection
     {
-        $query = Category::query()->where('gender', $gender)->with('services.subServices.items');
+        $query = Category::query()->where('gender', $gender)->with(['services.subServices.items', 'services.files']);
 
         return $query->get();
     }

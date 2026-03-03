@@ -31,6 +31,7 @@ class SubServicesController
                 'currency',
                 'duration',
                 'duration_unit',
+                'show_duration',
                 'vat_enabled',
             ]),
             $request->input('items')
@@ -59,6 +60,7 @@ class SubServicesController
                 'currency',
                 'duration',
                 'duration_unit',
+                'show_duration',
                 'vat_enabled',
             ]),
             $request->input('items')

@@ -9,6 +9,7 @@ class UpdateSubServiceRequest extends BaseFormRequest
     protected array $fieldMap = [
         'nameAr' => 'name_ar',
         'durationUnit' => 'duration_unit',
+        'showDuration' => 'show_duration',
         'vatEnabled' => 'vat_enabled',
     ];
 
@@ -24,10 +25,7 @@ class UpdateSubServiceRequest extends BaseFormRequest
                     ->where(fn($query) => $query->where('service_id', $this->route('subService')->service_id))
             ],
             'nameAr' => [
-                'required', 'string', 'max:255',
-                Rule::unique('sub_services', 'name_ar')
-                    ->ignore($subServiceId)
-                    ->where(fn($query) => $query->where('service_id', $this->route('subService')->service_id))
+                'nullable', 'string', 'max:255',
             ],
             'type' => 'required|string|in:Simple,Variant Based',
             'price' => 'required_if:type,Simple|numeric',
@@ -35,15 +33,17 @@ class UpdateSubServiceRequest extends BaseFormRequest
             'currency' => 'required_if:type,Simple|string',
             'durationUnit' => 'required_if:type,Simple|string',
             'vatEnabled' => ['sometimes', 'boolean'],
+            'showDuration' => ['sometimes', 'boolean'],
             'items' => 'required_if:type,Variant Based|array',
             'items.*.id' => 'sometimes|nullable|integer|exists:sub_service_items,id',
             'items.*.name'   => 'required_if:type,Variant Based|string|max:255',
-            'items.*.nameAr' => 'required_if:type,Variant Based|string|max:255',
+            'items.*.nameAr' => 'nullable|string|max:255',
             'items.*.price' => 'required_if:type,Variant Based|numeric',
             'items.*.duration' => 'required_if:type,Variant Based|numeric',
             'items.*.currency' => 'required_if:type,Variant Based|string',
             'items.*.durationUnit' => 'required_if:type,Variant Based|string',
             'items.*.vatEnabled' => ['sometimes', 'boolean'],
+            'items.*.showDuration' => ['sometimes', 'boolean'],
         ];
     }
 

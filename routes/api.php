@@ -178,10 +178,12 @@ Route::middleware(['set.locale'])->group(function () {
 
 
         Route::post('/admin/sub-services', [AdminSubServicesController::class, 'store']);
+        Route::post('/admin/sub-services/{subService}', [AdminSubServicesController::class, 'update']); // POST with _method for PUT/DELETE
         Route::put('/admin/sub-services/{subService}', [AdminSubServicesController::class, 'update']);
         Route::delete('/admin/sub-services/{subService}', [AdminSubServicesController::class, 'destroy']);
 
 
+        Route::post('/admin/sub-service-items/{subServiceItem}', [SubServiceItemsController::class, 'destroy']); // POST with _method for DELETE
         Route::delete('/admin/sub-service-items/{subServiceItem}', [SubServiceItemsController::class, 'destroy']);
 
         Route::post('/admin/staff/create', [AdminStaffController::class, 'store']);

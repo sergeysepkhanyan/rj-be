@@ -53,7 +53,13 @@ class ServicesController
         );
 
         $service = $this->serviceManagerService->createService($data);
-        $service->load('subServices.items', 'category');
+
+        // Handle additional images
+        if ($request->has('images')) {
+            $this->serviceManagerService->syncServiceImages($service, $request->input('images'));
+        }
+
+        $service->load('subServices.items', 'category', 'files');
 
         return ApiResponse::success([
             'service' => new AdminServiceResource($service),
@@ -68,6 +74,13 @@ class ServicesController
         );
 
         $service = $this->serviceManagerService->updateService($service, $data);
+
+        // Handle additional images
+        if ($request->has('images')) {
+            $this->serviceManagerService->syncServiceImages($service, $request->input('images'));
+        }
+
+        $service->load('subServices.items', 'category', 'files');
 
         return ApiResponse::success([
             'service' => new AdminServiceResource($service),

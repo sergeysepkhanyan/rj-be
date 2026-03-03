@@ -10,6 +10,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * @property mixed $image
  * @property mixed $subServices
  * @property mixed $id
+ * @property mixed $files
  */
 class AdminServiceResource extends BaseResource
 {
@@ -22,6 +23,7 @@ class AdminServiceResource extends BaseResource
             'description' => $data['description'] ?? null,
 //            'gender' => $data['gender'] ?? null,
             'image' => $this->image ? asset('storage/' . $this->image) : null,
+            'images' => FileResource::collection($this->whenLoaded('files')),
             'subservices' => SubServiceResource::collection($this->subServices),
             'category' => new AdminCategoryResource($this->whenLoaded('category')),
         ];

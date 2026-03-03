@@ -23,11 +23,13 @@ class SubServiceItem extends Model
         'currency',
         'duration',
         'duration_unit',
+        'show_duration',
         'vat_enabled'
     ];
 
     protected $casts = [
         'vat_enabled' => 'boolean',
+        'show_duration' => 'boolean',
     ];
 
     public function subService(): BelongsTo

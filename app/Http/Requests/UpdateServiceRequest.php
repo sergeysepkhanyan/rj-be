@@ -27,13 +27,17 @@ class UpdateServiceRequest extends BaseFormRequest
             ],
 
             'nameAr' => [
-                'required',
+                'nullable',
                 'string',
                 'max:255'
             ],
-            'description' => 'required|string',
-            'descriptionAr' => 'required|string',
+            'description' => 'nullable|string',
+            'descriptionAr' => 'nullable|string',
             'image' => 'nullable|string',
+            'images' => 'sometimes|array',
+            'images.*' => 'sometimes',
+            'images.*.id' => 'sometimes|integer',
+            'images.*.path' => 'sometimes|string',
         ];
     }
 

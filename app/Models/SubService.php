@@ -30,12 +30,14 @@ class SubService extends Model
         'currency',
         'duration',
         'duration_unit',
+        'show_duration',
         'type',
         'vat_enabled'
     ];
 
     protected $casts = [
         'vat_enabled' => 'boolean',
+        'show_duration' => 'boolean',
     ];
 
     public function service(): BelongsTo

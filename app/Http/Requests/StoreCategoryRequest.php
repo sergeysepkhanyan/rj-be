@@ -27,11 +27,9 @@ class StoreCategoryRequest extends BaseFormRequest
             ],
 
             'nameAr' => [
-                'required',
+                'nullable',
                 'string',
                 'max:255',
-                Rule::unique('categories', 'name_ar')
-                    ->where('gender', $this->gender)
             ],
             'image' => 'required|string',
             'gender' => 'required|string|in:Male,Female,Kids',

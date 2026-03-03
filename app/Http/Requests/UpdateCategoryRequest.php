@@ -25,7 +25,7 @@ class UpdateCategoryRequest extends BaseFormRequest
             ],
 
             'nameAr' => [
-                'required',
+                'nullable',
                 'string',
                 'max:255'
             ],

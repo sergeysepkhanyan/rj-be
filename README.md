@@ -59,3 +59,12 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+
+
+Also our client wanted to have thic like change in crm & referral page                                                                                           
+  in CRM page shodul be ability with modal to add like "Lead" which shodul be user informaiton, it means instead of only keeping the registered users in crm we    
+  also shdoul keep the whole users that making purhuase, bookign and etc. also the once who have maked the admin , it means admin making bookigns from the         
+  booking page form the amdin panel we shodul chekc if with that phone numebr there is nor refreral w eshodul add that as a new referral                           
+                                                                                                                                                                   
+                                                                                                                                                                   
+  also in crm referral page user shdoul be abel to expor tthe crm list with CRM excel export, please alsso implement that one     
