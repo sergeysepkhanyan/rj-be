@@ -22,7 +22,8 @@ class UpdateSubServiceRequest extends BaseFormRequest
                 'required', 'string', 'max:255',
                 Rule::unique('sub_services', 'name')
                     ->ignore($subServiceId)
-                    ->where(fn($query) => $query->where('service_id', $this->route('subService')->service_id))
+                    ->where(fn($query) => $query->where('service_id', $this->route('subService')->service_id)
+                                                ->whereNull('deleted_at'))
             ],
             'nameAr' => [
                 'nullable', 'string', 'max:255',

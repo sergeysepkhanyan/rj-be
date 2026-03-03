@@ -28,7 +28,8 @@ class StoreSubServiceRequest extends BaseFormRequest
             'name' => [
                 'required', 'string', 'max:255',
                 Rule::unique('sub_services', 'name')->where(fn($query) =>
-                $query->where('service_id', $serviceId)
+                    $query->where('service_id', $serviceId)
+                          ->whereNull('deleted_at')
                 ),
             ],
             'nameAr' => [
