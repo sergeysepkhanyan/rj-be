@@ -10,6 +10,7 @@ use App\Mail\BookingRescheduledMail;
 use App\Mail\BookingRescheduledAdminNotificationMail;
 use App\Mail\NewBookingAdminNotificationMail;
 use App\Models\Booking;
+use App\Models\Lead;
 use App\Models\User;
 use App\Models\Weekday;
 use App\Repositories\Interfaces\BookingRepositoryInterface;
@@ -393,6 +394,10 @@ class BookingService
             }
 
             $this->clearSelectionsAfterBooking($user?->id, $data['guest_session_id'] ?? null);
+
+            // Auto-create lead for non-registered users
+            $this->createLeadFromBooking($booking);
+
             $order = $this->orderService->createForBooking($booking, $booking->payment_mode);
             if ($booking->payment_mode === 'pay_later') {
                 $this->bookingRepository->update($booking, ['status' => 'confirmed']);
@@ -1175,6 +1180,11 @@ class BookingService
 
             $this->clearSelectionsAfterBooking($user?->id, $data['guest_session_id'] ?? null);
 
+            // Auto-create lead for non-registered users (only once for the batch)
+            if (!empty($bookings)) {
+                $this->createLeadFromBooking($bookings[0]);
+            }
+
             // Create order for the first booking (primary booking)
             // The order total should cover all bookings
             $primaryBooking = $bookings[0];
@@ -1251,6 +1261,38 @@ class BookingService
         return Booking::where('batch_id', $batchId)
             ->with(['services.bookable', 'services.master', 'master'])
             ->get();
+    }
+
+    /**
+     * Auto-create lead from booking if customer is not a registered user
+     */
+    protected function createLeadFromBooking(Booking $booking): void
+    {
+        $phone = $booking->customer_phone;
+        if (!$phone) {
+            return;
+        }
+
+        // Check if user already exists with this phone
+        $existingUser = User::where('mobile', $phone)->first();
+        if ($existingUser) {
+            return;
+        }
+
+        // Check if lead already exists with this phone
+        $existingLead = Lead::where('phone', $phone)->first();
+        if ($existingLead) {
+            return;
+        }
+
+        // Create new lead
+        Lead::create([
+            'name' => $booking->customer_name ?? 'Unknown',
+            'phone' => $phone,
+            'email' => $booking->customer_email,
+            'source' => 'booking',
+            'status' => 'new',
+        ]);
     }
 
     protected function throwValidation(array $errors, string $messageKey, array $replace = [], int $status = 422): void

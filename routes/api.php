@@ -50,6 +50,7 @@ use App\Http\Controllers\API\CountriesController;
 use App\Http\Controllers\API\FaqController;
 use App\Http\Controllers\API\Admin\WorkingHoursController as AdminWorkingHoursController;
 use App\Http\Controllers\API\Admin\FaqController as AdminFaqController;
+use App\Http\Controllers\LeadsController;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Services\ApiResponse;
@@ -274,6 +275,14 @@ Route::middleware(['set.locale'])->group(function () {
         Route::patch('/admin/clients/{user}/toggle-lock', [ClientsController::class, 'toggleLock']);
         Route::post('/admin/clients/{user}/notes', [ClientsController::class, 'addNote']);
         Route::delete('/admin/clients/{user}/notes/{note}', [ClientsController::class, 'deleteNote']);
+
+        // Leads management
+        Route::get('/admin/leads', [LeadsController::class, 'index']);
+        Route::post('/admin/leads', [LeadsController::class, 'store']);
+        Route::get('/admin/leads/export', [LeadsController::class, 'export']);
+        Route::get('/admin/leads/{lead}', [LeadsController::class, 'show']);
+        Route::put('/admin/leads/{lead}', [LeadsController::class, 'update']);
+        Route::delete('/admin/leads/{lead}', [LeadsController::class, 'destroy']);
 
 
         Route::post('/admin/booking/break', [AdminBookingsController::class, 'storeBreak']);
