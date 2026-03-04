@@ -20,9 +20,15 @@ class ContactMessageResource extends BaseResource
                 ->first();
 
             if ($user) {
+                // Use name if set, otherwise combine first_name and last_name
+                $clientName = $user->name;
+                if (empty($clientName) && ($user->first_name || $user->last_name)) {
+                    $clientName = trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? ''));
+                }
+
                 $client = [
                     'id' => $user->id,
-                    'name' => $user->name,
+                    'name' => $clientName ?: null,
                     'email' => $user->email,
                 ];
             }
