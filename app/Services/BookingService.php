@@ -374,19 +374,30 @@ class BookingService
 
         return DB::transaction(function () use ($data, $user, $tz, $date, $segments, $pricing) {
 
-            $bookingStart = substr($segments[0]['start_time'], 0, 5);
-            $bookingEnd   = substr($segments[count($segments) - 1]['end_time'], 0, 5);
+            $firstSegment = $segments[0];
+            $lastSegment = $segments[count($segments) - 1];
+            $bookingStart = substr($firstSegment['start_time'], 0, 5);
+            $bookingEnd   = substr($lastSegment['end_time'], 0, 5);
             $uniqueMasters = collect($segments)->pluck('master_id')->unique()->values();
+            $uniqueDates = collect($segments)->pluck('date')->unique();
+
+            // For multi-date bookings, calculate total duration from all segments
+            // For single-date bookings, use start/end time difference
+            if ($uniqueDates->count() > 1) {
+                $totalDuration = collect($segments)->sum('duration_minutes');
+            } else {
+                $totalDuration = $this->calculateDuration($bookingStart, $bookingEnd);
+            }
 
             $bookingData = [
                 'user_id'        => $user?->id,
                 'type'           => 'booking',
                 'reference'      => $this->makeBookingReference(),
-                'date'           => $date,
+                'date'           => $firstSegment['date'], // Use first segment's date
                 'timezone'       => $tz,
                 'start_time'     => $bookingStart,
                 'end_time'       => $bookingEnd,
-                'duration'       => $this->calculateDuration($bookingStart, $bookingEnd),
+                'duration'       => $totalDuration,
                 'duration_unit'  => 'minutes',
 
                 'price'          => $pricing['total_price'],
@@ -460,17 +471,27 @@ class BookingService
         ]);
 
         return DB::transaction(function () use ($booking, $data, $tz, $date, $segments, $pricing) {
-            $bookingStart = substr($segments[0]['start_time'], 0, 5);
-            $bookingEnd   = substr($segments[count($segments) - 1]['end_time'], 0, 5);
+            $firstSegment = $segments[0];
+            $lastSegment = $segments[count($segments) - 1];
+            $bookingStart = substr($firstSegment['start_time'], 0, 5);
+            $bookingEnd   = substr($lastSegment['end_time'], 0, 5);
 
             $uniqueMasters = collect($segments)->pluck('master_id')->unique()->values();
+            $uniqueDates = collect($segments)->pluck('date')->unique();
+
+            // For multi-date bookings, calculate total duration from all segments
+            if ($uniqueDates->count() > 1) {
+                $totalDuration = collect($segments)->sum('duration_minutes');
+            } else {
+                $totalDuration = $this->calculateDuration($bookingStart, $bookingEnd);
+            }
 
             $updateData = [
-                'date'           => $date,
+                'date'           => $firstSegment['date'],
                 'timezone'       => $tz,
                 'start_time'     => $bookingStart,
                 'end_time'       => $bookingEnd,
-                'duration'       => $this->calculateDuration($bookingStart, $bookingEnd),
+                'duration'       => $totalDuration,
                 'duration_unit'  => 'minutes',
 
                 'price'          => $pricing['total_price'],
