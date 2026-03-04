@@ -115,4 +115,16 @@ return [
         'name' => env('MAIL_FROM_NAME', 'Example'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Contact Form Notification Email
+    |--------------------------------------------------------------------------
+    |
+    | This email address will receive notifications when someone submits
+    | the contact form on the website. If not set, falls back to MAIL_FROM_ADDRESS.
+    |
+    */
+
+    'contact_notification_email' => env('CONTACT_EMAIL'),
+
 ];

@@ -25,9 +25,21 @@ class ContactService
             'user_agent' => $userAgent ? substr($userAgent, 0, 500) : null,
         ]);
 
-        Mail::to(env('MAIL_FROM_ADDRESS'))->queue(new ContactMessageReceived($message));
+        // Get the contact form notification email recipient
+        $notificationEmail = config('mail.contact_notification_email') ?? env('CONTACT_EMAIL') ?? env('MAIL_FROM_ADDRESS');
 
-        return $this->repo->markEmailed($message);
+        // Only send email if recipient is configured
+        if (!empty($notificationEmail)) {
+            try {
+                Mail::to($notificationEmail)->queue(new ContactMessageReceived($message));
+                return $this->repo->markEmailed($message);
+            } catch (\Exception $e) {
+                // Log error but don't fail the request - message is already saved
+                \Log::error('Failed to send contact notification email: ' . $e->getMessage());
+            }
+        }
+
+        return $message;
     }
 
     public function list(array $filters, int $perPage): LengthAwarePaginator
