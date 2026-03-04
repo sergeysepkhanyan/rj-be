@@ -515,6 +515,7 @@ class BookingService
 
             $startTime   = $s['start_time']   ?? $s['startTime']   ?? null;
             $endTime     = $s['end_time']     ?? $s['endTime']     ?? null;
+            $serviceDate = $s['date']         ?? $date; // Allow per-service date
 
             if (!$serviceType || !$serviceId) {
                 $this->throwValidation(
@@ -543,8 +544,8 @@ class BookingService
             $serviceable = $this->resolveServiceable((string)$serviceType, (int) $serviceId);
             $expectedMinutes = (int) ($serviceable->duration ?? 0);
 
-            $start = $this->parseTimeToCarbon($date, (string)$startTime, $tz);
-            $end   = $this->parseTimeToCarbon($date, (string)$endTime, $tz);
+            $start = $this->parseTimeToCarbon($serviceDate, (string)$startTime, $tz);
+            $end   = $this->parseTimeToCarbon($serviceDate, (string)$endTime, $tz);
 
             if ($end->lte($start)) {
                 $this->throwValidation(
@@ -590,14 +591,18 @@ class BookingService
                 'vat_amount'       => (float) $vat['vat_amount'],
                 'final_price'      => (float) $vat['final_price'],
                 'sort_order'       => $s['sort_order'] ?? $s['sortOrder'] ?? null,
-                'date'             => $date,
+                'date'             => $serviceDate,
                 'timezone'         => $tz,
                 'start_time'       => $start->format('H:i:s'),
                 'end_time'         => $end->format('H:i:s'),
             ];
         }
 
-        usort($segments, fn ($a, $b) => strcmp($a['start_time'], $b['start_time']));
+        // Sort by date first, then by start_time
+        usort($segments, function ($a, $b) {
+            $dateCompare = strcmp($a['date'], $b['date']);
+            return $dateCompare !== 0 ? $dateCompare : strcmp($a['start_time'], $b['start_time']);
+        });
 
         return $segments;
     }
