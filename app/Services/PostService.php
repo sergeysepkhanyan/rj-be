@@ -38,9 +38,25 @@ class PostService
         return $this->postRepository->paginated($lang, $perPage, $page);
     }
 
+    /**
+     * Get paginated posts for admin (all statuses)
+     */
+    public function getPaginatedPostsAdmin($lang = null, int $perPage = 15, int $page = 1): LengthAwarePaginator
+    {
+        return $this->postRepository->paginatedAdmin($lang, $perPage, $page);
+    }
+
     public function getBySlug(string $slug)
     {
         return $this->postRepository->findByUrlSlug($slug);
+    }
+
+    /**
+     * Get post by slug for admin (any status)
+     */
+    public function getBySlugAdmin(string $slug)
+    {
+        return $this->postRepository->findByUrlSlugAdmin($slug);
     }
 }
 

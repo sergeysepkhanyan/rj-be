@@ -34,12 +34,47 @@ class PostRepository implements PostRepositoryInterface
         return $post->delete();
     }
 
+    /**
+     * Get paginated posts for public view (only Published posts)
+     */
     public function paginated($lang = 'en', int $perPage = 15, int $page = 1): LengthAwarePaginator
     {
-        return Post::orderBy('created_at')->where('lang', $lang)->paginate($perPage, ['*'], 'page', $page);
+        return Post::where('lang', $lang)
+            ->where('status', 'Published')
+            ->orderByDesc('publish_date')
+            ->orderByDesc('created_at')
+            ->paginate($perPage, ['*'], 'page', $page);
     }
 
+    /**
+     * Get paginated posts for admin view (all statuses)
+     */
+    public function paginatedAdmin($lang = null, int $perPage = 15, int $page = 1): LengthAwarePaginator
+    {
+        $query = Post::query();
+
+        if ($lang) {
+            $query->where('lang', $lang);
+        }
+
+        return $query->orderByDesc('created_at')
+            ->paginate($perPage, ['*'], 'page', $page);
+    }
+
+    /**
+     * Find post by slug (only Published for public)
+     */
     public function findByUrlSlug(string $slug)
+    {
+        return Post::where('slug', $slug)
+            ->where('status', 'Published')
+            ->first();
+    }
+
+    /**
+     * Find post by slug (any status for admin)
+     */
+    public function findByUrlSlugAdmin(string $slug)
     {
         return Post::where('slug', $slug)->first();
     }

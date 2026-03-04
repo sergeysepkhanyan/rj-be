@@ -201,6 +201,8 @@ Route::middleware(['set.locale'])->group(function () {
     });
 
     Route::middleware(['jwt.custom', 'verified', 'role:superadmin,admin,marketer'])->group(function () {
+        Route::get('/admin/posts', [AdminPostsController::class, 'index']);
+        Route::get('/admin/posts/{post}', [AdminPostsController::class, 'show']);
         Route::post('/admin/post/create', [AdminPostsController::class, 'store']);
         Route::put('/admin/post/update/{post}', [AdminPostsController::class, 'update']);
         Route::delete('/admin/post/delete/{post}', [AdminPostsController::class, 'destroy']);

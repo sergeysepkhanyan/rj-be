@@ -10,10 +10,43 @@ use App\Models\Post;
 use App\Services\ApiResponse;
 use App\Services\PostService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class PostsController extends Controller
 {
     public function __construct(protected PostService $postService) {}
+
+    public function index(Request $request): JsonResponse
+    {
+        $perPage = (int) $request->get('per_page', 15);
+        $page    = (int) $request->get('page', 1);
+        $lang    = $request->get('lang');
+
+        $posts = $this->postService->getPaginatedPostsAdmin($lang, $perPage, $page);
+
+        return ApiResponse::success([
+            'posts' => PostResource::collection($posts),
+            'meta' => [
+                'current_page' => $posts->currentPage(),
+                'last_page'    => $posts->lastPage(),
+                'per_page'     => $posts->perPage(),
+                'total'        => $posts->total(),
+            ],
+            'links' => [
+                'first' => $posts->url(1),
+                'last'  => $posts->url($posts->lastPage()),
+                'prev'  => $posts->previousPageUrl(),
+                'next'  => $posts->nextPageUrl(),
+            ],
+        ], __('success.posts.listed'));
+    }
+
+    public function show(Post $post): JsonResponse
+    {
+        return ApiResponse::success([
+            'post' => new PostResource($post)
+        ], __('success.posts.selected'));
+    }
 
     public function store(CreatePostRequest $request): JsonResponse
     {
