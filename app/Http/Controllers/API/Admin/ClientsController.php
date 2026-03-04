@@ -257,7 +257,7 @@ class ClientsController extends Controller
                 ->orWhere('mobile', 'LIKE', "%{$search}%")
                 ->orWhere('email', 'LIKE', "%{$search}%");
         })
-            ->whereHas('role', fn($q) => $q->where('name', 'Client'))
+            ->whereHas('role', fn($q) => $q->where('slug', 'client'))
             ->with(['referral', 'manualReferral'])
             ->limit($limit)
             ->get();

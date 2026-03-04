@@ -27,19 +27,20 @@ class UpdatePostRequest extends BaseFormRequest
     public function rules(): array
     {
         return [
-            'lang'             => ['required', 'string', 'max:5'],
-            'title'            => ['required', 'string', 'max:255'],
+            'lang'             => ['sometimes', 'required', 'string', 'max:5'],
+            'title'            => ['sometimes', 'required', 'string', 'max:255'],
             'urlSlug'          => [
+                'sometimes',
                 'required',
                 'string',
                 'max:255',
                 Rule::unique('posts', 'slug')->ignore($this->post->id),
             ],
-            'previewText'      => ['required', 'string'],
-            'content'          => ['required', 'string'],
+            'previewText'      => ['sometimes', 'required', 'string'],
+            'content'          => ['sometimes', 'required', 'string'],
             'featureImage'     => ['nullable', 'string'],
             'showAuthorName'   => ['nullable', 'boolean'],
-            'status'           => ['required', 'in:Draft,Published,Archived'],
+            'status'           => ['sometimes', 'required', 'in:Draft,Published,Archived'],
             'publishDate'      => ['nullable', 'date', 'before_or_equal:today'],
         ];
     }
