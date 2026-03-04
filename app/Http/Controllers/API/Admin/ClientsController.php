@@ -7,6 +7,7 @@ use App\Http\Requests\AddReferralRequest;
 use App\Http\Resources\ClientResource;
 use App\Http\Resources\ClientDetailResource;
 use App\Models\User;
+use App\Models\Lead;
 use App\Models\ClientNote;
 use App\Models\Booking;
 use App\Models\Order;
@@ -234,5 +235,112 @@ class ClientsController extends Controller
         return ApiResponse::success([
             'user' => new ClientResource($client),
         ], __('success.client.referral_added'));
+    }
+
+    /**
+     * Search for clients and leads by name or phone number.
+     * Used for autocomplete in admin booking creation.
+     */
+    public function search(Request $request): JsonResponse
+    {
+        $search = trim((string) $request->get('q', ''));
+
+        if (strlen($search) < 2) {
+            return ApiResponse::success(['results' => []], 'Search query too short');
+        }
+
+        $limit = min((int) $request->get('limit', 10), 20);
+
+        // Search in users (CRM clients)
+        $users = User::where(function ($query) use ($search) {
+            $query->where('name', 'LIKE', "%{$search}%")
+                ->orWhere('mobile', 'LIKE', "%{$search}%")
+                ->orWhere('email', 'LIKE', "%{$search}%");
+        })
+            ->whereHas('role', fn($q) => $q->where('name', 'Client'))
+            ->with(['referral', 'manualReferral'])
+            ->limit($limit)
+            ->get();
+
+        // Search in leads (non-converted only)
+        $leads = Lead::where(function ($query) use ($search) {
+            $query->where('name', 'LIKE', "%{$search}%")
+                ->orWhere('phone', 'LIKE', "%{$search}%")
+                ->orWhere('email', 'LIKE', "%{$search}%");
+        })
+            ->whereNull('converted_user_id')
+            ->with('referral')
+            ->limit($limit)
+            ->get();
+
+        // Format results
+        $results = [];
+
+        foreach ($users as $user) {
+            // Determine the active referral (manual takes priority)
+            $referral = $user->manualReferral ?? $user->referral;
+            $discount = null;
+
+            if ($referral && $referral->enabled) {
+                // For users, check visit threshold if applicable
+                $canApplyDiscount = true;
+                if (!$user->manual_referral_id && $referral->visit_threshold) {
+                    $visitCount = Booking::where('user_id', $user->id)
+                        ->where('type', 'booking')
+                        ->where('status', '!=', 'cancelled')
+                        ->where('payment_status', 'paid')
+                        ->count();
+                    $canApplyDiscount = $visitCount >= $referral->visit_threshold;
+                }
+
+                if ($canApplyDiscount) {
+                    $discount = [
+                        'id' => $referral->id,
+                        'name' => $referral->name,
+                        'type' => $referral->type === 'percentage' ? 'percent' : 'fixed',
+                        'value' => (float) $referral->value,
+                    ];
+                }
+            }
+
+            $results[] = [
+                'id' => $user->id,
+                'type' => 'user',
+                'name' => $user->name,
+                'phone' => $user->mobile,
+                'email' => $user->email,
+                'discount' => $discount,
+            ];
+        }
+
+        foreach ($leads as $lead) {
+            $discount = null;
+
+            if ($lead->referral && $lead->referral->enabled) {
+                $discount = [
+                    'id' => $lead->referral->id,
+                    'name' => $lead->referral->name,
+                    'type' => $lead->referral->type === 'percentage' ? 'percent' : 'fixed',
+                    'value' => (float) $lead->referral->value,
+                ];
+            }
+
+            $results[] = [
+                'id' => $lead->id,
+                'type' => 'lead',
+                'name' => $lead->name,
+                'phone' => $lead->phone,
+                'email' => $lead->email,
+                'discount' => $discount,
+            ];
+        }
+
+        // Sort by name
+        usort($results, fn($a, $b) => strcasecmp($a['name'], $b['name']));
+
+        // Limit total results
+        $results = array_slice($results, 0, $limit);
+
+        return ApiResponse::success(['results' => $results]);
     }
 }

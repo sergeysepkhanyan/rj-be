@@ -269,6 +269,7 @@ Route::middleware(['set.locale'])->group(function () {
 
         Route::patch('/admin/clients/{user}/add-referral', [ClientsController::class, 'addReferral']);
         Route::get('/admin/clients', [ClientsController::class, 'index']);
+        Route::get('/admin/clients/search', [ClientsController::class, 'search']);
         Route::get('/admin/clients/{user}', [ClientsController::class, 'show']);
         Route::get('/admin/clients/{user}/bookings', [ClientsController::class, 'bookings']);
         Route::get('/admin/clients/{user}/orders', [ClientsController::class, 'orders']);
