@@ -25,31 +25,59 @@ class ProductExportService
             $spreadsheet = new Spreadsheet();
             $sheet = $spreadsheet->getActiveSheet();
 
-            $sheet->setCellValue('A1', 'Product Name');
-            $sheet->setCellValue('B1', 'SKU/ID');
-            $sheet->setCellValue('C1', 'Category');
-            $sheet->setCellValue('D1', 'Price');
-            $sheet->setCellValue('E1', 'Quantity');
-            $sheet->setCellValue('F1', 'Availability');
-            $sheet->setCellValue('G1', 'Date');
-            $sheet->setCellValue('H1', 'Status');
+            // Header row
+            $headers = [
+                'A1' => 'Product Name',
+                'B1' => 'SKU/ID',
+                'C1' => 'Category',
+                'D1' => 'Supplier',
+                'E1' => 'Price',
+                'F1' => 'Cost Price',
+                'G1' => 'Quantity',
+                'H1' => 'Reorder Point',
+                'I1' => 'Availability',
+                'J1' => 'Unit of Sale',
+                'K1' => 'Sales Channel',
+                'L1' => 'Product Type',
+                'M1' => 'Production Date',
+                'N1' => 'Expiry Date',
+                'O1' => 'Created Date',
+                'P1' => 'Status',
+            ];
+
+            foreach ($headers as $cell => $value) {
+                $sheet->setCellValue($cell, $value);
+            }
 
             $row = 2;
             foreach ($products as $product) {
                 $quantity = (int) ($product->max_quantity ?? 0);
+                $reorderPoint = (int) ($product->reorder_point ?? 0);
                 $availability = $quantity > 0 ? 'On Stock' : 'Out';
                 $price = $this->formatPrice($product->price, $product->currency);
-                $date = $product->created_at?->format('d, M Y');
+                $costPrice = $this->formatPrice($product->cost_price, $product->currency);
+                $createdDate = $product->created_at?->format('d, M Y');
+                $productionDate = $product->production_date?->format('d, M Y') ?? '';
+                $expiryDate = $product->expiry_date?->format('d, M Y') ?? '';
                 $categoryName = $product->productCategory?->name ?? '';
+                $supplierName = $product->supplier?->name ?? '';
 
                 $sheet->setCellValue('A' . $row, $product->name ?? '');
                 $sheet->setCellValue('B' . $row, $product->sku_id ?? '');
                 $sheet->setCellValue('C' . $row, $categoryName);
-                $sheet->setCellValue('D' . $row, $price);
-                $sheet->setCellValue('E' . $row, $quantity);
-                $sheet->setCellValue('F' . $row, $availability);
-                $sheet->setCellValue('G' . $row, $date);
-                $sheet->setCellValue('H' . $row, $product->status ?? '');
+                $sheet->setCellValue('D' . $row, $supplierName);
+                $sheet->setCellValue('E' . $row, $price);
+                $sheet->setCellValue('F' . $row, $costPrice);
+                $sheet->setCellValue('G' . $row, $quantity);
+                $sheet->setCellValue('H' . $row, $reorderPoint);
+                $sheet->setCellValue('I' . $row, $availability);
+                $sheet->setCellValue('J' . $row, $product->unit_of_sale ?? '');
+                $sheet->setCellValue('K' . $row, $product->sales_channel ?? '');
+                $sheet->setCellValue('L' . $row, $product->product_type ?? '');
+                $sheet->setCellValue('M' . $row, $productionDate);
+                $sheet->setCellValue('N' . $row, $expiryDate);
+                $sheet->setCellValue('O' . $row, $createdDate);
+                $sheet->setCellValue('P' . $row, $product->status ?? '');
 
                 $row++;
             }
