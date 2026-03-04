@@ -322,6 +322,8 @@ return [
         'master_day_off' => 'الموظف غير متاح في هذا اليوم.',
         'slot_already_selected' => 'تم اختيار هذا الوقت مسبقاً.',
         'guest_session_required' => 'معرّف جلسة الضيف مطلوب لاختيار الموعد.',
+        'same_service_already_selected' => 'لا يمكنك اختيار نفس الخدمة مرتين في نفس الوقت.',
+        'service_already_booked_at_time' => 'هذه الخدمة محجوزة بالفعل في الوقت المحدد. يرجى اختيار وقت آخر.',
     ],
 
     'contact' => [

@@ -218,7 +218,27 @@ class BookingService
         $workStart = $hours['start'];
         $workEnd   = $hours['end'];
 
-        $busy = $this->bookingRepository->getBusyForMasterOnDate($masterId, $date);
+        // Get master's busy times
+        $masterBusy = $this->bookingRepository->getBusyForMasterOnDate($masterId, $date);
+
+        // Get service-specific busy times (same service already booked at that time)
+        $serviceBusy = collect();
+        if ($subserviceId) {
+            $serviceBusy = $this->bookingRepository->getBusyForServiceOnDate(
+                'App\\Models\\SubService',
+                $subserviceId,
+                $date
+            );
+        } elseif ($subserviceItemId) {
+            $serviceBusy = $this->bookingRepository->getBusyForServiceOnDate(
+                'App\\Models\\SubServiceItem',
+                $subserviceItemId,
+                $date
+            );
+        }
+
+        // Merge both busy collections
+        $busy = $masterBusy->merge($serviceBusy);
 
         return $this->buildSlots($date, $workStart, $workEnd, $busy, $durationMinutes, $tz);
     }
@@ -344,6 +364,7 @@ class BookingService
 
         $this->validateSegmentsBasic($segments, $tz);
         $this->assertNoDuplicateSegments($segments);
+        $this->assertServiceNotAlreadyBooked($segments);
         $this->validateRootTimeMatchesSegments($data, $segments);
 
         $pricing = $this->buildPricingData([
@@ -429,6 +450,8 @@ class BookingService
         $segments = $this->buildServiceSegmentsFromRequest($date, $rawServices, $tz);
 
         $this->validateSegmentsBasic($segments, $tz);
+        $this->assertNoDuplicateSegments($segments);
+        $this->assertServiceNotAlreadyBooked($segments, $booking->id);
         $this->validateRootTimeMatchesSegments($data, $segments);
 
         $pricing = $this->buildPricingData([
@@ -1055,6 +1078,79 @@ class BookingService
         }
     }
 
+    /**
+     * Validate that the same service is not already booked at overlapping times.
+     * This prevents double-booking the same service globally.
+     */
+    protected function assertServiceNotAlreadyBooked(array $segments, ?int $excludeBookingId = null): void
+    {
+        $count = count($segments);
+
+        // First, check for duplicate services within the same booking request
+        for ($i = 0; $i < $count; $i++) {
+            $a = $segments[$i];
+            $serviceTypeA = $a['service_type'] ?? $a['serviceType'] ?? null;
+            $serviceIdA = (int)($a['service_id'] ?? $a['serviceId'] ?? 0);
+
+            $aStart = $this->parseTimeToCarbon($a['date'], (string)$a['start_time'], (string)$a['timezone']);
+            $aEnd   = $this->parseTimeToCarbon($a['date'], (string)$a['end_time'], (string)$a['timezone']);
+
+            for ($j = $i + 1; $j < $count; $j++) {
+                $b = $segments[$j];
+                $serviceTypeB = $b['service_type'] ?? $b['serviceType'] ?? null;
+                $serviceIdB = (int)($b['service_id'] ?? $b['serviceId'] ?? 0);
+
+                // Skip if different services
+                if ($serviceTypeA !== $serviceTypeB || $serviceIdA !== $serviceIdB) {
+                    continue;
+                }
+
+                $bStart = $this->parseTimeToCarbon($b['date'], (string)$b['start_time'], (string)$b['timezone']);
+                $bEnd   = $this->parseTimeToCarbon($b['date'], (string)$b['end_time'], (string)$b['timezone']);
+
+                // Check for overlap
+                if ($aStart < $bEnd && $aEnd > $bStart) {
+                    $this->throwValidation(
+                        ['services' => __('validation.booking.same_service_already_selected')],
+                        'validation.failed'
+                    );
+                }
+            }
+        }
+
+        // Then, check against existing bookings in the database
+        foreach ($segments as $index => $seg) {
+            $serviceType = $seg['service_type'] ?? $seg['serviceType'] ?? null;
+            $serviceId   = (int)($seg['service_id'] ?? $seg['serviceId'] ?? 0);
+            $date        = $seg['date'];
+            $startTime   = $seg['start_time'];
+            $endTime     = $seg['end_time'];
+            $tz          = $seg['timezone'];
+
+            // Convert service type to bookable type
+            $bookableType = $serviceType === 'item'
+                ? 'App\\Models\\SubServiceItem'
+                : 'App\\Models\\SubService';
+
+            $hasOverlap = $this->bookingRepository->hasServiceOverlap(
+                bookableType: $bookableType,
+                bookableId: $serviceId,
+                date: $date,
+                startTime: $startTime,
+                endTime: $endTime,
+                excludeBookingId: $excludeBookingId,
+                timezone: $tz
+            );
+
+            if ($hasOverlap) {
+                $this->throwValidation(
+                    ["services.{$index}" => __('validation.booking.service_already_booked_at_time')],
+                    'validation.failed'
+                );
+            }
+        }
+    }
+
     private function isMasterOffOnDate(int $masterId, string $date, string $tz): bool
     {
         $day = CarbonImmutable::createFromFormat('Y-m-d', $date, $tz);
@@ -1121,6 +1217,8 @@ class BookingService
         // Build service segments with validation
         $segments = $this->buildServiceSegmentsFromRequest($date, $rawServices, $tz);
         $this->validateSegmentsBasic($segments, $tz);
+        $this->assertNoDuplicateSegments($segments);
+        $this->assertServiceNotAlreadyBooked($segments);
 
         // Calculate total pricing across all services
         $pricing = $this->buildPricingData([

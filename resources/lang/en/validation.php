@@ -319,6 +319,8 @@ return [
         'master_day_off' => 'Selected master is not available on this day.',
         'slot_already_selected' => 'This time slot is already selected.',
         'guest_session_required' => 'Guest session is required for booking selection.',
+        'same_service_already_selected' => 'You cannot select the same service twice at the same time.',
+        'service_already_booked_at_time' => 'This service is already booked at the selected time. Please choose a different time.',
     ],
 
     'contact' => [

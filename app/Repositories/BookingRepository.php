@@ -194,4 +194,94 @@ class BookingRepository implements BookingRepositoryInterface
 
         return false;
     }
+
+    /**
+     * Check if a specific service is already booked at overlapping times
+     */
+    public function hasServiceOverlap(
+        string $bookableType,
+        int $bookableId,
+        string $date,
+        string $startTime,
+        string $endTime,
+        ?int $excludeBookingId = null,
+        ?string $timezone = null
+    ): bool {
+        $tz = $timezone ?: 'UTC';
+        $startTimeStr = (string) $startTime;
+        $endTimeStr = (string) $endTime;
+        if (strlen($startTimeStr) === 5) $startTimeStr .= ':00';
+        if (strlen($endTimeStr) === 5) $endTimeStr .= ':00';
+
+        $reqStart = Carbon::createFromFormat('Y-m-d H:i:s', "{$date} {$startTimeStr}", $tz);
+        $reqEnd   = Carbon::createFromFormat('Y-m-d H:i:s', "{$date} {$endTimeStr}", $tz);
+
+        $dateObj = Carbon::createFromFormat('Y-m-d', $date);
+        $dateRange = [
+            $dateObj->copy()->subDay()->toDateString(),
+            $dateObj->toDateString(),
+            $dateObj->copy()->addDay()->toDateString(),
+        ];
+
+        // Check booking_services for the same service at overlapping times
+        $segments = DB::table('booking_services as bs')
+            ->join('bookings as b', 'b.id', '=', 'bs.booking_id')
+            ->where('bs.bookable_type', $bookableType)
+            ->where('bs.bookable_id', $bookableId)
+            ->whereIn('bs.date', $dateRange)
+            ->where('b.status', '!=', 'cancelled')
+            ->where('b.type', 'booking')
+            ->when($excludeBookingId, function ($q) use ($excludeBookingId) {
+                $q->where('b.id', '!=', $excludeBookingId);
+            })
+            ->get([
+                'bs.date',
+                'bs.start_time',
+                'bs.end_time',
+                'bs.timezone',
+                'b.timezone as booking_timezone',
+            ]);
+
+        foreach ($segments as $row) {
+            $rowTz = $row->timezone ?: ($row->booking_timezone ?: 'UTC');
+            $rowDate = is_string($row->date) ? $row->date : (string) $row->date;
+            $startStr = (string) $row->start_time;
+            $endStr   = (string) $row->end_time;
+            if (strlen($startStr) === 5) $startStr .= ':00';
+            if (strlen($endStr) === 5)   $endStr   .= ':00';
+
+            $start = Carbon::createFromFormat('Y-m-d H:i:s', "{$rowDate} {$startStr}", $rowTz)->setTimezone($tz);
+            $end   = Carbon::createFromFormat('Y-m-d H:i:s', "{$rowDate} {$endStr}", $rowTz)->setTimezone($tz);
+
+            if ($reqStart < $end && $reqEnd > $start) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Get busy time slots for a specific service on a date
+     */
+    public function getBusyForServiceOnDate(
+        string $bookableType,
+        int $bookableId,
+        string $date
+    ): Collection {
+        return DB::table('booking_services as bs')
+            ->join('bookings as b', 'b.id', '=', 'bs.booking_id')
+            ->where('bs.bookable_type', $bookableType)
+            ->where('bs.bookable_id', $bookableId)
+            ->whereDate('bs.date', $date)
+            ->where('b.status', '!=', 'cancelled')
+            ->where('b.type', 'booking')
+            ->get([
+                DB::raw('bs.date as date'),
+                DB::raw('bs.start_time as start_time'),
+                DB::raw('bs.end_time as end_time'),
+                DB::raw("'service_booking' as type"),
+                DB::raw('COALESCE(bs.timezone, b.timezone) as timezone'),
+            ]);
+    }
 }
