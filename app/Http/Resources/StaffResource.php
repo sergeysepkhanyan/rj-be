@@ -42,7 +42,9 @@ class StaffResource extends BaseResource
                 $this->relationLoaded('weekends') || $this->weekends,
                 WeekdayResource::collection($this->weekends)
             ),
-            'isActive' => is_null($this->deleted_at),
+            // isActive is true only if not soft-deleted AND status is 'active'
+            'isActive' => is_null($this->deleted_at) && ($data['status'] ?? 'active') === 'active',
+            'status' => $data['status'] ?? 'active',
             'deactivatedDate' => $this->deleted_at ?? null,
         ];
     }

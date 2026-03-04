@@ -56,7 +56,7 @@ class AuthController extends Controller
 
         $user = User::query()->where('email', $credentials['email'])->first();
 
-        if (!$user || ($user->status ?? null) !== 'active') {
+        if (!$user) {
             return ApiResponse::error(
                 ['auth' => [__('errors.auth.invalid_credentials')]],
                 __('errors.auth.invalid_credentials'),
@@ -64,7 +64,19 @@ class AuthController extends Controller
             );
         }
 
-        if (!$user->hasVerifiedEmail()) {
+        // Allow 'active' users and 'pending' users with temporary password (first login)
+        $status = $user->status ?? null;
+        $isPendingWithTempPassword = $status === 'pending' && $user->is_temporary_password;
+        if ($status !== 'active' && !$isPendingWithTempPassword) {
+            return ApiResponse::error(
+                ['auth' => [__('errors.auth.account_inactive')]],
+                __('errors.auth.account_inactive'),
+                401
+            );
+        }
+
+        // Only require email verification for non-pending users
+        if (!$isPendingWithTempPassword && !$user->hasVerifiedEmail()) {
             return ApiResponse::error(
                 ['email' => [__('errors.auth.email_not_verified')]],
                 __('errors.auth.email_not_verified'),

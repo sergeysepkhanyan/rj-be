@@ -45,7 +45,9 @@ class UserService
             $data['is_temporary_password'] = true;
             $data['temporary_password_hash'] = $hashedPassword;
             $data['temporary_password_used_at'] = null;
-            $data['email_verified_at'] = now();
+            // Don't set email_verified_at - they need to verify by logging in with temp password
+            // Set status to pending - will become active after first login
+            $data['status'] = 'pending';
         }
         $user = $this->userRepository->create($data);
         if ($role->slug === 'master' && !empty($subservices)) {
@@ -212,6 +214,12 @@ class UserService
             'password' => bcrypt($data['password']),
             'is_temporary_password' => false,
         ];
+
+        // Activate user if they were pending (first password change after creation)
+        if ($user->status === 'pending') {
+            $updateData['status'] = 'active';
+            $updateData['email_verified_at'] = now();
+        }
 
         $updated = $this->userRepository->update($user, $updateData);
 

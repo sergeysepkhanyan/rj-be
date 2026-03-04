@@ -12,27 +12,10 @@ class StoreStaffRequest extends BaseFormRequest
 
     public function rules(): array
     {
-        $role = $this->input('role');
-
-        // Get role IDs for the uniqueness check
-        $masterRoleId = \App\Models\UserRole::where('slug', 'master')->value('id');
-        $adminRoleIds = \App\Models\UserRole::whereIn('slug', ['admin', 'marketer', 'superadmin'])->pluck('id')->toArray();
-
-        // Define which roles share email/mobile uniqueness
-        // Masters can use emails/mobiles that admins/marketers have (separate pools)
-        if ($role === 'master') {
-            // Masters: only check uniqueness among other masters
-            $emailUniqueRule = Rule::unique('users', 'email')
-                ->where('user_role_id', $masterRoleId);
-            $mobileUniqueRule = Rule::unique('users', 'mobile')
-                ->where('user_role_id', $masterRoleId);
-        } else {
-            // Admins and marketers must have unique emails/mobiles among themselves
-            $emailUniqueRule = Rule::unique('users', 'email')
-                ->whereIn('user_role_id', $adminRoleIds);
-            $mobileUniqueRule = Rule::unique('users', 'mobile')
-                ->whereIn('user_role_id', $adminRoleIds);
-        }
+        // Email must be globally unique across ALL users (clients, staff, etc.)
+        // This prevents conflicts when the same email is used for different account types
+        $emailUniqueRule = Rule::unique('users', 'email');
+        $mobileUniqueRule = Rule::unique('users', 'mobile');
 
         return [
             'role' => 'required|in:admin,master,marketer',
