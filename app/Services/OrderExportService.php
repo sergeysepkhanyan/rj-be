@@ -10,12 +10,17 @@ use Barryvdh\DomPDF\Facade\Pdf as DomPdf;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use setasign\Fpdi\Tcpdf\Fpdi;
 
 class OrderExportService
 {
+    protected string $letterheadPath;
+
     public function __construct(
         protected OrderRepositoryInterface $orderRepository
-    ) {}
+    ) {
+        $this->letterheadPath = storage_path('app/letterhead.pdf');
+    }
 
     public function downloadInvoicePdf(Order $order)
     {
@@ -33,11 +38,176 @@ class OrderExportService
 
         $data = $this->prepareInvoiceData($order);
 
-        $pdf = DomPdf::loadView('invoices.pdf', $data);
-        
         $filename = 'invoice-' . ($order->reference ?? $order->id) . '.pdf';
-        
-        return $pdf->download($filename);
+
+        // Generate PDF using letterhead template
+        $pdfContent = $this->generateInvoiceWithLetterhead($data);
+
+        return response($pdfContent)
+            ->header('Content-Type', 'application/pdf')
+            ->header('Content-Disposition', "attachment; filename=\"{$filename}\"");
+    }
+
+    /**
+     * Generate invoice PDF using the letterhead template
+     */
+    protected function generateInvoiceWithLetterhead(array $data): string
+    {
+        // Create new PDF with FPDI
+        $pdf = new Fpdi('P', 'mm', 'A4');
+        $pdf->setPrintHeader(false);
+        $pdf->setPrintFooter(false);
+        $pdf->SetMargins(20, 20, 20);
+        $pdf->SetAutoPageBreak(true, 25);
+
+        // Import the letterhead template
+        if (file_exists($this->letterheadPath)) {
+            $pdf->setSourceFile($this->letterheadPath);
+            $templateId = $pdf->importPage(1);
+        } else {
+            $templateId = null;
+        }
+
+        // Add first page with letterhead
+        $pdf->AddPage();
+        if ($templateId) {
+            $pdf->useTemplate($templateId, 0, 0, 210, 297);
+        }
+
+        // Set font
+        $pdf->SetFont('helvetica', '', 10);
+
+        // Colors
+        $brandColor = [76, 55, 21]; // #4C3715
+
+        // === INVOICE TITLE ===
+        $pdf->SetY(35);
+        $pdf->SetFont('helvetica', 'B', 24);
+        $pdf->SetTextColor(...$brandColor);
+        $pdf->Cell(0, 10, 'INVOICE', 0, 1, 'C');
+
+        // Invoice reference
+        $pdf->SetFont('helvetica', '', 12);
+        $pdf->SetTextColor(100, 100, 100);
+        $pdf->Cell(0, 6, '#' . ($data['reference'] ?? 'N/A'), 0, 1, 'C');
+
+        // === CUSTOMER INFO & DATE ===
+        $pdf->SetY(60);
+        $pdf->SetFont('helvetica', '', 10);
+
+        // Left side - Bill To
+        $pdf->SetTextColor(136, 136, 136);
+        $pdf->SetFont('helvetica', 'B', 9);
+        $pdf->Cell(90, 5, 'BILL TO', 0, 0, 'L');
+
+        // Right side - Invoice Details
+        $pdf->Cell(90, 5, 'INVOICE DETAILS', 0, 1, 'L');
+
+        $pdf->SetFont('helvetica', '', 10);
+        $pdf->SetTextColor(...$brandColor);
+
+        // Customer name
+        $pdf->Cell(90, 6, $data['customerName'] ?? 'N/A', 0, 0, 'L');
+        // Date
+        $pdf->SetTextColor(100, 100, 100);
+        $pdf->Cell(30, 6, 'Date:', 0, 0, 'L');
+        $pdf->SetTextColor(...$brandColor);
+        $pdf->Cell(60, 6, $data['order']->created_at->format('d M Y'), 0, 1, 'L');
+
+        // Customer email
+        $pdf->SetTextColor(100, 100, 100);
+        $pdf->Cell(90, 6, $data['customerEmail'] ?? 'N/A', 0, 0, 'L');
+        // Payment method
+        if ($data['paymentMethod']) {
+            $pdf->Cell(30, 6, 'Payment:', 0, 0, 'L');
+            $pdf->SetTextColor(...$brandColor);
+            $pdf->Cell(60, 6, $data['paymentMethod'], 0, 1, 'L');
+        } else {
+            $pdf->Ln(6);
+        }
+
+        // === ITEMS TABLE ===
+        $pdf->SetY(90);
+
+        // Table header
+        $pdf->SetFillColor(...$brandColor);
+        $pdf->SetTextColor(255, 255, 255);
+        $pdf->SetFont('helvetica', 'B', 9);
+
+        $pdf->Cell(80, 8, 'ITEM', 1, 0, 'L', true);
+        $pdf->Cell(25, 8, 'QTY', 1, 0, 'C', true);
+        $pdf->Cell(35, 8, 'UNIT PRICE', 1, 0, 'R', true);
+        $pdf->Cell(30, 8, 'TOTAL', 1, 1, 'R', true);
+
+        // Table rows
+        $pdf->SetFont('helvetica', '', 10);
+        $pdf->SetTextColor(...$brandColor);
+        $currency = $data['order']->currency ?? 'AED';
+
+        $rowFill = false;
+        foreach ($data['items'] as $item) {
+            if ($rowFill) {
+                $pdf->SetFillColor(250, 250, 250);
+            } else {
+                $pdf->SetFillColor(255, 255, 255);
+            }
+
+            $pdf->Cell(80, 8, $item['name'], 'LR', 0, 'L', true);
+            $pdf->Cell(25, 8, $item['quantity'], 'LR', 0, 'C', true);
+            $pdf->Cell(35, 8, number_format($item['unitPrice'], 2) . ' ' . $currency, 'LR', 0, 'R', true);
+            $pdf->Cell(30, 8, number_format($item['subtotal'], 2) . ' ' . $currency, 'LR', 1, 'R', true);
+
+            $rowFill = !$rowFill;
+        }
+
+        // Close table bottom
+        $pdf->Cell(170, 0, '', 'T', 1);
+
+        // === TOTALS ===
+        $pdf->Ln(5);
+        $totalsX = 100;
+        $pdf->SetX($totalsX);
+
+        // Subtotal
+        $pdf->SetTextColor(100, 100, 100);
+        $pdf->Cell(40, 7, 'Subtotal:', 0, 0, 'L');
+        $pdf->SetTextColor(...$brandColor);
+        $pdf->Cell(30, 7, number_format($data['subtotal'], 2) . ' ' . $currency, 0, 1, 'R');
+
+        // VAT
+        if ($data['tax'] > 0) {
+            $pdf->SetX($totalsX);
+            $pdf->SetTextColor(100, 100, 100);
+            $pdf->Cell(40, 7, 'VAT (5%):', 0, 0, 'L');
+            $pdf->SetTextColor(...$brandColor);
+            $pdf->Cell(30, 7, number_format($data['tax'], 2) . ' ' . $currency, 0, 1, 'R');
+        }
+
+        // Discount
+        if (isset($data['discount']) && $data['discount'] > 0) {
+            $pdf->SetX($totalsX);
+            $pdf->SetTextColor(45, 95, 63); // Green for discount
+            $discountLabel = $data['discountLabel'] ? "Discount ({$data['discountLabel']}):" : 'Discount:';
+            $pdf->Cell(40, 7, $discountLabel, 0, 0, 'L');
+            $pdf->Cell(30, 7, '-' . number_format($data['discount'], 2) . ' ' . $currency, 0, 1, 'R');
+        }
+
+        // Total
+        $pdf->SetX($totalsX);
+        $pdf->SetFillColor(...$brandColor);
+        $pdf->SetTextColor(255, 255, 255);
+        $pdf->SetFont('helvetica', 'B', 11);
+        $pdf->Cell(40, 10, 'TOTAL:', 1, 0, 'L', true);
+        $pdf->Cell(30, 10, number_format($data['total'], 2) . ' ' . $currency, 1, 1, 'R', true);
+
+        // === THANK YOU MESSAGE ===
+        $pdf->Ln(15);
+        $pdf->SetFillColor(239, 230, 216); // #EFE6D8
+        $pdf->SetTextColor(...$brandColor);
+        $pdf->SetFont('helvetica', '', 12);
+        $pdf->Cell(0, 15, 'Thank you for your business!', 0, 1, 'C', true);
+
+        return $pdf->Output('', 'S');
     }
 
     public function downloadInvoiceXlsx(Order $order): StreamedResponse
@@ -125,15 +295,150 @@ class OrderExportService
             'latestPayment.paymentMethod',
         ])->orderByDesc('created_at')->get();
 
-        $data = [
-            'orders' => $orders->map(fn($order) => $this->prepareInvoiceData($order)),
-        ];
-
-        $pdf = DomPdf::loadView('invoices.bulk-pdf', $data);
-        
         $filename = 'orders-invoice-' . now()->format('Y-m-d') . '.pdf';
-        
-        return $pdf->download($filename);
+
+        // Generate bulk PDF using letterhead template
+        $pdfContent = $this->generateBulkInvoiceWithLetterhead($orders);
+
+        return response($pdfContent)
+            ->header('Content-Type', 'application/pdf')
+            ->header('Content-Disposition', "attachment; filename=\"{$filename}\"");
+    }
+
+    /**
+     * Generate bulk invoice PDF with letterhead for multiple orders
+     */
+    protected function generateBulkInvoiceWithLetterhead($orders): string
+    {
+        // Create new PDF with FPDI
+        $pdf = new Fpdi('P', 'mm', 'A4');
+        $pdf->setPrintHeader(false);
+        $pdf->setPrintFooter(false);
+        $pdf->SetMargins(20, 20, 20);
+        $pdf->SetAutoPageBreak(true, 25);
+
+        // Import the letterhead template
+        $templateId = null;
+        if (file_exists($this->letterheadPath)) {
+            $pdf->setSourceFile($this->letterheadPath);
+            $templateId = $pdf->importPage(1);
+        }
+
+        $brandColor = [76, 55, 21];
+
+        foreach ($orders as $index => $order) {
+            $data = $this->prepareInvoiceData($order);
+
+            // Add new page with letterhead
+            $pdf->AddPage();
+            if ($templateId) {
+                $pdf->useTemplate($templateId, 0, 0, 210, 297);
+            }
+
+            // === INVOICE TITLE ===
+            $pdf->SetY(35);
+            $pdf->SetFont('helvetica', 'B', 24);
+            $pdf->SetTextColor(...$brandColor);
+            $pdf->Cell(0, 10, 'INVOICE', 0, 1, 'C');
+
+            $pdf->SetFont('helvetica', '', 12);
+            $pdf->SetTextColor(100, 100, 100);
+            $pdf->Cell(0, 6, '#' . ($data['reference'] ?? 'N/A'), 0, 1, 'C');
+
+            // === CUSTOMER INFO ===
+            $pdf->SetY(60);
+            $pdf->SetTextColor(136, 136, 136);
+            $pdf->SetFont('helvetica', 'B', 9);
+            $pdf->Cell(90, 5, 'BILL TO', 0, 0, 'L');
+            $pdf->Cell(90, 5, 'INVOICE DETAILS', 0, 1, 'L');
+
+            $pdf->SetFont('helvetica', '', 10);
+            $pdf->SetTextColor(...$brandColor);
+            $pdf->Cell(90, 6, $data['customerName'] ?? 'N/A', 0, 0, 'L');
+            $pdf->SetTextColor(100, 100, 100);
+            $pdf->Cell(30, 6, 'Date:', 0, 0, 'L');
+            $pdf->SetTextColor(...$brandColor);
+            $pdf->Cell(60, 6, $data['order']->created_at->format('d M Y'), 0, 1, 'L');
+
+            $pdf->SetTextColor(100, 100, 100);
+            $pdf->Cell(90, 6, $data['customerEmail'] ?? 'N/A', 0, 0, 'L');
+            if ($data['paymentMethod']) {
+                $pdf->Cell(30, 6, 'Payment:', 0, 0, 'L');
+                $pdf->SetTextColor(...$brandColor);
+                $pdf->Cell(60, 6, $data['paymentMethod'], 0, 1, 'L');
+            } else {
+                $pdf->Ln(6);
+            }
+
+            // === ITEMS TABLE ===
+            $pdf->SetY(90);
+            $pdf->SetFillColor(...$brandColor);
+            $pdf->SetTextColor(255, 255, 255);
+            $pdf->SetFont('helvetica', 'B', 9);
+
+            $pdf->Cell(80, 8, 'ITEM', 1, 0, 'L', true);
+            $pdf->Cell(25, 8, 'QTY', 1, 0, 'C', true);
+            $pdf->Cell(35, 8, 'UNIT PRICE', 1, 0, 'R', true);
+            $pdf->Cell(30, 8, 'TOTAL', 1, 1, 'R', true);
+
+            $pdf->SetFont('helvetica', '', 10);
+            $pdf->SetTextColor(...$brandColor);
+            $currency = $data['order']->currency ?? 'AED';
+
+            $rowFill = false;
+            foreach ($data['items'] as $item) {
+                $pdf->SetFillColor($rowFill ? 250 : 255, $rowFill ? 250 : 255, $rowFill ? 250 : 255);
+                $pdf->Cell(80, 8, $item['name'], 'LR', 0, 'L', true);
+                $pdf->Cell(25, 8, $item['quantity'], 'LR', 0, 'C', true);
+                $pdf->Cell(35, 8, number_format($item['unitPrice'], 2) . ' ' . $currency, 'LR', 0, 'R', true);
+                $pdf->Cell(30, 8, number_format($item['subtotal'], 2) . ' ' . $currency, 'LR', 1, 'R', true);
+                $rowFill = !$rowFill;
+            }
+
+            $pdf->Cell(170, 0, '', 'T', 1);
+
+            // === TOTALS ===
+            $pdf->Ln(5);
+            $totalsX = 100;
+            $pdf->SetX($totalsX);
+
+            $pdf->SetTextColor(100, 100, 100);
+            $pdf->Cell(40, 7, 'Subtotal:', 0, 0, 'L');
+            $pdf->SetTextColor(...$brandColor);
+            $pdf->Cell(30, 7, number_format($data['subtotal'], 2) . ' ' . $currency, 0, 1, 'R');
+
+            if ($data['tax'] > 0) {
+                $pdf->SetX($totalsX);
+                $pdf->SetTextColor(100, 100, 100);
+                $pdf->Cell(40, 7, 'VAT (5%):', 0, 0, 'L');
+                $pdf->SetTextColor(...$brandColor);
+                $pdf->Cell(30, 7, number_format($data['tax'], 2) . ' ' . $currency, 0, 1, 'R');
+            }
+
+            if (isset($data['discount']) && $data['discount'] > 0) {
+                $pdf->SetX($totalsX);
+                $pdf->SetTextColor(45, 95, 63);
+                $discountLabel = $data['discountLabel'] ? "Discount ({$data['discountLabel']}):" : 'Discount:';
+                $pdf->Cell(40, 7, $discountLabel, 0, 0, 'L');
+                $pdf->Cell(30, 7, '-' . number_format($data['discount'], 2) . ' ' . $currency, 0, 1, 'R');
+            }
+
+            $pdf->SetX($totalsX);
+            $pdf->SetFillColor(...$brandColor);
+            $pdf->SetTextColor(255, 255, 255);
+            $pdf->SetFont('helvetica', 'B', 11);
+            $pdf->Cell(40, 10, 'TOTAL:', 1, 0, 'L', true);
+            $pdf->Cell(30, 10, number_format($data['total'], 2) . ' ' . $currency, 1, 1, 'R', true);
+
+            // Thank you
+            $pdf->Ln(15);
+            $pdf->SetFillColor(239, 230, 216);
+            $pdf->SetTextColor(...$brandColor);
+            $pdf->SetFont('helvetica', '', 12);
+            $pdf->Cell(0, 15, 'Thank you for your business!', 0, 1, 'C', true);
+        }
+
+        return $pdf->Output('', 'S');
     }
 
     public function exportOrdersXlsx(?OrderFilter $filter = null, ?array $ids = null): StreamedResponse
