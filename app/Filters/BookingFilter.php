@@ -50,7 +50,16 @@ class BookingFilter
 
     protected function filterByDate(): void
     {
-        $this->query->where('date', $this->request->date);
+        $date = $this->request->date;
+        // Include bookings where:
+        // 1. The root booking date matches, OR
+        // 2. Any service in booking_services has that date
+        $this->query->where(function ($q) use ($date) {
+            $q->where('date', $date)
+              ->orWhereHas('services', function ($sq) use ($date) {
+                  $sq->whereDate('date', $date);
+              });
+        });
     }
 
     protected function filterBySearch(): void

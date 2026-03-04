@@ -1,3 +1,8 @@
+@php
+    $services = $b['services'] ?? [];
+    $serviceDates = collect($services)->pluck('date')->filter()->unique()->values();
+    $isMultiDate = $serviceDates->count() > 1;
+@endphp
 BOOKING RESCHEDULED
 
 Booking {{ $b['reference'] ?? ('#' . ($b['id'] ?? '')) }}
@@ -13,12 +18,16 @@ Time: {{ $b['previousStartTime'] ?? '' }} - {{ $b['previousEndTime'] ?? '' }}
 @endif
 
 NEW SCHEDULE:
+@if($isMultiDate)
+{{ $serviceDates->count() }} appointments on different dates (see services below)
+@else
 Date: {{ $b['date'] ?? 'N/A' }}
 Time: {{ $b['startTime'] ?? '' }} - {{ $b['endTime'] ?? '' }}
+@endif
 
 SERVICES:
-@foreach($b['services'] ?? [] as $s)
-- {{ $s['name'] ?? 'Service' }} ({{ $s['startTime'] ?? '' }} - {{ $s['endTime'] ?? '' }})
+@foreach($services as $s)
+- {{ $s['name'] ?? 'Service' }} @if(!empty($s['date']))({{ $s['date'] }}) @endif({{ $s['startTime'] ?? '' }} - {{ $s['endTime'] ?? '' }})
 @endforeach
 
 Total: {{ number_format((float)($b['totalPrice'] ?? 0), 2) }} AED

@@ -22,6 +22,10 @@
     $cancelReason = $b['cancelReason'] ?? null;
     $frontendUrl = config('app.frontend_url', 'https://rjbeautylounge.com');
     $bookingUrl = $frontendUrl . '/en/booking';
+
+    // Check if this is a multi-date booking
+    $serviceDates = collect($services)->pluck('date')->filter()->unique()->values();
+    $isMultiDate = $serviceDates->count() > 1;
 @endphp
 
     <!doctype html>
@@ -40,7 +44,12 @@
                     <td style="padding:22px 24px; background:#4C3715; color:#fff;">
                         <div style="font-size:18px; font-weight:700;">Booking Update</div>
                         <div style="font-size:13px; opacity:0.92; margin-top:6px;">
-                            Booking {{ $b['reference'] ?? ('#' . ($b['id'] ?? '')) }} • {{ $b['date'] ?? '' }} • {{ $b['startTime'] ?? '' }}–{{ $b['endTime'] ?? '' }}
+                            Booking {{ $b['reference'] ?? ('#' . ($b['id'] ?? '')) }}
+                            @if($isMultiDate)
+                                • {{ $serviceDates->count() }} appointments on different dates
+                            @else
+                                • {{ $b['date'] ?? '' }} • {{ $b['startTime'] ?? '' }}–{{ $b['endTime'] ?? '' }}
+                            @endif
                         </div>
                     </td>
                 </tr>
@@ -87,7 +96,7 @@
                                             <div style="flex:1;">
                                                 <div style="font-size:14px; font-weight:700; color:#111;">{{ $name }}</div>
                                                 <div style="font-size:12px; color:#555; margin-top:4px;">
-                                                    {{ $time }}
+                                                    @if(!empty($s['date']))📅 {{ $s['date'] }} • @endif{{ $time }}
                                                     @if($duration) • {{ $duration }} min @endif
                                                 </div>
 

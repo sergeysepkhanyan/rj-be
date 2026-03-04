@@ -9,18 +9,26 @@
     $hasDiscount = $discountType && $discountType !== 'none' && $discountValue !== null;
 
     $fmt = fn($n) => is_numeric($n) ? number_format((float)$n, 2, '.', '') : $n;
+
+    // Check if this is a multi-date booking
+    $serviceDates = collect($services)->pluck('date')->filter()->unique()->values();
+    $isMultiDate = $serviceDates->count() > 1;
 @endphp
 
 Booking confirmed ✅
 Booking {{ $b['reference'] ?? ('#' . ($b['id'] ?? '')) }}
 
+@if($isMultiDate)
+Appointments on {{ $serviceDates->count() }} different dates
+@else
 Date: {{ $b['date'] ?? '' }}
 Time: {{ $b['startTime'] ?? '' }}–{{ $b['endTime'] ?? '' }}
+@endif
 Customer: {{ $b['customerName'] ?? '' }}
 
 Services:
 @foreach($services as $s)
-    - {{ $s['name'] ?? 'Service' }} ({{ $s['startTime'] ?? '' }}–{{ $s['endTime'] ?? '' }}, {{ $s['duration'] ?? '' }} min)
+    - {{ $s['name'] ?? 'Service' }} @if(!empty($s['date']))({{ $s['date'] }}) @endif({{ $s['startTime'] ?? '' }}–{{ $s['endTime'] ?? '' }}, {{ $s['duration'] ?? '' }} min)
     Base: {{ $fmt($s['pricing']['basePrice'] ?? 0) }}
     VAT: @if(!empty($s['pricing']['vatEnabled'])) {{ $fmt($s['pricing']['vatAmount'] ?? 0) }} @else not applied @endif
     Line total: {{ $fmt($s['pricing']['finalPrice'] ?? ($s['price'] ?? 0)) }}

@@ -2,6 +2,10 @@
     $services = $b['services'] ?? [];
     $customer = $b['customer'] ?? [];
     $fmt = fn($n) => is_numeric($n) ? number_format((float)$n, 2, '.', '') : $n;
+
+    // Check if this is a multi-date booking
+    $serviceDates = collect($services)->pluck('date')->filter()->unique()->values();
+    $isMultiDate = $serviceDates->count() > 1;
 @endphp
 
 <!doctype html>
@@ -72,6 +76,12 @@
                         <div style="background:#D4F4DD; border-radius:12px; padding:16px; margin-bottom:16px;">
                             <div style="font-size:14px; font-weight:700; margin-bottom:8px; color:#2D5F3F;">New Schedule</div>
                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                                @if($isMultiDate)
+                                <tr>
+                                    <td style="font-size:13px; color:#2D5F3F; padding:4px 0;">Dates:</td>
+                                    <td style="font-size:13px; color:#2D5F3F; padding:4px 0; text-align:right; font-weight:700;">{{ $serviceDates->count() }} different dates</td>
+                                </tr>
+                                @else
                                 <tr>
                                     <td style="font-size:13px; color:#2D5F3F; padding:4px 0;">Date:</td>
                                     <td style="font-size:13px; color:#2D5F3F; padding:4px 0; text-align:right; font-weight:700;">{{ $b['date'] ?? 'N/A' }}</td>
@@ -80,6 +90,7 @@
                                     <td style="font-size:13px; color:#2D5F3F; padding:4px 0;">Time:</td>
                                     <td style="font-size:13px; color:#2D5F3F; padding:4px 0; text-align:right; font-weight:700;">{{ $b['startTime'] ?? '' }} - {{ $b['endTime'] ?? '' }}</td>
                                 </tr>
+                                @endif
                                 <tr>
                                     <td style="font-size:13px; color:#2D5F3F; padding:4px 0;">Duration:</td>
                                     <td style="font-size:13px; color:#2D5F3F; padding:4px 0; text-align:right;">{{ $b['duration'] ?? '' }} min</td>
@@ -95,7 +106,7 @@
                                 <td style="background:#f6f7fb; border-radius:10px; padding:12px;">
                                     <div style="font-size:14px; font-weight:600; color:#111;">{{ $s['name'] ?? 'Service' }}</div>
                                     <div style="font-size:12px; color:#666; margin-top:4px;">
-                                        {{ $s['startTime'] ?? '' }} - {{ $s['endTime'] ?? '' }}
+                                        @if(!empty($s['date']))📅 {{ $s['date'] }} • @endif{{ $s['startTime'] ?? '' }} - {{ $s['endTime'] ?? '' }}
                                         @if(isset($s['master']) && is_array($s['master']) && !empty($s['master']['name']))
                                         - with {{ $s['master']['name'] }}
                                         @endif

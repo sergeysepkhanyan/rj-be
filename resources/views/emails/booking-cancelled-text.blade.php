@@ -4,6 +4,10 @@
     $fmt = fn($n) => is_numeric($n) ? number_format((float)$n, 2, '.', '') : $n;
     $frontendUrl = config('app.frontend_url', 'https://rjbeautylounge.com');
     $bookingUrl = $frontendUrl . '/en/booking';
+
+    // Check if this is a multi-date booking
+    $serviceDates = collect($services)->pluck('date')->filter()->unique()->values();
+    $isMultiDate = $serviceDates->count() > 1;
 @endphp
 
 BOOKING CANCELLED
@@ -13,8 +17,12 @@ Hi {{ $b['customerName'] ?? 'there' }},
 
 We wanted to let you know that your booking has been cancelled.
 
+@if($isMultiDate)
+Appointments on {{ $serviceDates->count() }} different dates
+@else
 Date: {{ $b['date'] ?? '' }}
 Time: {{ $b['startTime'] ?? '' }}–{{ $b['endTime'] ?? '' }}
+@endif
 
 @if(isset($b['cancelledBy']['name']))
 Cancelled by: {{ $b['cancelledBy']['name'] }}
@@ -25,7 +33,7 @@ Reason: {{ $b['cancelReason'] }}
 
 CANCELLED SERVICES:
 @foreach($services as $s)
-- {{ $s['name'] ?? 'Service' }} ({{ $s['startTime'] ?? '' }}–{{ $s['endTime'] ?? '' }}, {{ $s['duration'] ?? '' }} min)
+- {{ $s['name'] ?? 'Service' }} @if(!empty($s['date']))({{ $s['date'] }}) @endif({{ $s['startTime'] ?? '' }}–{{ $s['endTime'] ?? '' }}, {{ $s['duration'] ?? '' }} min)
   Base: {{ $fmt($s['pricing']['basePrice'] ?? 0) }}
   VAT: @if(!empty($s['pricing']['vatEnabled'])) {{ $fmt($s['pricing']['vatAmount'] ?? 0) }} @else not applied @endif
   Line total: {{ $fmt($s['pricing']['finalPrice'] ?? ($s['price'] ?? 0)) }}

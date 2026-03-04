@@ -14,6 +14,10 @@
     $finalTotal = $b['totalPrice'] ?? null;
 
     $fmt = fn($n) => is_numeric($n) ? number_format((float)$n, 2, '.', '') : $n;
+
+    // Check if this is a multi-date booking
+    $serviceDates = collect($services)->pluck('date')->filter()->unique()->values();
+    $isMultiDate = $serviceDates->count() > 1;
 @endphp
 
     <!doctype html>
@@ -32,7 +36,12 @@
                     <td style="padding:22px 24px; background:#111; color:#fff;">
                         <div style="font-size:18px; font-weight:700;">✅ Booking confirmed</div>
                         <div style="font-size:13px; opacity:0.9; margin-top:6px;">
-                            Booking {{ $b['reference'] ?? ('#' . ($b['id'] ?? '')) }} • {{ $b['date'] ?? '' }} • {{ $b['startTime'] ?? '' }}–{{ $b['endTime'] ?? '' }}
+                            Booking {{ $b['reference'] ?? ('#' . ($b['id'] ?? '')) }}
+                            @if($isMultiDate)
+                                • {{ $serviceDates->count() }} appointments on different dates
+                            @else
+                                • {{ $b['date'] ?? '' }} • {{ $b['startTime'] ?? '' }}–{{ $b['endTime'] ?? '' }}
+                            @endif
                         </div>
                     </td>
                 </tr>
@@ -60,6 +69,7 @@
                                 @php
                                     $p = $s['pricing'] ?? [];
                                     $name = $s['name'] ?? 'Service';
+                                    $serviceDate = $s['date'] ?? null;
                                     $time = ($s['startTime'] ?? '') . '–' . ($s['endTime'] ?? '');
                                     $duration = $s['duration'] ?? null;
 
@@ -74,7 +84,7 @@
                                             <div style="flex:1;">
                                                 <div style="font-size:14px; font-weight:700; color:#111;">{{ $name }}</div>
                                                 <div style="font-size:12px; color:#555; margin-top:4px;">
-                                                    {{ $time }}
+                                                    @if($serviceDate)📅 {{ $serviceDate }} • @endif{{ $time }}
                                                     @if($duration) • {{ $duration }} min @endif
                                                     @if(isset($s['master']) && is_array($s['master']) && !empty($s['master']['name']))
                                                     • with {{ $s['master']['name'] }}

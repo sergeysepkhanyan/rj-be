@@ -14,6 +14,10 @@
     $finalTotal = $b['totalPrice'] ?? null;
 
     $fmt = fn($n) => is_numeric($n) ? number_format((float)$n, 2, '.', '') : $n;
+
+    // Check if this is a multi-date booking
+    $serviceDates = collect($services)->pluck('date')->filter()->unique()->values();
+    $isMultiDate = $serviceDates->count() > 1;
 @endphp
 
 <!doctype html>
@@ -32,7 +36,12 @@
                     <td style="padding:22px 24px; background:#FF8C00; color:#fff;">
                         <div style="font-size:18px; font-weight:700;">Booking Rescheduled</div>
                         <div style="font-size:13px; opacity:0.9; margin-top:6px;">
-                            Booking {{ $b['reference'] ?? ('#' . ($b['id'] ?? '')) }} - New date: {{ $b['date'] ?? '' }} at {{ $b['startTime'] ?? '' }}
+                            Booking {{ $b['reference'] ?? ('#' . ($b['id'] ?? '')) }}
+                            @if($isMultiDate)
+                                - {{ $serviceDates->count() }} appointments on different dates
+                            @else
+                                - New date: {{ $b['date'] ?? '' }} at {{ $b['startTime'] ?? '' }}
+                            @endif
                         </div>
                     </td>
                 </tr>
@@ -65,7 +74,11 @@
                         <div style="background:#D4F4DD; border-radius:12px; padding:14px; margin-bottom:16px;">
                             <div style="font-size:13px; font-weight:700; color:#2D5F3F; margin-bottom:8px;">New Schedule</div>
                             <div style="font-size:14px; color:#2D5F3F; font-weight:600;">
-                                {{ $b['date'] ?? '' }} at {{ $b['startTime'] ?? '' }} - {{ $b['endTime'] ?? '' }}
+                                @if($isMultiDate)
+                                    {{ $serviceDates->count() }} appointments on different dates (see services below)
+                                @else
+                                    {{ $b['date'] ?? '' }} at {{ $b['startTime'] ?? '' }} - {{ $b['endTime'] ?? '' }}
+                                @endif
                             </div>
                         </div>
 
@@ -90,7 +103,7 @@
                                             <div style="flex:1;">
                                                 <div style="font-size:14px; font-weight:700; color:#111;">{{ $name }}</div>
                                                 <div style="font-size:12px; color:#555; margin-top:4px;">
-                                                    {{ $time }}
+                                                    @if(!empty($s['date']))📅 {{ $s['date'] }} • @endif{{ $time }}
                                                     @if($duration) - {{ $duration }} min @endif
                                                     @if(isset($s['master']) && is_array($s['master']) && !empty($s['master']['name']))
                                                     - with {{ $s['master']['name'] }}
