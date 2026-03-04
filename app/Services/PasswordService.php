@@ -68,10 +68,16 @@ class PasswordService
 
         $updateData = [
             'password' => Hash::make($newPassword),
+            'is_temporary_password' => false,
         ];
 
         if (!$user->hasVerifiedEmail()) {
             $updateData['email_verified_at'] = now();
+        }
+
+        // Activate user if they were pending
+        if ($user->status === 'pending') {
+            $updateData['status'] = 'active';
         }
 
         $user->update($updateData);
