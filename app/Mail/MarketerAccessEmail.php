@@ -20,8 +20,8 @@ class MarketerAccessEmail extends Mailable implements ShouldQueue
 
     public function build(): static
     {
-        $actionUrl = $this->accessLink 
-            ?: rtrim(config('app.frontend_url', env('FRONTEND_URL')), '/');
+        $actionUrl = $this->accessLink
+            ?: rtrim(config('app.frontend_url', env('FRONTEND_URL')), '/') . '/dashboard';
 
         return $this
             ->from(config('mail.from.address'), config('mail.from.name'))
