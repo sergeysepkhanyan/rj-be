@@ -616,6 +616,12 @@ class BookingService
             return;
         }
 
+        // Skip validation if services are on different dates - time matching doesn't apply
+        $uniqueDates = collect($segments)->pluck('date')->unique();
+        if ($uniqueDates->count() > 1) {
+            return;
+        }
+
         $min = substr($segments[0]['start_time'], 0, 5);
         $max = substr($segments[count($segments) - 1]['end_time'], 0, 5);
 
