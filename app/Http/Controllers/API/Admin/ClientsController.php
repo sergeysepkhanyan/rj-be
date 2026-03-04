@@ -251,9 +251,11 @@ class ClientsController extends Controller
 
         $limit = min((int) $request->get('limit', 10), 20);
 
-        // Search in users (CRM clients)
+        // Search in users (CRM clients) - also search in first_name and last_name
         $users = User::where(function ($query) use ($search) {
             $query->where('name', 'LIKE', "%{$search}%")
+                ->orWhere('first_name', 'LIKE', "%{$search}%")
+                ->orWhere('last_name', 'LIKE', "%{$search}%")
                 ->orWhere('mobile', 'LIKE', "%{$search}%")
                 ->orWhere('email', 'LIKE', "%{$search}%");
         })
@@ -277,36 +279,32 @@ class ClientsController extends Controller
         $results = [];
 
         foreach ($users as $user) {
+            // Build full name from first_name + last_name if name is empty (same as ClientResource)
+            $fullName = $user->name;
+            if (empty($fullName)) {
+                $firstName = $user->first_name ?? '';
+                $lastName = $user->last_name ?? '';
+                $fullName = trim($firstName . ' ' . $lastName) ?: null;
+            }
+
             // Determine the active referral (manual takes priority)
+            // Show discount without visit threshold check (same as CRM page)
             $referral = $user->manualReferral ?? $user->referral;
             $discount = null;
 
             if ($referral && $referral->enabled) {
-                // For users, check visit threshold if applicable
-                $canApplyDiscount = true;
-                if (!$user->manual_referral_id && $referral->visit_threshold) {
-                    $visitCount = Booking::where('user_id', $user->id)
-                        ->where('type', 'booking')
-                        ->where('status', '!=', 'cancelled')
-                        ->where('payment_status', 'paid')
-                        ->count();
-                    $canApplyDiscount = $visitCount >= $referral->visit_threshold;
-                }
-
-                if ($canApplyDiscount) {
-                    $discount = [
-                        'id' => $referral->id,
-                        'name' => $referral->name,
-                        'type' => $referral->type === 'percentage' ? 'percent' : 'fixed',
-                        'value' => (float) $referral->value,
-                    ];
-                }
+                $discount = [
+                    'id' => $referral->id,
+                    'name' => $referral->name,
+                    'type' => $referral->type === 'percentage' ? 'percent' : 'fixed',
+                    'value' => (float) $referral->value,
+                ];
             }
 
             $results[] = [
                 'id' => $user->id,
                 'type' => 'user',
-                'name' => $user->name,
+                'name' => $fullName,
                 'phone' => $user->mobile,
                 'email' => $user->email,
                 'discount' => $discount,
