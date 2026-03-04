@@ -43,7 +43,7 @@ class PostsController extends Controller
         $post = $this->postService->getBySlug($slug);
 
         if (!$post) {
-            return ApiResponse::error(__('errors.post.not_found'), 404);
+            return ApiResponse::error(null, __('errors.post.not_found'), 404);
         }
 
         return ApiResponse::success([

@@ -30,5 +30,8 @@ return [
         'update_failed' => 'Failed to update password.',
     ],
 
+    'post' => [
+        'not_found' => 'Blog post not found.',
+    ],
 
 ];
