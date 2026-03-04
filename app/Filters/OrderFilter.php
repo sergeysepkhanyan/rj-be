@@ -46,18 +46,38 @@ class OrderFilter
     protected function filterByType(): void
     {
         $type = strtolower(trim((string) $this->request->type));
-        $allowed = ['product', 'booking'];
-        if (in_array($type, $allowed, true)) {
-            $this->query->where('type', $type);
+
+        // Map frontend filter values to actual database values
+        // Frontend sends: 'product', 'service'
+        // Database stores: 'ecommerce', 'booking'
+        $typeMap = [
+            'product' => 'ecommerce',
+            'ecommerce' => 'ecommerce',
+            'service' => 'booking',
+            'booking' => 'booking',
+        ];
+
+        if (isset($typeMap[$type])) {
+            $this->query->where('type', $typeMap[$type]);
         }
     }
 
     protected function filterByStatus(): void
     {
         $status = strtolower(trim((string) $this->request->status));
+
+        // Map frontend filter values to actual database values
+        // Frontend sends: 'completed' for fulfilled orders
+        $statusMap = [
+            'completed' => 'fulfilled',
+        ];
+
+        // Apply mapping if exists
+        $dbStatus = $statusMap[$status] ?? $status;
+
         $allowed = ['pending', 'pending_payment', 'processing', 'shipped', 'paid', 'refunded', 'cancelled', 'fulfilled'];
-        if (in_array($status, $allowed, true)) {
-            $this->query->where('status', $status);
+        if (in_array($dbStatus, $allowed, true)) {
+            $this->query->where('status', $dbStatus);
         }
     }
 
