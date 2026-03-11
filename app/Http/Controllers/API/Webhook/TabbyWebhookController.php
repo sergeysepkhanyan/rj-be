@@ -76,22 +76,26 @@ class TabbyWebhookController extends Controller
                 try {
                     DB::beginTransaction();
 
+                    $wasAlreadyPaid = $order->status === \App\Enums\OrderStatus::Paid->value;
+
                     $this->paymentRepo->update($payment, $paymentUpdate);
                     $payment->refresh();
 
                     $order = $this->orderService->markPaid($order, ['tabby_payment_id' => $tabbyPaymentId]);
                     $order->refresh();
 
-                    if ($order->orderable && $order->getTypeValue() === 'booking') {
-                        $booking = $order->orderable;
-                        $this->bookingRepo->update($booking, [
-                            'status' => 'confirmed',
-                            'payment_status' => 'paid',
-                        ]);
-                        $booking->refresh();
-                        $this->bookingService->sendBookingConfirmation($booking);
-                    } elseif ($order->getTypeValue() === 'ecommerce') {
-                        $this->orderService->sendOrderConfirmation($order);
+                    if (!$wasAlreadyPaid) {
+                        if ($order->orderable && $order->getTypeValue() === 'booking') {
+                            $booking = $order->orderable;
+                            $this->bookingRepo->update($booking, [
+                                'status' => 'confirmed',
+                                'payment_status' => 'paid',
+                            ]);
+                            $booking->refresh();
+                            $this->bookingService->sendBookingConfirmation($booking);
+                        } elseif ($order->getTypeValue() === 'ecommerce') {
+                            $this->orderService->sendOrderConfirmation($order);
+                        }
                     }
 
                     $order->refresh();

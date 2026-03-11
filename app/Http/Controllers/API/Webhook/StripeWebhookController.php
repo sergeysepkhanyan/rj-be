@@ -145,7 +145,7 @@ class StripeWebhookController extends Controller
                         }
                     }
 
-                    if ($order->getTypeValue() === 'ecommerce') {
+                    if ($order->getTypeValue() === 'ecommerce' && !$wasAlreadyPaid) {
                         $this->orderService->sendOrderConfirmation($order);
                     }
 
