@@ -300,13 +300,9 @@ class UserService
 
         // Send email with new credentials based on role
         if ($user->role->slug === 'admin') {
-            \Log::info('Sending admin access email to: ' . $user->email);
             Mail::to($user->email)->send(new AdminAccessEmail($user, $generatedPassword));
-            \Log::info('Admin access email sent successfully');
         } elseif ($user->role->slug === 'marketer') {
-            \Log::info('Sending marketer access email to: ' . $user->email);
             Mail::to($user->email)->send(new MarketerAccessEmail($user, $generatedPassword));
-            \Log::info('Marketer access email sent successfully');
         }
     }
 

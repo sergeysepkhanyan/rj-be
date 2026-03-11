@@ -16,9 +16,9 @@
             <table role="presentation" width="640" cellpadding="0" cellspacing="0" style="background:#fff; border-radius:14px; overflow:hidden; box-shadow:0 8px 30px rgba(0,0,0,0.06);">
                 <tr>
                     <td style="padding:22px 24px; background:#DC3545; color:#fff;">
-                        <div style="font-size:18px; font-weight:700;">Payment Failed</div>
-                        <div style="font-size:13px; opacity:0.9; margin-top:6px;">
-                            Order {{ $data['orderReference'] ?? ('#' . ($data['orderId'] ?? '')) }}
+                        @include('emails.partials.logo')
+                        <div style="font-size:13px; opacity:0.9; margin-top:10px;">
+                            Payment Failed • Order {{ $data['orderReference'] ?? ('#' . ($data['orderId'] ?? '')) }}
                         </div>
                     </td>
                 </tr>

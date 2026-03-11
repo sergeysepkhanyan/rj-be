@@ -21,7 +21,7 @@ class NewOrderAdminNotificationMail extends Mailable implements ShouldQueue
     {
         $order = $this->order->load([
             'items.product',
-            'shippingAddress',
+            'shippingAddress.country',
             'user',
         ]);
 

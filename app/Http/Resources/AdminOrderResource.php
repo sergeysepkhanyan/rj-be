@@ -234,6 +234,8 @@ class AdminOrderResource extends JsonResource
             $customerPhone = $meta['customer_phone'];
         }
 
+        $customerName = trim((string) $customerName) !== '' ? $customerName : 'Guest';
+
         return [$customerName, $customerEmail, $customerPhone];
     }
 

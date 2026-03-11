@@ -98,16 +98,16 @@ class CartController extends Controller
     public function checkout(CheckoutCartRequest $request): JsonResponse
     {
         $guestSessionId = $this->getGuestSessionId($request);
-        $customerName = $request->input('customer_name');
-        $customerEmail = $request->input('customer_email');
-        $customerPhone = $request->input('customer_phone');
-        $shippingAddressId = $request->input('shipping_address_id');
-        $billingAddressId = $request->input('billing_address_id');
-        $billingSameAsShipping = (bool) $request->input('billing_same_as_shipping', false);
+        $customerName = $request->input('customer_name') ?? $request->input('customerName');
+        $customerEmail = $request->input('customer_email') ?? $request->input('customerEmail');
+        $customerPhone = $request->input('customer_phone') ?? $request->input('customerPhone');
+        $shippingAddressId = $request->input('shipping_address_id') ?? $request->input('shippingAddressId');
+        $billingAddressId = $request->input('billing_address_id') ?? $request->input('billingAddressId');
+        $billingSameAsShipping = (bool) ($request->input('billing_same_as_shipping') ?? $request->input('billingSameAsShipping') ?? false);
         $shippingAddress = $request->input('shipping_address', []);
         $billingAddress = $request->input('billing_address', []);
-        $paymentMethodId = $request->input('payment_method_id');
-        $paymentMethodToken = $request->input('payment_method_token');
+        $paymentMethodId = $request->input('payment_method_id') ?? $request->input('paymentMethodId');
+        $paymentMethodToken = $request->input('payment_method_token') ?? $request->input('paymentMethodToken');
 
         $paymentMethod = $paymentMethodToken ?: $paymentMethodId;
 

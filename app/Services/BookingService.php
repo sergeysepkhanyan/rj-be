@@ -1481,7 +1481,7 @@ class BookingService
         }
 
         // Send admin notification
-        $admin = User::whereHas('role', fn($q) => $q->where('name', 'Super Admin'))->first();
+        $admin = User::whereHas('role', fn($q) => $q->where('slug', 'superadmin'))->first();
         if ($admin && $admin->email) {
             Mail::to($admin->email)->queue(new BookingRescheduledAdminNotificationMail(
                 $booking,
@@ -1494,7 +1494,7 @@ class BookingService
 
     protected function sendAdminBookingNotification(Booking $booking, string $type, ?string $reason = null): void
     {
-        $admin = User::whereHas('role', fn($q) => $q->where('name', 'Super Admin'))->first();
+        $admin = User::whereHas('role', fn($q) => $q->where('slug', 'superadmin'))->first();
 
         if (!$admin || !$admin->email) {
             return;

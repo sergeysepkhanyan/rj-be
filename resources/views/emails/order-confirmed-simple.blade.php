@@ -6,6 +6,7 @@
 </head>
 <body style="font-family: Arial, sans-serif; padding: 20px; background-color: #f5f5f5;">
     <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 30px; border-radius: 8px;">
+        <div style="margin-bottom: 20px;">@include('emails.partials.logo')</div>
         <h1 style="color: #333;">Order Confirmed!</h1>
         <p>Thank you for your order.</p>
         <p><strong>Order #:</strong> {{ $order['reference'] ?? $order['id'] ?? 'N/A' }}</p>

@@ -12,9 +12,9 @@
             <table role="presentation" width="640" cellpadding="0" cellspacing="0" style="background:#fff; border-radius:14px; overflow:hidden; box-shadow:0 8px 30px rgba(0,0,0,0.06);">
                 <tr>
                     <td style="padding:22px 24px; background:#856404; color:#fff;">
-                        <div style="font-size:18px; font-weight:700;">⚠️ Inventory Alert</div>
-                        <div style="font-size:13px; opacity:0.9; margin-top:6px;">
-                            {{ $totalAlerts }} product(s) need your attention
+                        @include('emails.partials.logo')
+                        <div style="font-size:13px; opacity:0.9; margin-top:10px;">
+                            ⚠️ {{ $totalAlerts }} product(s) need your attention
                         </div>
                     </td>
                 </tr>

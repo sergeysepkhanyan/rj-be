@@ -334,7 +334,7 @@ class OrderService
     public function sendAdminOrderNotification(Order $order): void
     {
         // Get Super Admin email
-        $superAdmin = User::whereHas('role', fn($q) => $q->where('name', 'Super Admin'))->first();
+        $superAdmin = User::whereHas('role', fn($q) => $q->where('slug', 'superadmin'))->first();
         if (!$superAdmin || !$superAdmin->email) {
             return;
         }
@@ -414,6 +414,11 @@ class OrderService
         if ($email) {
             Mail::to($email)->queue(new OrderDeliveryStatusUpdatedMail($order, $deliveryStatus));
         }
+    }
+
+    public function getCustomerEmail(Order $order): ?string
+    {
+        return $this->resolveOrderEmail($order);
     }
 
     protected function resolveOrderEmail(Order $order): ?string

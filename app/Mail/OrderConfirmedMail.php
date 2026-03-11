@@ -23,8 +23,8 @@ class OrderConfirmedMail extends Mailable implements ShouldQueue
     {
         $order = $this->order->load([
             'items.product.files',
-            'shippingAddress',
-            'billingAddress',
+            'shippingAddress.country',
+            'billingAddress.country',
             'latestPayment',
             'user',
         ]);

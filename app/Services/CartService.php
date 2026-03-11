@@ -291,7 +291,7 @@ class CartService
 
         $this->cartRepository->deleteBySession($userId, $guestSessionId);
 
-        return $order->load(['latestPayment', 'shippingAddress.country', 'billingAddress.country']);
+        return $order->load(['items.product.files', 'latestPayment', 'shippingAddress.country', 'billingAddress.country']);
     }
 
     protected function resolveSession(?string $guestSessionId): array

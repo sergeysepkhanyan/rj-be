@@ -22,14 +22,9 @@ class OrderDeliveryStatusUpdatedMail extends Mailable implements ShouldQueue
     {
         $order = $this->order->load([
             'items.product',
-            'shippingAddress',
+            'shippingAddress.country',
             'user',
         ]);
-
-        $customerEmail = $order->user?->email ?? ($order->meta['customer_email'] ?? null);
-        if (!$customerEmail) {
-            return $this;
-        }
 
         $orderData = [
             'id' => $order->id,

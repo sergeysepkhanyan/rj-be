@@ -4,6 +4,60 @@ namespace App\Http\Requests;
 
 class CheckoutCartRequest extends BaseFormRequest
 {
+    public function prepareForValidation(): void
+    {
+        $merge = [];
+        if ($this->has('customer_name') && !$this->has('customerName')) {
+            $merge['customerName'] = $this->input('customer_name');
+        }
+        if ($this->has('customer_email') && !$this->has('customerEmail')) {
+            $merge['customerEmail'] = $this->input('customer_email');
+        }
+        if ($this->has('customer_phone') && !$this->has('customerPhone')) {
+            $merge['customerPhone'] = $this->input('customer_phone');
+        }
+        if ($this->has('shipping_address_id') && !$this->has('shippingAddressId')) {
+            $merge['shippingAddressId'] = $this->input('shipping_address_id');
+        }
+        if ($this->has('billing_address_id') && !$this->has('billingAddressId')) {
+            $merge['billingAddressId'] = $this->input('billing_address_id');
+        }
+        if ($this->has('billing_same_as_shipping') && !$this->has('billingSameAsShipping')) {
+            $merge['billingSameAsShipping'] = $this->input('billing_same_as_shipping');
+        }
+        if ($this->has('payment_method_id') && !$this->has('paymentMethodId')) {
+            $merge['paymentMethodId'] = $this->input('payment_method_id');
+        }
+        if ($this->has('payment_method_token') && !$this->has('paymentMethodToken')) {
+            $merge['paymentMethodToken'] = $this->input('payment_method_token');
+        }
+        if ($this->has('shipping_address') && !$this->has('shippingAddress')) {
+            $merge['shippingAddress'] = $this->normalizeAddressForValidation($this->input('shipping_address'));
+        }
+        if ($this->has('billing_address') && !$this->has('billingAddress')) {
+            $merge['billingAddress'] = $this->normalizeAddressForValidation($this->input('billing_address'));
+        }
+        if ($merge !== []) {
+            $this->merge($merge);
+        }
+    }
+
+    private function normalizeAddressForValidation(array $addr): array
+    {
+        $map = [
+            'country_id' => 'countryId',
+            'zip_code' => 'zipCode',
+            'last_name' => 'lastName',
+            'additional_address' => 'additionalAddress',
+        ];
+        $out = [];
+        foreach ($addr as $k => $v) {
+            $key = $map[$k] ?? $k;
+            $out[$key] = is_array($v) ? $this->normalizeAddressForValidation($v) : $v;
+        }
+        return $out;
+    }
+
     protected array $fieldMap = [
         'guestSessionId' => 'guest_session_id',
         'customerName' => 'customer_name',

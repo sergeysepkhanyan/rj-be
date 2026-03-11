@@ -33,7 +33,7 @@ class InventoryAlertService
         }
 
         // Get Super Admin email
-        $superAdmin = User::whereHas('role', fn($q) => $q->where('name', 'Super Admin'))->first();
+        $superAdmin = User::whereHas('role', fn($q) => $q->where('slug', 'superadmin'))->first();
         if (!$superAdmin || !$superAdmin->email) {
             return [
                 'sent' => false,

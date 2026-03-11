@@ -13,12 +13,8 @@
                 <!-- Header -->
                 <tr>
                     <td style="padding:22px 24px;background:#111827;color:#ffffff;">
-                        <div style="font-size:16px;font-weight:700;">
-                            Romeo &amp; Juliet Beauty Lounge
-                        </div>
-                        <div style="font-size:13px;opacity:.85;margin-top:4px;">
-                            Welcome to RJ
-                        </div>
+                        @include('emails.partials.logo')
+                        <div style="font-size:13px;opacity:.85;margin-top:10px;">Welcome to RJ</div>
                     </td>
                 </tr>
 

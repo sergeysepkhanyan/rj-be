@@ -127,4 +127,16 @@ return [
 
     'contact_notification_email' => env('CONTACT_EMAIL'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Email Logo (used in all mail templates)
+    |--------------------------------------------------------------------------
+    |
+    | Full URL to the logo image shown in email headers. Defaults to public/images/rj.png.
+    | Set MAIL_LOGO_URL in .env to override (e.g. for a different logo or CDN URL).
+    |
+    */
+
+    'logo_url' => env('MAIL_LOGO_URL'),
+
 ];
