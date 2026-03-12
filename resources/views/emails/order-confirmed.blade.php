@@ -126,6 +126,8 @@
                         <div style="font-size:12px; color:#666; line-height:1.6;">
                             If you need help, contact us and mention order #{{ $order['reference'] ?? $order['id'] ?? '' }}.
                         </div>
+
+                        @include('emails.partials.review-request')
                     </td>
                 </tr>
 

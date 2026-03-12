@@ -10,6 +10,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Http\Resources\MissingValue;
+use Illuminate\Support\Facades\URL;
 
 class BookingConfirmedMail extends Mailable implements ShouldQueue
 {
@@ -30,10 +31,19 @@ class BookingConfirmedMail extends Mailable implements ShouldQueue
         $payload = $this->stripMissingValues($payload);
 
         $reference = $payload['reference'] ?? ('#' . ($payload['id'] ?? $booking->id));
+        $addToCalendarUrl = URL::temporarySignedRoute(
+            'booking.calendar.ics',
+            now()->addDays(30),
+            ['booking' => $booking]
+        );
+
         return $this->subject('Booking confirmed ' . $reference)
             ->from(config('mail.from.address'), config('mail.from.name'))
             ->view('emails.booking-confirmed')
             ->text('emails.booking-confirmed-text')
-            ->with(['b' => $payload]);
+            ->with([
+                'b' => $payload,
+                'addToCalendarUrl' => $addToCalendarUrl,
+            ]);
     }
 }

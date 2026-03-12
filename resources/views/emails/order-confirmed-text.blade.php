@@ -64,3 +64,5 @@ Billing Address:
 @endif
 
 If you need help, contact us and mention order #{{ $order['reference'] ?? $order['id'] ?? '' }}.
+
+Your feedback means a lot to us — please take a moment to leave a review here: {{ config('mail.review_url', '') }}

@@ -162,6 +162,9 @@
                         <div style="font-size:12px; color:#666; line-height:1.6;">
                             If you need to change or cancel your booking, please contact us and mention booking {{ $b['reference'] ?? ('#' . ($b['id'] ?? '')) }}.
                         </div>
+
+                        @include('emails.partials.add-to-calendar')
+                        @include('emails.partials.review-request')
                     </td>
                 </tr>
 

@@ -49,3 +49,8 @@ TOTAL: {{ $fmt($b['totalPrice'] ?? 0) }}
 {{--Notes: {{ $b['notes'] ?? '-' }}--}}
 
 If you need help, contact us and mention booking {{ $b['reference'] ?? ('#' . ($b['id'] ?? '')) }}.
+@if(!empty($addToCalendarUrl))
+Add this appointment to your calendar: {{ $addToCalendarUrl }}
+@endif
+
+Your feedback means a lot to us — please take a moment to leave a review here: {{ config('mail.review_url', '') }}

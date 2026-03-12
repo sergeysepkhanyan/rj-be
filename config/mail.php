@@ -139,4 +139,28 @@ return [
 
     'logo_url' => env('MAIL_LOGO_URL'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Google Review URL (confirmation emails)
+    |--------------------------------------------------------------------------
+    |
+    | Link shown in booking and order confirmation emails asking customers
+    | to leave a review. Default is Romeo & Juliette Beauty Lounge Dubai.
+    | Set MAIL_REVIEW_URL in .env to override.
+    |
+    */
+
+    'review_url' => env('MAIL_REVIEW_URL', 'https://search.google.com/local/writereview?placeid=0x3e5f5d54eb422159:0x85f4a0cffadf39bc'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Calendar event location (Add to Calendar .ics)
+    |--------------------------------------------------------------------------
+    | Optional address/location shown in the calendar event when customers
+    | add their booking to Google/Apple/Outlook. Set MAIL_CALENDAR_LOCATION in .env.
+    |
+    */
+
+    'calendar_location' => env('MAIL_CALENDAR_LOCATION', 'Romeo & Juliette Beauty Lounge, Dubai'),
+
 ];

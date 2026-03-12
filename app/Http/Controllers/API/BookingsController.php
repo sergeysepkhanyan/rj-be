@@ -17,6 +17,9 @@ use App\Services\BookingSelectionService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class BookingsController extends Controller
 {
@@ -198,6 +201,92 @@ class BookingsController extends Controller
         return ApiResponse::success([
             'booking' => new BookingResource($result),
         ], __('success.booking.cancelled'));
+    }
+
+    /**
+     * Return an .ics file for the booking so the customer can add it to their calendar.
+     * Route is signed (temporary link in confirmation email); no auth required.
+     */
+    public function calendarIcs(Booking $booking): StreamedResponse
+    {
+        $booking->load(['services.bookable']);
+
+        $date = $booking->date instanceof Carbon
+            ? $booking->date->format('Y-m-d')
+            : (string) $booking->date;
+        $tz = $booking->timezone ?? config('app.timezone', 'UTC');
+
+        $startTime = $booking->start_time;
+        $endTime = $booking->end_time;
+        if ($booking->services->isNotEmpty()) {
+            $sorted = $booking->services->sortBy('start_time')->values();
+            $startTime = $sorted->first()->start_time;
+            $endTime = $sorted->last()->end_time;
+        }
+
+        $startStr = strlen((string) $startTime) === 5 ? $startTime . ':00' : (string) $startTime;
+        $endStr = strlen((string) $endTime) === 5 ? $endTime . ':00' : (string) $endTime;
+
+        $startDt = Carbon::parse($date . ' ' . $startStr, $tz)->utc();
+        $endDt = Carbon::parse($date . ' ' . $endStr, $tz)->utc();
+
+        $summary = 'Appointment at ' . config('app.name');
+        $reference = $booking->reference ?? ('#' . $booking->id);
+        $description = 'Booking ' . $reference;
+        if ($booking->services->isNotEmpty()) {
+            $names = $booking->services->map(fn ($s) => $s->bookable?->name ?? 'Service')->filter()->unique()->values()->implode(', ');
+            if ($names) {
+                $description .= "\nServices: " . $names;
+            }
+        }
+        $location = config('mail.calendar_location', '');
+        $uid = 'booking-' . $booking->id . '@' . parse_url(config('app.url', 'https://example.com'), PHP_URL_HOST);
+
+        $ics = $this->buildIcs($uid, $summary, $description, $location, $startDt, $endDt);
+
+        return new StreamedResponse(function () use ($ics) {
+            echo $ics;
+        }, Response::HTTP_OK, [
+            'Content-Type' => 'text/calendar; charset=utf-8',
+            'Content-Disposition' => 'attachment; filename="booking.ics"',
+        ]);
+    }
+
+    private function buildIcs(string $uid, string $summary, string $description, string $location, Carbon $start, Carbon $end): string
+    {
+        $fold = static function (string $line): string {
+            $out = '';
+            while (strlen($line) > 75) {
+                $out .= substr($line, 0, 75) . "\r\n ";
+                $line = substr($line, 75);
+            }
+            return $out . $line;
+        };
+        $escape = static function (string $s): string {
+            return str_replace(["\r", "\n", ',', ';'], ['', '\n', '\,', '\;'], $s);
+        };
+
+        $dtStamp = gmdate('Ymd\THis\Z');
+        $dtStart = $start->format('Ymd\THis\Z');
+        $dtEnd = $end->format('Ymd\THis\Z');
+
+        $lines = [
+            'BEGIN:VCALENDAR',
+            'VERSION:2.0',
+            'PRODID:-//' . config('app.name') . '//Booking//EN',
+            'BEGIN:VEVENT',
+            'UID:' . $uid,
+            'DTSTAMP:' . $dtStamp,
+            'DTSTART:' . $dtStart,
+            'DTEND:' . $dtEnd,
+            'SUMMARY:' . $escape($summary),
+            'DESCRIPTION:' . $escape($description),
+            'LOCATION:' . $escape($location),
+            'END:VEVENT',
+            'END:VCALENDAR',
+        ];
+
+        return implode("\r\n", array_map($fold, $lines));
     }
 }
 

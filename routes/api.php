@@ -153,6 +153,9 @@ Route::middleware(['set.locale'])->group(function () {
     Route::get('/bookings/available-slots', [BookingsController::class, 'availableSlots']);
     Route::post('/bookings/selection', [BookingsController::class, 'selectSlot'])
         ->middleware('jwt.optional');
+    Route::get('/bookings/{booking}/calendar.ics', [BookingsController::class, 'calendarIcs'])
+        ->middleware('signed')
+        ->name('booking.calendar.ics');
     // Note: This route must come AFTER /bookings/available-slots to avoid wildcard matching issues
     Route::get('/bookings/{booking}', [BookingsController::class, 'show'])
         ->middleware(['jwt.custom', 'verified']);
