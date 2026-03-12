@@ -150,7 +150,7 @@ return [
     |
     */
 
-    'review_url' => env('MAIL_REVIEW_URL', 'https://search.google.com/local/writereview?placeid=0x3e5f5d54eb422159:0x85f4a0cffadf39bc'),
+    'review_url' => env('MAIL_REVIEW_URL', 'https://www.google.com/search?q=romeo+juliette+beauty+lounge+dubai&sca_esv=0546383d171bc4a7&rlz=1C1CHBF_enAM818AM818&sxsrf=ANbL-n6KvtoFP06rod70AvPs-XVM9EtW7Q%3A1773237469379&ei=3XSxafTvFrixwPAPpOyr4AI&biw=1366&bih=607&ved=0ahUKEwi00turgJiTAxW4GBAIHST2CiwQ4dUDCBE&uact=5&oq=romeo+juliette+beauty+lounge+dubai&gs_lp=Egxnd3Mtd2l6LXNlcnAiInJvbWVvIGp1bGlldHRlIGJlYXV0eSBsb3VuZ2UgZHViYWkyBhAAGBYYHjIGEAAYFhgeMgYQABgWGB4yBRAAGO8FMgUQABjvBTIFEAAY7wVI2E5QmhBYyExwA3gAkAEAmAHMAaABny6qAQYwLjMyLjK4AQPIAQD4AQGYAiWgAvgwwgIIEAAY7wUYsAPCAgsQABiABBiKBRiRAsICCxAuGIAEGIoFGJECwgIFEC4YgATCAgUQABiABMICCxAuGIAEGMcBGNEDwgIaEC4YgAQYigUYkQIYlwUY3AQY3gQY3wTYAQHCAgsQLhiABBjHARivAcICFBAuGIAEGJcFGNwEGN4EGOAE2AEBwgIUEC4YgAQYlwUY3AQY3gQY3wTYAQHCAgcQLhiABBgKwgIHEAAYgAQYCsICFhAuGIAEGAoYlwUY3AQY3gQY4ATYAQHCAgkQLhiABBgKGAvCAgkQLhgKGAsYgATCAgkQABiABBgKGAvCAhgQLhiABBgKGAsYlwUY3AQY3gQY4ATYAQHCAgcQLhiABBgNwgIHEAAYgAQYDcICFhAuGIAEGA0YlwUY3AQY3gQY4ATYAQHCAgYQABgeGA3CAggQABgeGA0YCsICCBAAGBYYHhgKwgILEAAYgAQYigUYhgPCAggQABiABBiiBJgDAIgGAZAGBboGBggBEAEYFJIHBjMuMjkuNaAH1rYDsgcGMC4yOS41uAfcMMIHBzItMTguMTnIB8ICgAgB&sclient=gws-wiz-serp#lrd=0x3e5f5d54eb422159:0x85f4a0cffadf39bc,3'),
 
     /*
     |--------------------------------------------------------------------------
