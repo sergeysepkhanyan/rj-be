@@ -88,6 +88,8 @@ class ClientsController extends Controller
         $ordersCount = $confirmedOrders->count();
         $ordersTotal = $confirmedOrders->sum('amount');
 
+        $wishlistCount = \App\Models\Wishlist::where('user_id', $user->id)->count();
+
         return ApiResponse::success([
             'client' => new ClientDetailResource($user),
             'stats' => [
@@ -99,6 +101,7 @@ class ClientsController extends Controller
                 'orders_count' => $ordersCount,
                 'orders_total' => (float) $ordersTotal,
                 'total_spent' => (float) ($bookingsTotal + $ordersTotal),
+                'wishlist_count' => $wishlistCount,
             ],
         ]);
     }
@@ -175,6 +178,19 @@ class ClientsController extends Controller
                 'per_page' => $orders->perPage(),
                 'total' => $orders->total(),
             ],
+        ]);
+    }
+
+    public function wishlist(User $user): JsonResponse
+    {
+        $wishlistProducts = $user->wishlistProducts()
+            ->with(['files', 'details', 'productCategory'])
+            ->orderByPivot('created_at', 'desc')
+            ->get();
+
+        return ApiResponse::success([
+            'items' => \App\Http\Resources\ProductResource::collection($wishlistProducts),
+            'count' => $wishlistProducts->count(),
         ]);
     }
 

@@ -365,6 +365,29 @@ class OrderService
             $updateData['status'] = OrderStatus::Fulfilled->value;
         }
 
+        if ($deliveryStatus === DeliveryStatus::Canceled->value) {
+            $updateData['status'] = OrderStatus::Canceled->value;
+
+            // Refund payment if the order was paid
+            if ($order->paid_at && $order->status !== OrderStatus::Refunded->value) {
+                try {
+                    $order->loadMissing('latestPayment');
+                    if ($order->latestPayment) {
+                        $this->paymentService->refundOrderPayment($order, [
+                            'reason' => 'delivery_canceled',
+                        ]);
+                        $updateData['status'] = OrderStatus::Refunded->value;
+                        $updateData['refunded_at'] = now();
+                    }
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::error('Auto-refund failed for order #' . $order->id . ': ' . $e->getMessage());
+                }
+            }
+
+            // Restore product stock
+            $this->increaseProductQuantities($order);
+        }
+
         $order = $this->orderRepository->update($order, $updateData);
 
         if ($previousStatus !== $deliveryStatus) {

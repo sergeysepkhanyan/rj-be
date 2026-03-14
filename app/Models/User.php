@@ -138,6 +138,16 @@ class User extends Authenticatable implements JWTSubject, CanResetPasswordContra
         return $this->hasMany(Address::class, 'user_id');
     }
 
+    public function wishlistItems(): HasMany
+    {
+        return $this->hasMany(Wishlist::class);
+    }
+
+    public function wishlistProducts(): BelongsToMany
+    {
+        return $this->belongsToMany(Product::class, 'wishlists')->withTimestamps();
+    }
+
     public function isLocked(): bool
     {
         return $this->status === 'locked';

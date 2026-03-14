@@ -137,7 +137,11 @@ Route::middleware(['set.locale'])->group(function () {
 
         Route::get('/orders', [OrdersController::class, 'index']);
 
-
+        // Wishlist
+        Route::get('/wishlist', [\App\Http\Controllers\API\WishlistController::class, 'index']);
+        Route::post('/wishlist/toggle', [\App\Http\Controllers\API\WishlistController::class, 'toggle']);
+        Route::get('/wishlist/ids', [\App\Http\Controllers\API\WishlistController::class, 'ids']);
+        Route::delete('/wishlist/{productId}', [\App\Http\Controllers\API\WishlistController::class, 'destroy']);
 
         Route::get('/addresses', [AddressController::class, 'index']);
         Route::post('/addresses', [AddressController::class, 'store']);
@@ -278,6 +282,7 @@ Route::middleware(['set.locale'])->group(function () {
         Route::get('/admin/clients/{user}', [ClientsController::class, 'show']);
         Route::get('/admin/clients/{user}/bookings', [ClientsController::class, 'bookings']);
         Route::get('/admin/clients/{user}/orders', [ClientsController::class, 'orders']);
+        Route::get('/admin/clients/{user}/wishlist', [ClientsController::class, 'wishlist']);
         Route::patch('/admin/clients/{user}/toggle-lock', [ClientsController::class, 'toggleLock']);
         Route::post('/admin/clients/{user}/notes', [ClientsController::class, 'addNote']);
         Route::delete('/admin/clients/{user}/notes/{note}', [ClientsController::class, 'deleteNote']);

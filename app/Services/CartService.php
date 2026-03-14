@@ -11,6 +11,7 @@ use App\Models\OrderItem;
 use App\Models\PaymentMethod;
 use App\Models\Product;
 use App\Models\User;
+use App\Models\Lead;
 use App\Repositories\Interfaces\CartItemRepositoryInterface;
 use App\Repositories\Interfaces\OrderRepositoryInterface;
 use Illuminate\Http\Exceptions\HttpResponseException;
@@ -291,7 +292,48 @@ class CartService
 
         $this->cartRepository->deleteBySession($userId, $guestSessionId);
 
+        // Auto-create lead for guest checkouts
+        if (!$userId) {
+            $this->createLeadFromOrder($customerName, $customerEmail, $customerPhone, $shippingAddress);
+        }
+
         return $order->load(['items.product.files', 'latestPayment', 'shippingAddress.country', 'billingAddress.country']);
+    }
+
+    protected function createLeadFromOrder(string $customerName, string $customerEmail, string $customerPhone, array $shippingAddress = []): void
+    {
+        if (!$customerPhone) {
+            return;
+        }
+
+        // Don't create lead if a registered user with this phone/email exists
+        if (User::where('mobile', $customerPhone)->orWhere('email', $customerEmail)->exists()) {
+            return;
+        }
+
+        // Don't create duplicate lead
+        if (Lead::where('phone', $customerPhone)->exists()) {
+            return;
+        }
+
+        // Build the best name from shipping address first/last name, fallback to customer name
+        $name = $customerName;
+        if (!empty($shippingAddress['name']) || !empty($shippingAddress['lastName'])) {
+            $firstName = $shippingAddress['name'] ?? '';
+            $lastName = $shippingAddress['lastName'] ?? '';
+            $fullName = trim("{$firstName} {$lastName}");
+            if ($fullName) {
+                $name = $fullName;
+            }
+        }
+
+        Lead::create([
+            'name' => $name ?: 'Unknown',
+            'phone' => $customerPhone,
+            'email' => $customerEmail ?: null,
+            'source' => 'order',
+            'status' => 'new',
+        ]);
     }
 
     protected function resolveSession(?string $guestSessionId): array
