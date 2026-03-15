@@ -55,6 +55,7 @@ class OrderFilter
             'ecommerce' => 'ecommerce',
             'service' => 'booking',
             'booking' => 'booking',
+            'gift_card' => 'gift_card',
         ];
 
         if (isset($typeMap[$type])) {

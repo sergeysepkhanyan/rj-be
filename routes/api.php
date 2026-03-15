@@ -75,6 +75,10 @@ Route::middleware(['set.locale'])->group(function () {
     Route::get('/posts', [PostsController::class, 'index']);
     Route::get('/posts/{slug}', [PostsController::class, 'getBySlug']);
 
+    Route::get('/gift-cards', [\App\Http\Controllers\API\GiftCardController::class, 'index']);
+    Route::post('/gift-cards/purchase', [\App\Http\Controllers\API\GiftCardPurchaseController::class, 'store']);
+    Route::post('/gift-cards/confirm', [\App\Http\Controllers\API\GiftCardPurchaseController::class, 'confirm']);
+
     Route::get('/products', [ProductsController::class, 'index']);
     Route::get('/products/by-slug/{slug}', [ProductsController::class, 'getBySlug']);
     Route::get('/product-categories', [ProductCategoriesController::class, 'index']);
@@ -295,6 +299,15 @@ Route::middleware(['set.locale'])->group(function () {
         Route::put('/admin/leads/{lead}', [LeadsController::class, 'update']);
         Route::delete('/admin/leads/{lead}', [LeadsController::class, 'destroy']);
 
+
+        // Gift Cards management
+        Route::get('/admin/gift-cards', [\App\Http\Controllers\API\Admin\GiftCardController::class, 'index']);
+        Route::post('/admin/gift-cards', [\App\Http\Controllers\API\Admin\GiftCardController::class, 'store']);
+        Route::put('/admin/gift-cards/{giftCard}', [\App\Http\Controllers\API\Admin\GiftCardController::class, 'update']);
+        Route::delete('/admin/gift-cards/{giftCard}', [\App\Http\Controllers\API\Admin\GiftCardController::class, 'destroy']);
+        Route::get('/admin/gift-card-purchases', [\App\Http\Controllers\API\Admin\GiftCardController::class, 'purchases']);
+        Route::post('/admin/gift-card-purchases/{giftCardPurchase}/usage', [\App\Http\Controllers\API\Admin\GiftCardController::class, 'recordUsage']);
+        Route::get('/admin/gift-card-usage/search-items', [\App\Http\Controllers\API\Admin\GiftCardController::class, 'searchItems']);
 
         Route::post('/admin/booking/break', [AdminBookingsController::class, 'storeBreak']);
         Route::delete('/admin/booking/break/{booking}', [AdminBookingsController::class, 'deleteBreak']);

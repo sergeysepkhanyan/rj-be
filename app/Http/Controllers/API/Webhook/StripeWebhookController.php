@@ -149,6 +149,11 @@ class StripeWebhookController extends Controller
                         $this->orderService->sendOrderConfirmation($order);
                     }
 
+                    // Handle gift card order - create purchase + send emails
+                    if ($order->getTypeValue() === 'gift_card' && !$wasAlreadyPaid) {
+                        $this->handleGiftCardPaymentSuccess($order);
+                    }
+
                     $order->refresh();
                     $payment->refresh();
 
@@ -241,6 +246,83 @@ class StripeWebhookController extends Controller
         }
 
         return false;
+    }
+
+    private function handleGiftCardPaymentSuccess($order): void
+    {
+        try {
+            $meta = $order->meta ?? [];
+            $giftCardId = $meta['gift_card_id'] ?? null;
+
+            if (!$giftCardId) {
+                \Log::error('[stripe][webhook] Gift card order missing gift_card_id in meta', ['order_id' => $order->id]);
+                return;
+            }
+
+            // Don't create duplicate purchase
+            $existing = \App\Models\GiftCardPurchase::where('order_id', $order->id)->first();
+            if ($existing) {
+                return;
+            }
+
+            $giftCard = \App\Models\GiftCard::find($giftCardId);
+            if (!$giftCard) {
+                \Log::error('[stripe][webhook] Gift card not found', ['gift_card_id' => $giftCardId]);
+                return;
+            }
+
+            // Create purchase record now that payment is confirmed
+            $purchase = \App\Models\GiftCardPurchase::create([
+                'gift_card_id' => $giftCard->id,
+                'order_id' => $order->id,
+                'code' => \App\Models\GiftCardPurchase::generateCode(),
+                'buyer_name' => $meta['customer_name'] ?? 'Unknown',
+                'buyer_email' => $meta['customer_email'] ?? '',
+                'buyer_phone' => $meta['customer_phone'] ?? null,
+                'recipient_name' => $meta['recipient_name'] ?? 'Unknown',
+                'recipient_email' => $meta['recipient_email'] ?? null,
+                'amount' => $giftCard->price,
+                'balance' => $giftCard->price,
+                'currency' => $giftCard->currency,
+                'status' => 'active',
+                'expires_at' => now()->addYear(),
+            ]);
+
+            $purchase->load('giftCard');
+
+            // Email buyer
+            if ($purchase->buyer_email) {
+                Mail::to($purchase->buyer_email)
+                    ->queue(new \App\Mail\GiftCardPurchasedMail($purchase, 'buyer'));
+            }
+
+            // Email recipient
+            if ($purchase->recipient_email) {
+                Mail::to($purchase->recipient_email)
+                    ->queue(new \App\Mail\GiftCardPurchasedMail($purchase, 'recipient'));
+            }
+
+            // Create lead for non-registered buyers
+            if (!$order->user_id && $purchase->buyer_phone) {
+                $phone = $purchase->buyer_phone;
+                if (!\App\Models\User::where('mobile', $phone)->orWhere('email', $purchase->buyer_email)->exists()) {
+                    if (!\App\Models\Lead::where('phone', $phone)->exists()) {
+                        \App\Models\Lead::create([
+                            'name' => $purchase->buyer_name,
+                            'phone' => $phone,
+                            'email' => $purchase->buyer_email,
+                            'source' => 'order',
+                            'status' => 'new',
+                        ]);
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            \Log::error('[stripe][webhook] Failed to handle gift card payment success', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     private function sendPaymentFailedNotification($order, array $stripeObject): void

@@ -32,7 +32,12 @@ class OrderResource extends JsonResource
     public function toArray(Request $request): array
     {
         $shippingAddress = $this->whenLoaded('shippingAddress') ? $this->shippingAddress : null;
-        $customerName = $this->meta['customer_name'] ?? null;
+        // For gift cards, show recipient as the customer
+        if ($this->type === 'gift_card') {
+            $customerName = $this->meta['recipient_name'] ?? $this->meta['customer_name'] ?? null;
+        } else {
+            $customerName = $this->meta['customer_name'] ?? null;
+        }
         $customerEmail = $this->meta['customer_email'] ?? null;
         $customerPhone = $this->meta['customer_phone'] ?? null;
 
@@ -53,7 +58,11 @@ class OrderResource extends JsonResource
         // VAT rate (5%)
         $vatRate = 0.05;
 
-        if ($this->type === 'ecommerce' && $this->relationLoaded('items') && $this->items->isNotEmpty()) {
+        if ($this->type === 'gift_card') {
+            $subtotal = (float) $this->amount;
+            $tax = 0;
+            $quantity = 1;
+        } elseif ($this->type === 'ecommerce' && $this->relationLoaded('items') && $this->items->isNotEmpty()) {
             foreach ($this->items as $item) {
                 $itemSubtotal = (float) $item->subtotal;
                 // Tax is added on top of the price (tax-exclusive pricing)
@@ -235,6 +244,21 @@ class OrderResource extends JsonResource
                 }
                 return OrderItemResource::collection($this->items);
             }, function () {
+                if ($this->type === 'gift_card') {
+                    $giftCardName = $this->meta['gift_card_name'] ?? 'Gift Card';
+                    $recipientName = $this->meta['recipient_name'] ?? '';
+                    return [[
+                        'id' => $this->meta['gift_card_id'] ?? 0,
+                        'name' => $giftCardName,
+                        'quantity' => 1,
+                        'unitPrice' => (string) $this->amount,
+                        'subtotal' => (string) $this->amount,
+                        'finalPrice' => (string) $this->amount,
+                        'tax' => '0',
+                        'type' => 'gift_card',
+                        'recipientName' => $recipientName,
+                    ]];
+                }
                 if ($this->type === 'booking' && $this->relationLoaded('orderable')) {
                     // Get all bookings (including batch bookings)
                     $allBookings = $this->resource->getAllBookings();

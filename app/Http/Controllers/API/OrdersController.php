@@ -111,7 +111,10 @@ class OrdersController extends Controller
                 ]);
 
                 // Handle order type specific actions
-                if ($order->getTypeValue() === 'ecommerce') {
+                if ($order->getTypeValue() === 'gift_card') {
+                    // Create gift card purchase on payment success
+                    $this->handleGiftCardPaymentSuccess($order);
+                } elseif ($order->getTypeValue() === 'ecommerce') {
                     // Send confirmation email for ecommerce orders
                     $this->orderService->sendOrderConfirmation($order);
                 } elseif ($order->getTypeValue() === 'booking' && $order->orderable instanceof Booking) {
@@ -140,10 +143,23 @@ class OrdersController extends Controller
                 $order->refresh();
                 $order->load(['items', 'shippingAddress.country', 'billingAddress.country', 'orderable']);
 
-                return ApiResponse::success([
+                $response = [
                     'order' => new OrderResource($order),
                     'verified' => true,
-                ], 'Payment verified successfully');
+                ];
+
+                // Include gift card purchase code in response
+                if ($order->getTypeValue() === 'gift_card') {
+                    $purchase = \App\Models\GiftCardPurchase::where('order_id', $order->id)->first();
+                    if ($purchase) {
+                        $response['purchase'] = [
+                            'code' => $purchase->code,
+                            'expiresAt' => $purchase->expires_at->toIso8601String(),
+                        ];
+                    }
+                }
+
+                return ApiResponse::success($response, 'Payment verified successfully');
             }
 
             return ApiResponse::error(
@@ -163,6 +179,62 @@ class OrdersController extends Controller
                 'Verification failed',
                 500
             );
+        }
+    }
+
+    private function handleGiftCardPaymentSuccess($order): void
+    {
+        $meta = $order->meta ?? [];
+        $giftCardId = $meta['gift_card_id'] ?? null;
+        if (!$giftCardId) return;
+
+        // Don't create duplicate
+        if (\App\Models\GiftCardPurchase::where('order_id', $order->id)->exists()) return;
+
+        $giftCard = \App\Models\GiftCard::find($giftCardId);
+        if (!$giftCard) return;
+
+        $purchase = \App\Models\GiftCardPurchase::create([
+            'gift_card_id' => $giftCard->id,
+            'order_id' => $order->id,
+            'code' => \App\Models\GiftCardPurchase::generateCode(),
+            'buyer_name' => $meta['customer_name'] ?? 'Unknown',
+            'buyer_email' => $meta['customer_email'] ?? '',
+            'buyer_phone' => $meta['customer_phone'] ?? null,
+            'recipient_name' => $meta['recipient_name'] ?? 'Unknown',
+            'recipient_email' => $meta['recipient_email'] ?? null,
+            'amount' => $giftCard->price,
+            'balance' => $giftCard->price,
+            'currency' => $giftCard->currency,
+            'status' => 'active',
+            'expires_at' => now()->addYear(),
+        ]);
+
+        $purchase->load('giftCard');
+
+        if ($purchase->buyer_email) {
+            \Illuminate\Support\Facades\Mail::to($purchase->buyer_email)
+                ->queue(new \App\Mail\GiftCardPurchasedMail($purchase, 'buyer'));
+        }
+        if ($purchase->recipient_email) {
+            \Illuminate\Support\Facades\Mail::to($purchase->recipient_email)
+                ->queue(new \App\Mail\GiftCardPurchasedMail($purchase, 'recipient'));
+        }
+
+        // Create lead for non-registered buyers
+        if (!$order->user_id && $purchase->buyer_phone) {
+            $phone = $purchase->buyer_phone;
+            if (!\App\Models\User::where('mobile', $phone)->orWhere('email', $purchase->buyer_email)->exists()) {
+                if (!\App\Models\Lead::where('phone', $phone)->exists()) {
+                    \App\Models\Lead::create([
+                        'name' => $purchase->buyer_name,
+                        'phone' => $phone,
+                        'email' => $purchase->buyer_email,
+                        'source' => 'order',
+                        'status' => 'new',
+                    ]);
+                }
+            }
         }
     }
 

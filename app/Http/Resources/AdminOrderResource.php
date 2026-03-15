@@ -128,7 +128,11 @@ class AdminOrderResource extends JsonResource
         $productId = null;
         $quantity = 0;
 
-        if ($this->type === 'ecommerce') {
+        if ($this->type === 'gift_card') {
+            $productName = $this->meta['gift_card_name'] ?? 'Gift Card';
+            $productId = $this->meta['gift_card_id'] ?? null;
+            $quantity = 1;
+        } elseif ($this->type === 'ecommerce') {
             $this->ensureItemsLoaded();
             if ($this->items->isNotEmpty()) {
                 $first = $this->items->first();
@@ -224,7 +228,10 @@ class AdminOrderResource extends JsonResource
         }
 
         $meta = $this->meta ?? [];
-        if (!$customerName && isset($meta['customer_name'])) {
+        // For gift cards, prefer recipient name as the customer
+        if ($this->type === 'gift_card' && !empty($meta['recipient_name'])) {
+            $customerName = $meta['recipient_name'];
+        } elseif (!$customerName && isset($meta['customer_name'])) {
             $customerName = $meta['customer_name'];
         }
         if (!$customerEmail && isset($meta['customer_email'])) {

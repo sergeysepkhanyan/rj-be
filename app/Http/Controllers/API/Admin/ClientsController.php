@@ -149,20 +149,31 @@ class ClientsController extends Controller
                 'delivery_status' => $order->delivery_status,
                 'created_at' => $order->created_at,
                 'paid_at' => $order->paid_at,
-                'items' => $order->items->map(function ($item) {
-                    return [
-                        'id' => $item->id,
-                        'quantity' => $item->quantity,
-                        'price' => $item->unit_price,
-                        'product' => $item->product ? [
-                            'id' => $item->product->id,
-                            'name' => $item->product->name,
-                            'image' => $item->product->main_image
-                                ? asset('storage/' . $item->product->main_image)
-                                : null,
-                        ] : null,
-                    ];
-                }),
+                'items' => $order->type === 'gift_card'
+                    ? [[
+                        'id' => $order->meta['gift_card_id'] ?? 0,
+                        'quantity' => 1,
+                        'price' => $order->amount,
+                        'product' => [
+                            'id' => $order->meta['gift_card_id'] ?? 0,
+                            'name' => $order->meta['gift_card_name'] ?? 'Gift Card',
+                            'image' => null,
+                        ],
+                    ]]
+                    : $order->items->map(function ($item) {
+                        return [
+                            'id' => $item->id,
+                            'quantity' => $item->quantity,
+                            'price' => $item->unit_price,
+                            'product' => $item->product ? [
+                                'id' => $item->product->id,
+                                'name' => $item->product->name,
+                                'image' => $item->product->main_image
+                                    ? asset('storage/' . $item->product->main_image)
+                                    : null,
+                            ] : null,
+                        ];
+                    }),
                 'shippingAddress' => $order->shippingAddress ? [
                     'city' => $order->shippingAddress->city,
                     'state' => $order->shippingAddress->country?->name ?? null,
