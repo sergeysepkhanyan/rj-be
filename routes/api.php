@@ -187,6 +187,7 @@ Route::middleware(['set.locale'])->group(function () {
         Route::post('/admin/services', [AdminServicesController::class, 'store']);
         Route::put('/admin/services/{service}', [AdminServicesController::class, 'update']);
         Route::delete('/admin/services/{service}', [AdminServicesController::class, 'destroy']);
+        Route::post('/admin/services/bulk-discount', [AdminServicesController::class, 'bulkDiscount']);
 
 
         Route::post('/admin/sub-services', [AdminSubServicesController::class, 'store']);

@@ -24,17 +24,39 @@ class SubServiceItem extends Model
         'duration',
         'duration_unit',
         'show_duration',
-        'vat_enabled'
+        'vat_enabled',
+        'discount',
+        'discount_type',
+        'discount_amount'
     ];
 
     protected $casts = [
         'vat_enabled' => 'boolean',
         'show_duration' => 'boolean',
+        'discount' => 'boolean',
+        'discount_amount' => 'decimal:2',
     ];
 
     public function subService(): BelongsTo
     {
         return $this->belongsTo(SubService::class);
+    }
+
+    public function getFinalPrice(): float
+    {
+        $price = (float) $this->price;
+        if (!$this->discount || !$this->discount_amount || $this->discount_amount <= 0) {
+            return $price;
+        }
+        if ($this->discount_type === 'percentage') {
+            return max(0, $price - ($price * (float) $this->discount_amount / 100));
+        }
+        return max(0, $price - (float) $this->discount_amount);
+    }
+
+    public function hasDiscount(): bool
+    {
+        return $this->discount && $this->discount_amount && $this->discount_amount > 0;
     }
 
     public function bookingServices(): MorphMany

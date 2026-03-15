@@ -594,7 +594,10 @@ class BookingService
                 );
             }
 
-            $basePrice  = (float) ($serviceable->price ?? 0);
+            // Use discounted price if service has a discount
+            $basePrice = method_exists($serviceable, 'getFinalPrice')
+                ? (float) $serviceable->getFinalPrice()
+                : (float) ($serviceable->price ?? 0);
             $vat = VatCalculator::breakdown($basePrice, true);
 
             $isAnyMaster = (bool)($s['any_master'] ?? $s['anyMaster'] ?? false);

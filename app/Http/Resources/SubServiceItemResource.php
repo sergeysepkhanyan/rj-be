@@ -29,7 +29,11 @@ class SubServiceItemResource extends BaseResource
             'currency' => $this->currency ?? null,
             'vatEnabled' => (bool) ($this->vat_enabled ?? false),
             'vatRate'    => (float) ($this->vat_rate ?? config('vat.rate', 0.05)),
-
+            'discount' => (bool) ($data['discount'] ?? false),
+            'discountType' => $data['discount_type'] ?? null,
+            'discountAmount' => isset($data['discount_amount']) && $data['discount_amount'] ? (float) $data['discount_amount'] : null,
+            'finalPrice' => $this->resource->getFinalPrice(),
+            'hasDiscount' => $this->resource->hasDiscount(),
         ];
     }
 }

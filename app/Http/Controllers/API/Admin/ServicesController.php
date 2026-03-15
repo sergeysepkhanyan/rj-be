@@ -11,6 +11,8 @@ use App\Services\ApiResponse;
 use App\Services\ServiceManagerService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Models\SubService;
+use App\Models\SubServiceItem;
 
 class ServicesController
 {
@@ -95,5 +97,47 @@ class ServicesController
             'deleted' => true,
             'service_id' => $service->id,
         ], __('success.service.deleted'));
+    }
+
+    public function bulkDiscount(Request $request): JsonResponse
+    {
+        $request->validate([
+            'level' => 'required|in:category,service,subservice,item',
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'integer',
+            'discount' => 'required|boolean',
+            'discountType' => 'required_if:discount,true|nullable|in:percentage,fixed',
+            'discountAmount' => 'required_if:discount,true|nullable|numeric|min:0',
+        ]);
+
+        $level = $request->level;
+        $ids = $request->ids;
+        $discountData = [
+            'discount' => $request->discount,
+            'discount_type' => $request->discount ? $request->discountType : null,
+            'discount_amount' => $request->discount ? $request->discountAmount : null,
+        ];
+
+        $updated = 0;
+
+        if ($level === 'category') {
+            $serviceIds = Service::whereIn('category_id', $ids)->pluck('id');
+            $subServiceIds = SubService::whereIn('service_id', $serviceIds)->pluck('id');
+            $updated += SubService::whereIn('service_id', $serviceIds)->update($discountData);
+            $updated += SubServiceItem::whereIn('sub_service_id', $subServiceIds)->update($discountData);
+        } elseif ($level === 'service') {
+            $subServiceIds = SubService::whereIn('service_id', $ids)->pluck('id');
+            $updated += SubService::whereIn('service_id', $ids)->update($discountData);
+            $updated += SubServiceItem::whereIn('sub_service_id', $subServiceIds)->update($discountData);
+        } elseif ($level === 'subservice') {
+            $updated += SubService::whereIn('id', $ids)->update($discountData);
+            $updated += SubServiceItem::whereIn('sub_service_id', $ids)->update($discountData);
+        } elseif ($level === 'item') {
+            $updated += SubServiceItem::whereIn('id', $ids)->update($discountData);
+        }
+
+        return ApiResponse::success([
+            'updated' => $updated,
+        ], "Discount applied to {$updated} items");
     }
 }

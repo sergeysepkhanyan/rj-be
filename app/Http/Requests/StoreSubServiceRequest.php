@@ -12,7 +12,8 @@ class StoreSubServiceRequest extends BaseFormRequest
         'durationUnit' => 'duration_unit',
         'showDuration' => 'show_duration',
         'vatEnabled' => 'vat_enabled',
-
+        'discountType' => 'discount_type',
+        'discountAmount' => 'discount_amount',
     ];
 
     public function rules(): array
@@ -42,6 +43,9 @@ class StoreSubServiceRequest extends BaseFormRequest
             'durationUnit' => 'required_if:type,Simple|string',
             'vatEnabled' => ['sometimes', 'boolean'],
             'showDuration' => ['sometimes', 'boolean'],
+            'discount' => 'sometimes|boolean',
+            'discountType' => ['nullable', 'string', 'in:percentage,fixed'],
+            'discountAmount' => ['nullable', 'numeric', 'min:0'],
             'items' => 'required_if:type,Variant Based|array',
             'items.*.name' => 'required_if:type,Variant Based|string|max:255',
             'items.*.nameAr' => 'nullable|string|max:255',
@@ -51,6 +55,9 @@ class StoreSubServiceRequest extends BaseFormRequest
             'items.*.durationUnit' => 'required_if:type,Variant Based|string',
             'items.*.vatEnabled' => ['sometimes', 'boolean'],
             'items.*.showDuration' => ['sometimes', 'boolean'],
+            'items.*.discount' => 'sometimes|boolean',
+            'items.*.discountType' => ['nullable', 'string', 'in:percentage,fixed'],
+            'items.*.discountAmount' => ['nullable', 'numeric', 'min:0'],
         ];
     }
 
