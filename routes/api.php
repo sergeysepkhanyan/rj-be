@@ -333,6 +333,7 @@ Route::middleware(['set.locale'])->group(function () {
     Route::get('/referrals', [ReferralsController::class, 'index']);
 
     Route::get('/tracking-config/public', [TrackingConfigController::class, 'public']);
+    Route::get('/discount-setting/public', [DiscountSettingController::class, 'public']);
 });
 
 Route::post('/webhooks/tabby', [TabbyWebhookController::class, 'handle']);

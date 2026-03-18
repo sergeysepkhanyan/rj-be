@@ -34,4 +34,22 @@ class DiscountSettingController extends Controller
             __('success.discount_setting.updated')
         );
     }
+
+    public function public(): JsonResponse
+    {
+        $setting = $this->discountSettingService->get();
+
+        if (!$setting->enabled) {
+            return ApiResponse::success([
+                'enabled' => false,
+            ]);
+        }
+
+        return ApiResponse::success([
+            'enabled' => true,
+            'quantityThreshold' => (int) $setting->quantity_threshold,
+            'discountPercentage' => (float) $setting->discount_percentage,
+            'discountLabel' => $setting->discount_label,
+        ]);
+    }
 }
