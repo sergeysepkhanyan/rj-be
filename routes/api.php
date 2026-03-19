@@ -1,61 +1,58 @@
 <?php
 
+use App\Http\Controllers\API\Admin\BookingsController as AdminBookingsController;
+use App\Http\Controllers\API\Admin\CategoriesController as AdminCategoriesController;
 use App\Http\Controllers\API\Admin\ClientsController;
-use App\Http\Controllers\API\Admin\SuppliersController;
-use App\Http\Controllers\API\Admin\ProductCategoriesController as AdminProductCategoriesController;
+use App\Http\Controllers\API\Admin\ContactMessageController as AdminContactMessageController;
+use App\Http\Controllers\API\Admin\DiscountSettingController;
+use App\Http\Controllers\API\Admin\FaqController as AdminFaqController;
+use App\Http\Controllers\API\Admin\OrdersController as AdminOrdersController;
 use App\Http\Controllers\API\Admin\PagesController as AdminPagesController;
-use App\Http\Controllers\API\BookingsController;
+use App\Http\Controllers\API\Admin\PageSeoController;
+use App\Http\Controllers\API\Admin\PostsController as AdminPostsController;
+use App\Http\Controllers\API\Admin\ProductCategoriesController as AdminProductCategoriesController;
+use App\Http\Controllers\API\Admin\ProductImportsController;
+use App\Http\Controllers\API\Admin\ProductsController as AdminProductsController;
+use App\Http\Controllers\API\Admin\ReferralsController;
+use App\Http\Controllers\API\Admin\ReportsController as AdminReportsController;
+use App\Http\Controllers\API\Admin\ServicesController as AdminServicesController;
+use App\Http\Controllers\API\Admin\StaffController as AdminStaffController;
+use App\Http\Controllers\API\Admin\SubServiceItemsController;
+use App\Http\Controllers\API\Admin\SubServicesController as AdminSubServicesController;
+use App\Http\Controllers\API\Admin\SuppliersController;
+use App\Http\Controllers\API\Admin\TrackingConfigController;
+use App\Http\Controllers\API\Admin\WorkingHoursController as AdminWorkingHoursController;
+use App\Http\Controllers\API\Auth\AuthController;
+use App\Http\Controllers\API\Auth\ResetPasswordController;
 use App\Http\Controllers\API\BookingPaymentController;
+use App\Http\Controllers\API\BookingsController;
+use App\Http\Controllers\API\CartController;
+use App\Http\Controllers\API\CategoriesController;
 use App\Http\Controllers\API\Client\AddressController;
 use App\Http\Controllers\API\Client\PaymentMethodsController;
 use App\Http\Controllers\API\ContactController;
-use App\Http\Controllers\API\CartController;
-use App\Http\Controllers\API\OrdersController;
-use App\Http\Controllers\API\EmailVerificationController;
-use App\Http\Controllers\API\SubServiceMastersController;
-use App\Http\Controllers\API\PagesController;
-use App\Http\Controllers\API\Admin\ReferralsController;
-use App\Http\Controllers\API\Admin\SubServiceItemsController;
-use App\Http\Controllers\API\PostsController;
-use App\Http\Controllers\API\Admin\PostsController as AdminPostsController;
-use App\Http\Controllers\API\ProductsController;
-use App\Http\Controllers\API\Admin\ProductsController as AdminProductsController;
-use App\Http\Controllers\API\Admin\ProductImportsController;
-use App\Http\Controllers\API\ProductCategoriesController;
-use App\Http\Controllers\API\Admin\ServicesController as AdminServicesController;
-use App\Http\Controllers\API\Admin\CategoriesController as AdminCategoriesController;
-use App\Http\Controllers\API\Admin\SubServicesController as AdminSubServicesController;
-use App\Http\Controllers\API\Admin\ReportsController as AdminReportsController;
-use App\Http\Controllers\API\ServicesController as ServicesController;
-use App\Http\Controllers\API\CategoriesController as CategoriesController;
-use App\Http\Controllers\API\Auth\AuthController;
-use App\Http\Controllers\API\Auth\ResetPasswordController;
 use App\Http\Controllers\API\Content\PageContentController;
+use App\Http\Controllers\API\CountriesController;
+use App\Http\Controllers\API\EmailVerificationController;
+use App\Http\Controllers\API\FaqController;
 use App\Http\Controllers\API\FilesController;
+use App\Http\Controllers\API\OrdersController;
+use App\Http\Controllers\API\PagesController;
+use App\Http\Controllers\API\PostsController;
+use App\Http\Controllers\API\ProductCategoriesController;
+use App\Http\Controllers\API\ProductsController;
+use App\Http\Controllers\API\ServicesController;
 use App\Http\Controllers\API\StaffController;
+use App\Http\Controllers\API\SubServiceMastersController;
 use App\Http\Controllers\API\SubServicesController;
 use App\Http\Controllers\API\UsersController;
-use App\Http\Controllers\API\Admin\StaffController as AdminStaffController;
-use App\Http\Controllers\API\Admin\BookingsController as AdminBookingsController;
-use App\Http\Controllers\API\Admin\ContactMessageController as AdminContactMessageController;
-use App\Http\Controllers\API\Admin\OrdersController as AdminOrdersController;
-use App\Http\Controllers\API\Admin\PageSeoController;
-use App\Http\Controllers\API\Admin\TrackingConfigController;
-use App\Http\Controllers\API\Admin\DiscountSettingController;
 use App\Http\Controllers\API\Webhook\StripeWebhookController;
 use App\Http\Controllers\API\Webhook\TabbyWebhookController;
 use App\Http\Controllers\API\WeekdaysController;
 use App\Http\Controllers\API\WorkingHoursController;
-use App\Http\Controllers\API\CountriesController;
-use App\Http\Controllers\API\FaqController;
-use App\Http\Controllers\API\Admin\WorkingHoursController as AdminWorkingHoursController;
-use App\Http\Controllers\API\Admin\FaqController as AdminFaqController;
 use App\Http\Controllers\LeadsController;
 use App\Http\Resources\UserResource;
-use App\Models\User;
 use App\Services\ApiResponse;
-use Illuminate\Auth\Events\Verified;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['set.locale'])->group(function () {
@@ -128,8 +125,9 @@ Route::middleware(['set.locale'])->group(function () {
         Route::patch('/user/change-password', [UsersController::class, 'changePassword']);
         Route::middleware('auth:api')->get('me', function () {
             $user = auth()->user()->load(['role', 'referral'])->loadCount('clientBookings');
+
             return ApiResponse::success([
-                'user' => new UserResource($user)
+                'user' => new UserResource($user),
             ]);
         });
 
@@ -176,9 +174,7 @@ Route::middleware(['set.locale'])->group(function () {
     Route::post('/password/forgot', [ResetPasswordController::class, 'forgot']);
     Route::post('/password/reset', [ResetPasswordController::class, 'reset']);
 
-
-    Route::middleware(['jwt.custom', 'verified','role:superadmin'])->group(function () {
-
+    Route::middleware(['jwt.custom', 'verified', 'role:superadmin,admin'])->group(function () {
 
         Route::post('/admin/categories', [AdminCategoriesController::class, 'store']);
         Route::put('/admin/categories/{category}', [AdminCategoriesController::class, 'update']);
@@ -189,12 +185,10 @@ Route::middleware(['set.locale'])->group(function () {
         Route::delete('/admin/services/{service}', [AdminServicesController::class, 'destroy']);
         Route::post('/admin/services/bulk-discount', [AdminServicesController::class, 'bulkDiscount']);
 
-
         Route::post('/admin/sub-services', [AdminSubServicesController::class, 'store']);
         Route::post('/admin/sub-services/{subService}', [AdminSubServicesController::class, 'update']); // POST with _method for PUT/DELETE
         Route::put('/admin/sub-services/{subService}', [AdminSubServicesController::class, 'update']);
         Route::delete('/admin/sub-services/{subService}', [AdminSubServicesController::class, 'destroy']);
-
 
         Route::post('/admin/sub-service-items/{subServiceItem}', [SubServiceItemsController::class, 'destroy']); // POST with _method for DELETE
         Route::delete('/admin/sub-service-items/{subServiceItem}', [SubServiceItemsController::class, 'destroy']);
@@ -300,7 +294,6 @@ Route::middleware(['set.locale'])->group(function () {
         Route::put('/admin/leads/{lead}', [LeadsController::class, 'update']);
         Route::delete('/admin/leads/{lead}', [LeadsController::class, 'destroy']);
 
-
         // Gift Cards management
         Route::get('/admin/gift-cards', [\App\Http\Controllers\API\Admin\GiftCardController::class, 'index']);
         Route::post('/admin/gift-cards', [\App\Http\Controllers\API\Admin\GiftCardController::class, 'store']);
@@ -338,7 +331,3 @@ Route::middleware(['set.locale'])->group(function () {
 
 Route::post('/webhooks/tabby', [TabbyWebhookController::class, 'handle']);
 Route::post('/webhooks/stripe', [StripeWebhookController::class, 'handle']);
-
-
-
-

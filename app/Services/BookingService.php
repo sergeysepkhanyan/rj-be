@@ -188,19 +188,107 @@ class BookingService
     {
         $tz = $data['timezone'] ?? 'UTC';
 
-        $masterId = (int) ($data['master_id'] ?? 0);
+        $anyMaster = (bool) ($data['anyMaster'] ?? $data['any_master'] ?? false);
+        $masterId = (int) ($data['master_id'] ?? $data['masterId'] ?? 0);
         $date = trim($data['date'] ?? '');
         $subserviceId = $data['sub_service_id'] ?? null;
         $subserviceItemId = $data['sub_service_item_id'] ?? null;
 
-        if (! $masterId || ! $date) {
+        if (! $date) {
             $this->throwValidation(
                 [
-                    'masterId' => __('validation.available_slots.master_required'),
                     'date' => __('validation.available_slots.date_required'),
                 ],
                 'validation.failed'
             );
+        }
+
+        // If masterId is not provided (or is 0), treat it as "any master" to support the UI flow.
+        if (! $masterId) {
+            $anyMaster = true;
+        }
+
+        if (! $anyMaster) {
+            $this->throwValidation(
+                [
+                    'masterId' => __('validation.available_slots.master_required'),
+                ],
+                'validation.failed'
+            );
+        }
+
+        // If "any master" is selected, we return slots where at least one eligible master is free.
+        if (! $masterId || $anyMaster) {
+            $candidateMasterIds = $this->resolveCandidateMasterIds(
+                subserviceId: $subserviceId,
+                subserviceItemId: $subserviceItemId
+            );
+
+            if ($candidateMasterIds->isEmpty()) {
+                return [];
+            }
+
+            if ($this->isMasterOffOnDate((int) $candidateMasterIds->first(), $date, $tz)) {
+                // Don't early return: other masters might still be available.
+            }
+
+            $durationMinutes = $this->resolveDurationMinutes($subserviceId, $subserviceItemId);
+
+            $hours = $this->getWorkingHours($date, $tz);
+            if ($hours['is_closed']) {
+                return [];
+            }
+
+            $workStart = $hours['start'];
+            $workEnd = $hours['end'];
+
+            // Service-wide busy times (same service booked regardless of master)
+            $serviceBusy = collect();
+            if ($subserviceId) {
+                $serviceBusy = $this->bookingRepository->getBusyForServiceOnDate(
+                    'App\\Models\\SubService',
+                    $subserviceId,
+                    $date
+                );
+            } elseif ($subserviceItemId) {
+                $serviceBusy = $this->bookingRepository->getBusyForServiceOnDate(
+                    'App\\Models\\SubServiceItem',
+                    $subserviceItemId,
+                    $date
+                );
+            }
+
+            $uniqueSlots = [];
+            $slotKeys = [];
+
+            foreach ($candidateMasterIds as $mid) {
+                if (! $mid) {
+                    continue;
+                }
+
+                if ($this->isMasterOffOnDate((int) $mid, $date, $tz)) {
+                    continue;
+                }
+
+                $masterBusy = $this->bookingRepository->getBusyForMasterOnDate((int) $mid, $date);
+                $busy = $masterBusy->merge($serviceBusy);
+
+                $slots = $this->buildSlots($date, $workStart, $workEnd, $busy, $durationMinutes, $tz);
+
+                foreach ($slots as $slot) {
+                    $key = $slot['start'].'-'.$slot['end'];
+                    if (isset($slotKeys[$key])) {
+                        continue;
+                    }
+
+                    $slotKeys[$key] = true;
+                    $uniqueSlots[] = $slot;
+                }
+            }
+
+            usort($uniqueSlots, fn ($a, $b) => strcmp($a['start'], $b['start']));
+
+            return $uniqueSlots;
         }
 
         if ($this->isMasterOffOnDate($masterId, $date, $tz)) {
@@ -240,6 +328,32 @@ class BookingService
         $busy = $masterBusy->merge($serviceBusy);
 
         return $this->buildSlots($date, $workStart, $workEnd, $busy, $durationMinutes, $tz);
+    }
+
+    /**
+     * Resolve eligible master IDs for "any master" availability.
+     *
+     * @return \\Illuminate\\Support\\Collection<int, int>
+     */
+    protected function resolveCandidateMasterIds(?int $subserviceId, ?int $subserviceItemId): \Illuminate\Support\Collection
+    {
+        if ($subserviceId) {
+            $sub = \App\Models\SubService::query()
+                ->with('masters:id')
+                ->find($subserviceId);
+
+            return collect($sub?->masters?->pluck('id')->all() ?? []);
+        }
+
+        if ($subserviceItemId) {
+            $item = \App\Models\SubServiceItem::query()
+                ->with('subService.masters:id')
+                ->find($subserviceItemId);
+
+            return collect($item?->subService?->masters?->pluck('id')->all() ?? []);
+        }
+
+        return collect();
     }
 
     protected function resolveDurationMinutes(?int $subserviceId, ?int $subserviceItemId): int
