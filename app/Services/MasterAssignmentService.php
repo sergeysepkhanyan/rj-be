@@ -5,8 +5,8 @@ namespace App\Services;
 use App\Models\SubService;
 use App\Models\SubServiceItem;
 use App\Models\User;
-use Carbon\CarbonImmutable;
 use App\Repositories\Interfaces\BookingRepositoryInterface;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\Exceptions\HttpResponseException;
 
 class MasterAssignmentService
@@ -24,22 +24,23 @@ class MasterAssignmentService
         $services = collect($services)->values()->all();
 
         foreach ($services as $i => $s) {
-            $anyMaster = (bool)($s['anyMaster'] ?? $s['any_master'] ?? false);
+            $anyMaster = (bool) ($s['anyMaster'] ?? $s['any_master'] ?? false);
             $serviceTypeRaw = $s['serviceType'] ?? $s['service_type'] ?? null;
-            $serviceType = strtolower(trim((string)$serviceTypeRaw));
+            $serviceType = strtolower(trim((string) $serviceTypeRaw));
 
-            $serviceId   = (int)($s['serviceId'] ?? $s['service_id'] ?? 0);
+            $serviceId = (int) ($s['serviceId'] ?? $s['service_id'] ?? 0);
 
-            $startTime = (string)($s['startTime'] ?? $s['start_time'] ?? '');
-            $endTime   = (string)($s['endTime'] ?? $s['end_time'] ?? '');
+            $startTime = (string) ($s['startTime'] ?? $s['start_time'] ?? '');
+            $endTime = (string) ($s['endTime'] ?? $s['end_time'] ?? '');
+            $serviceDate = trim((string) ($s['date'] ?? $date));
 
             $providedMasterId = $s['masterId'] ?? $s['master_id'] ?? null;
 
-            if (!$serviceType || !$serviceId || !$startTime || !$endTime) {
+            if (! $serviceType || ! $serviceId || ! $startTime || ! $endTime) {
                 $this->throwValidation([
-                    "services.$i.serviceId"   => __('validation.booking.service_type_and_id_required'),
-                    "services.$i.startTime"   => __('validation.booking.service_start_required'),
-                    "services.$i.endTime"     => __('validation.booking.service_end_required'),
+                    "services.$i.serviceId" => __('validation.booking.service_type_and_id_required'),
+                    "services.$i.startTime" => __('validation.booking.service_start_required'),
+                    "services.$i.endTime" => __('validation.booking.service_end_required'),
                 ], 'validation.failed');
             }
 
@@ -47,7 +48,7 @@ class MasterAssignmentService
                 $chosenMasterId = $this->pickAvailableMasterForService(
                     serviceType: $serviceType,
                     serviceId: $serviceId,
-                    date: $date,
+                    date: $serviceDate,
                     tz: $tz,
                     startTime: $startTime,
                     endTime: $endTime,
@@ -69,7 +70,7 @@ class MasterAssignmentService
 
             $masterId = (int) $providedMasterId;
 
-            if (!$this->isMasterEligibleForService($masterId, $serviceType, $serviceId)) {
+            if (! $this->isMasterEligibleForService($masterId, $serviceType, $serviceId)) {
                 $this->throwValidation([
                     "services.$i.masterId" => __('validation.booking.master_cannot_perform_service'),
                 ], 'validation.failed');
@@ -77,14 +78,14 @@ class MasterAssignmentService
 
             $this->assertMasterNotOff(
                 masterId: $masterId,
-                date: $date,
+                date: $serviceDate,
                 tz: $tz,
                 errorKey: "services.$i.masterId"
             );
 
             $this->assertMasterFree(
                 masterId: $masterId,
-                date: $date,
+                date: $serviceDate,
                 startTime: $startTime,
                 endTime: $endTime,
                 timezone: $tz,
@@ -117,7 +118,7 @@ class MasterAssignmentService
         }
 
         foreach ($candidateMasterIds as $mid) {
-            if ($this->isMasterOffOnDate((int)$mid, $date, $tz)) {
+            if ($this->isMasterOffOnDate((int) $mid, $date, $tz)) {
                 continue;
             }
 
@@ -191,6 +192,7 @@ class MasterAssignmentService
     private function isMasterEligibleForService(int $masterId, string $serviceType, int $serviceId): bool
     {
         $eligible = $this->getEligibleMasterIdsForService($serviceType, $serviceId);
+
         return in_array($masterId, $eligible, true);
     }
 
@@ -219,7 +221,7 @@ class MasterAssignmentService
     protected function throwValidation(array $errors, string $messageKey, array $replace = [], int $status = 422): never
     {
         $normalized = array_map(function ($v) {
-            return is_array($v) ? array_values($v) : [(string)$v];
+            return is_array($v) ? array_values($v) : [(string) $v];
         }, $errors);
 
         throw new HttpResponseException(
@@ -227,4 +229,3 @@ class MasterAssignmentService
         );
     }
 }
-

@@ -3,11 +3,11 @@
 namespace App\Services;
 
 use App\Filters\BookingFilter;
-use App\Mail\BookingCancelledMail;
 use App\Mail\BookingCancelledAdminNotificationMail;
+use App\Mail\BookingCancelledMail;
 use App\Mail\BookingConfirmedMail;
-use App\Mail\BookingRescheduledMail;
 use App\Mail\BookingRescheduledAdminNotificationMail;
+use App\Mail\BookingRescheduledMail;
 use App\Mail\NewBookingAdminNotificationMail;
 use App\Models\Booking;
 use App\Models\Lead;
@@ -19,7 +19,6 @@ use App\Repositories\Interfaces\PaymentRepositoryInterface;
 use App\Repositories\Interfaces\SubServiceItemRepositoryInterface;
 use App\Repositories\Interfaces\SubServiceRepositoryInterface;
 use App\Repositories\Interfaces\WorkingHourRepositoryInterface;
-use App\Services\DiscountSettingService;
 use App\Support\VatCalculator;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
@@ -66,16 +65,16 @@ class BookingService
         return $this->bookingRepository->paginateWithFilter($filter, $perPage, $page);
     }
 
-    public function createBreak(array $data): Booking | null
+    public function createBreak(array $data): ?Booking
     {
         $tz = $data['timezone'] ?? 'UTC';
 
         $date = trim($data['date']);
         $startTime = trim($data['start_time']);
-        $endTime   = trim($data['end_time']);
+        $endTime = trim($data['end_time']);
 
         $start = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$startTime}", $tz);
-        $end   = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$endTime}", $tz);
+        $end = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$endTime}", $tz);
 
         if ($end->lte($start)) {
             $this->throwValidation(
@@ -84,7 +83,7 @@ class BookingService
             );
         }
 
-        $masterId = (int)($data['master_id'] ?? 0);
+        $masterId = (int) ($data['master_id'] ?? 0);
         if ($masterId && $this->isMasterOffOnDate($masterId, $date, $tz)) {
             $this->throwValidation(
                 ['masterId' => __('validation.booking.master_day_off')],
@@ -93,11 +92,11 @@ class BookingService
         }
 
         $hasOverlap = $this->bookingRepository->hasOverlap(
-            masterId:  $masterId,
-            date:      $date,
+            masterId: $masterId,
+            date: $date,
             startTime: $start->format('H:i'),
-            endTime:   $end->format('H:i'),
-            timezone:  $tz,
+            endTime: $end->format('H:i'),
+            timezone: $tz,
         );
 
         if ($hasOverlap) {
@@ -111,7 +110,7 @@ class BookingService
             'user_id' => null,
             'master_id' => $masterId,
             'type' => 'break',
-            'status' =>  'confirmed',
+            'status' => 'confirmed',
             'date' => $date,
             'timezone' => $tz,
             'start_time' => $start->format('H:i'),
@@ -121,7 +120,7 @@ class BookingService
             'customer_name' => 'Break',
             'customer_email' => null,
             'customer_phone' => null,
-            'notes' => $data['notes'] ?? null
+            'notes' => $data['notes'] ?? null,
         ];
 
         return $this->bookingRepository->create($breakData);
@@ -146,13 +145,13 @@ class BookingService
             : $booking->end_time;
 
         $start = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$startTime}", $tz);
-        $end   = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$endTime}", $tz);
+        $end = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$endTime}", $tz);
 
         if ($end->lte($start)) {
             $this->throwValidation(['endTime' => __('validation.break.end_after_start')], 'validation.failed');
         }
 
-        if ($this->isMasterOffOnDate((int)$booking->master_id, $date, $tz)) {
+        if ($this->isMasterOffOnDate((int) $booking->master_id, $date, $tz)) {
             $this->throwValidation(['masterId' => __('validation.booking.master_day_off')], 'validation.failed');
         }
 
@@ -189,12 +188,12 @@ class BookingService
     {
         $tz = $data['timezone'] ?? 'UTC';
 
-        $masterId         = (int) ($data['master_id'] ?? 0);
-        $date             = trim($data['date'] ?? '');
-        $subserviceId     = $data['sub_service_id'] ?? null;
+        $masterId = (int) ($data['master_id'] ?? 0);
+        $date = trim($data['date'] ?? '');
+        $subserviceId = $data['sub_service_id'] ?? null;
         $subserviceItemId = $data['sub_service_item_id'] ?? null;
 
-        if (!$masterId || !$date) {
+        if (! $masterId || ! $date) {
             $this->throwValidation(
                 [
                     'masterId' => __('validation.available_slots.master_required'),
@@ -216,7 +215,7 @@ class BookingService
         }
 
         $workStart = $hours['start'];
-        $workEnd   = $hours['end'];
+        $workEnd = $hours['end'];
 
         // Get master's busy times
         $masterBusy = $this->bookingRepository->getBusyForMasterOnDate($masterId, $date);
@@ -247,11 +246,13 @@ class BookingService
     {
         if ($subserviceItemId) {
             $item = $this->subServiceItemRepository->find($subserviceItemId);
+
             return (int) ($item->duration ?? 0);
         }
 
         if ($subserviceId) {
             $sub = $this->subServiceRepository->find($subserviceId);
+
             return (int) ($sub->duration ?? 0);
         }
 
@@ -269,8 +270,8 @@ class BookingService
         $slots = [];
 
         $dayStart = Carbon::createFromFormat('Y-m-d H:i', "$date $workStart", $tz);
-        $dayEnd   = Carbon::createFromFormat('Y-m-d H:i', "$date $workEnd", $tz);
-        $now      = Carbon::now($tz);
+        $dayEnd = Carbon::createFromFormat('Y-m-d H:i', "$date $workEnd", $tz);
+        $now = Carbon::now($tz);
 
         if ($dayEnd->lt($now->copy()->startOfDay())) {
             return [];
@@ -284,17 +285,21 @@ class BookingService
                 : Carbon::parse($row->date, $rowTz)->toDateString();
 
             $startStr = trim((string) $row->start_time);
-            $endStr   = trim((string) $row->end_time);
+            $endStr = trim((string) $row->end_time);
 
-            if (strlen($startStr) === 5) $startStr .= ':00';
-            if (strlen($endStr) === 5)   $endStr   .= ':00';
+            if (strlen($startStr) === 5) {
+                $startStr .= ':00';
+            }
+            if (strlen($endStr) === 5) {
+                $endStr .= ':00';
+            }
 
             $startLocal = Carbon::createFromFormat('Y-m-d H:i:s', $rowDate.' '.$startStr, $rowTz);
-            $endLocal   = Carbon::createFromFormat('Y-m-d H:i:s', $rowDate.' '.$endStr, $rowTz);
+            $endLocal = Carbon::createFromFormat('Y-m-d H:i:s', $rowDate.' '.$endStr, $rowTz);
 
             return [
                 'start' => $startLocal->copy()->setTimezone($tz),
-                'end'   => $endLocal->copy()->setTimezone($tz),
+                'end' => $endLocal->copy()->setTimezone($tz),
             ];
         });
 
@@ -315,10 +320,11 @@ class BookingService
 
         while ($cursor->copy()->addMinutes($durationMinutes) <= $dayEnd) {
             $slotStart = $cursor->copy();
-            $slotEnd   = $cursor->copy()->addMinutes($durationMinutes);
+            $slotEnd = $cursor->copy()->addMinutes($durationMinutes);
 
             if ($dayStart->isSameDay($now) && $slotStart->lte($now)) {
                 $cursor->addMinutes(5);
+
                 continue;
             }
 
@@ -329,7 +335,7 @@ class BookingService
             if (! $overlaps) {
                 $slots[] = [
                     'start' => $slotStart->format('H:i'),
-                    'end'   => $slotEnd->format('H:i'),
+                    'end' => $slotEnd->format('H:i'),
                 ];
             }
 
@@ -343,11 +349,11 @@ class BookingService
     {
         $user = auth()->user();
 
-        $tz   = $data['timezone'] ?? 'UTC';
+        $tz = $data['timezone'] ?? 'UTC';
         $date = trim($data['date'] ?? '');
 
         $rawServices = $data['services'] ?? [];
-        if (!is_array($rawServices) || count($rawServices) === 0) {
+        if (! is_array($rawServices) || count($rawServices) === 0) {
             $this->throwValidation(
                 ['services' => __('validation.booking.services_required')],
                 'validation.failed'
@@ -372,12 +378,12 @@ class BookingService
             'services' => $this->normalizeServicesForPricing($segments),
         ]);
 
-        return DB::transaction(function () use ($data, $user, $tz, $date, $segments, $pricing) {
+        return DB::transaction(function () use ($data, $user, $tz, $segments, $pricing) {
 
             $firstSegment = $segments[0];
             $lastSegment = $segments[count($segments) - 1];
             $bookingStart = substr($firstSegment['start_time'], 0, 5);
-            $bookingEnd   = substr($lastSegment['end_time'], 0, 5);
+            $bookingEnd = substr($lastSegment['end_time'], 0, 5);
             $uniqueMasters = collect($segments)->pluck('master_id')->unique()->values();
             $uniqueDates = collect($segments)->pluck('date')->unique();
 
@@ -390,33 +396,33 @@ class BookingService
             }
 
             $bookingData = [
-                'user_id'        => $user?->id,
-                'type'           => 'booking',
-                'reference'      => $this->makeBookingReference(),
-                'date'           => $firstSegment['date'], // Use first segment's date
-                'timezone'       => $tz,
-                'start_time'     => $bookingStart,
-                'end_time'       => $bookingEnd,
-                'duration'       => $totalDuration,
-                'duration_unit'  => 'minutes',
+                'user_id' => $user?->id,
+                'type' => 'booking',
+                'reference' => $this->makeBookingReference(),
+                'date' => $firstSegment['date'], // Use first segment's date
+                'timezone' => $tz,
+                'start_time' => $bookingStart,
+                'end_time' => $bookingEnd,
+                'duration' => $totalDuration,
+                'duration_unit' => 'minutes',
 
-                'price'          => $pricing['total_price'],
-                'discount_type'  => $pricing['discount_type'],
+                'price' => $pricing['total_price'],
+                'discount_type' => $pricing['discount_type'],
                 'discount_value' => $pricing['discount_value'],
                 'discount_label' => $pricing['discount_label'],
-                'final_price'    => $pricing['final_price'],
-                'payment_mode'   => $pricing['payment_mode'],
+                'final_price' => $pricing['final_price'],
+                'payment_mode' => $pricing['payment_mode'],
                 'payment_status' => $pricing['payment_status'],
                 'status' => $pricing['payment_mode'] === 'pay_now' ? 'pending_payment' : 'confirmed',
                 'expires_at' => $pricing['payment_mode'] === 'pay_now'
                     ? now()->addMinutes((int) config('payment.booking_hold_minutes', 10))
                     : null,
-                'customer_name'  => $data['customer_name']  ?? $data['customerName'],
+                'customer_name' => $data['customer_name'] ?? $data['customerName'],
                 'customer_phone' => $data['customer_phone'] ?? $data['customerPhone'],
                 'customer_email' => $data['customer_email'] ?? $data['customerEmail'],
-                'notes'          => $data['notes'] ?? null,
+                'notes' => $data['notes'] ?? null,
 
-                'master_id'      => $uniqueMasters->count() === 1 ? (int)$uniqueMasters->first() : null,
+                'master_id' => $uniqueMasters->count() === 1 ? (int) $uniqueMasters->first() : null,
             ];
 
             $booking = $this->bookingRepository->create($bookingData);
@@ -433,17 +439,19 @@ class BookingService
             $order = $this->orderService->createForBooking($booking, $booking->payment_mode);
             if ($booking->payment_mode === 'pay_later') {
                 $this->bookingRepository->update($booking, ['status' => 'confirmed']);
+
                 return $booking->fresh()->load(['services.bookable', 'order.latestPayment']);
             }
             $provider = $data['payment_provider'] ?? $data['paymentProvider'] ?? 'stripe';
             $this->paymentService->startStripePaymentIntent($order, $booking);
+
             return $booking->load(['services.bookable', 'services.master', 'master', 'order.latestPayment']);
         });
     }
 
     public function updateBooking(Booking $booking, array $data): Booking
     {
-        $tz   = $data['timezone'] ?? $booking->timezone ?? 'UTC';
+        $tz = $data['timezone'] ?? $booking->timezone ?? 'UTC';
         $date = trim($data['date'] ?? ($booking->date?->format('Y-m-d') ?? ''));
 
         $data['payment_mode'] = $booking->payment_mode;
@@ -470,11 +478,11 @@ class BookingService
             'services' => $this->normalizeServicesForPricing($segments),
         ]);
 
-        return DB::transaction(function () use ($booking, $data, $tz, $date, $segments, $pricing) {
+        return DB::transaction(function () use ($booking, $data, $tz, $segments, $pricing) {
             $firstSegment = $segments[0];
             $lastSegment = $segments[count($segments) - 1];
             $bookingStart = substr($firstSegment['start_time'], 0, 5);
-            $bookingEnd   = substr($lastSegment['end_time'], 0, 5);
+            $bookingEnd = substr($lastSegment['end_time'], 0, 5);
 
             $uniqueMasters = collect($segments)->pluck('master_id')->unique()->values();
             $uniqueDates = collect($segments)->pluck('date')->unique();
@@ -487,26 +495,26 @@ class BookingService
             }
 
             $updateData = [
-                'date'           => $firstSegment['date'],
-                'timezone'       => $tz,
-                'start_time'     => $bookingStart,
-                'end_time'       => $bookingEnd,
-                'duration'       => $totalDuration,
-                'duration_unit'  => 'minutes',
+                'date' => $firstSegment['date'],
+                'timezone' => $tz,
+                'start_time' => $bookingStart,
+                'end_time' => $bookingEnd,
+                'duration' => $totalDuration,
+                'duration_unit' => 'minutes',
 
-                'price'          => $pricing['total_price'],
-                'discount_type'  => $pricing['discount_type'],
+                'price' => $pricing['total_price'],
+                'discount_type' => $pricing['discount_type'],
                 'discount_value' => $pricing['discount_value'],
                 'discount_label' => $pricing['discount_label'],
-                'final_price'    => $pricing['final_price'],
-                'payment_mode'   => $pricing['payment_mode'],
+                'final_price' => $pricing['final_price'],
+                'payment_mode' => $pricing['payment_mode'],
 
-                'customer_name'  => $data['customer_name']  ?? $data['customerName']  ?? $booking->customer_name,
+                'customer_name' => $data['customer_name'] ?? $data['customerName'] ?? $booking->customer_name,
                 'customer_phone' => $data['customer_phone'] ?? $data['customerPhone'] ?? $booking->customer_phone,
                 'customer_email' => $data['customer_email'] ?? $data['customerEmail'] ?? $booking->customer_email,
-                'notes'          => $data['notes'] ?? $booking->notes,
+                'notes' => $data['notes'] ?? $booking->notes,
 
-                'master_id'      => $uniqueMasters->count() === 1 ? (int)$uniqueMasters->first() : null,
+                'master_id' => $uniqueMasters->count() === 1 ? (int) $uniqueMasters->first() : null,
             ];
 
             if ($booking->payment_status === 'unpaid' || $booking->payment_status === null) {
@@ -531,28 +539,28 @@ class BookingService
 
         foreach (collect($rawServices)->values() as $index => $s) {
             $serviceType = $s['service_type'] ?? $s['serviceType'] ?? null;
-            $serviceId   = $s['service_id']   ?? $s['serviceId']   ?? null;
-            $masterId    = $s['master_id']    ?? $s['masterId']    ?? null;
+            $serviceId = $s['service_id'] ?? $s['serviceId'] ?? null;
+            $masterId = $s['master_id'] ?? $s['masterId'] ?? null;
 
-            $startTime   = $s['start_time']   ?? $s['startTime']   ?? null;
-            $endTime     = $s['end_time']     ?? $s['endTime']     ?? null;
-            $serviceDate = $s['date']         ?? $date; // Allow per-service date
+            $startTime = $s['start_time'] ?? $s['startTime'] ?? null;
+            $endTime = $s['end_time'] ?? $s['endTime'] ?? null;
+            $serviceDate = $s['date'] ?? $date; // Allow per-service date
 
-            if (!$serviceType || !$serviceId) {
+            if (! $serviceType || ! $serviceId) {
                 $this->throwValidation(
                     ["services.$index.serviceId" => __('validation.booking.service_type_and_id_required')],
                     'validation.failed'
                 );
             }
 
-            if (!$masterId) {
+            if (! $masterId) {
                 $this->throwValidation(
                     ["services.$index.masterId" => __('validation.booking.master_required_when_any_false')],
                     'validation.failed'
                 );
             }
 
-            if (!$startTime || !$endTime) {
+            if (! $startTime || ! $endTime) {
                 $this->throwValidation(
                     [
                         "services.$index.startTime" => __('validation.booking.service_start_required'),
@@ -562,11 +570,11 @@ class BookingService
                 );
             }
 
-            $serviceable = $this->resolveServiceable((string)$serviceType, (int) $serviceId);
+            $serviceable = $this->resolveServiceable((string) $serviceType, (int) $serviceId);
             $expectedMinutes = (int) ($serviceable->duration ?? 0);
 
-            $start = $this->parseTimeToCarbon($serviceDate, (string)$startTime, $tz);
-            $end   = $this->parseTimeToCarbon($serviceDate, (string)$endTime, $tz);
+            $start = $this->parseTimeToCarbon($serviceDate, (string) $startTime, $tz);
+            $end = $this->parseTimeToCarbon($serviceDate, (string) $endTime, $tz);
 
             if ($end->lte($start)) {
                 $this->throwValidation(
@@ -600,31 +608,32 @@ class BookingService
                 : (float) ($serviceable->price ?? 0);
             $vat = VatCalculator::breakdown($basePrice, true);
 
-            $isAnyMaster = (bool)($s['any_master'] ?? $s['anyMaster'] ?? false);
+            $isAnyMaster = (bool) ($s['any_master'] ?? $s['anyMaster'] ?? false);
 
             $segments[] = [
-                'master_id'        => (int) $masterId,
-                'is_any_master'    => $isAnyMaster,
-                'bookable_type'    => get_class($serviceable),
-                'bookable_id'      => $serviceable->id,
+                'master_id' => (int) $masterId,
+                'is_any_master' => $isAnyMaster,
+                'bookable_type' => get_class($serviceable),
+                'bookable_id' => $serviceable->id,
                 'duration_minutes' => $expectedMinutes,
-                'price'            => (float) $vat['final_price'],
-                'base_price'       => (float) $vat['base_price'],
-                'vat_enabled'      => (bool)  $vat['vat_enabled'],
-                'vat_rate'         => (float) $vat['vat_rate'],
-                'vat_amount'       => (float) $vat['vat_amount'],
-                'final_price'      => (float) $vat['final_price'],
-                'sort_order'       => $s['sort_order'] ?? $s['sortOrder'] ?? null,
-                'date'             => $serviceDate,
-                'timezone'         => $tz,
-                'start_time'       => $start->format('H:i:s'),
-                'end_time'         => $end->format('H:i:s'),
+                'price' => (float) $vat['final_price'],
+                'base_price' => (float) $vat['base_price'],
+                'vat_enabled' => (bool) $vat['vat_enabled'],
+                'vat_rate' => (float) $vat['vat_rate'],
+                'vat_amount' => (float) $vat['vat_amount'],
+                'final_price' => (float) $vat['final_price'],
+                'sort_order' => $s['sort_order'] ?? $s['sortOrder'] ?? null,
+                'date' => $serviceDate,
+                'timezone' => $tz,
+                'start_time' => $start->format('H:i:s'),
+                'end_time' => $end->format('H:i:s'),
             ];
         }
 
         // Sort by date first, then by start_time
         usort($segments, function ($a, $b) {
             $dateCompare = strcmp($a['date'], $b['date']);
+
             return $dateCompare !== 0 ? $dateCompare : strcmp($a['start_time'], $b['start_time']);
         });
 
@@ -634,9 +643,9 @@ class BookingService
     protected function validateRootTimeMatchesSegments(array $data, array $segments): void
     {
         $rootStart = $data['start_time'] ?? $data['startTime'] ?? null;
-        $rootEnd   = $data['end_time']   ?? $data['endTime']   ?? null;
+        $rootEnd = $data['end_time'] ?? $data['endTime'] ?? null;
 
-        if (!$rootStart && !$rootEnd) {
+        if (! $rootStart && ! $rootEnd) {
             return;
         }
 
@@ -668,11 +677,11 @@ class BookingService
     {
         $serviceable = match ($type) {
             'SubService', 'subservice' => $this->subServiceRepository->find($id),
-            'SubServiceItem', 'item'   => $this->subServiceItemRepository->find($id),
+            'SubServiceItem', 'item' => $this->subServiceItemRepository->find($id),
             default => null,
         };
 
-        if (!$serviceable) {
+        if (! $serviceable) {
             throw new HttpResponseException(
                 ApiResponse::error(
                     ['serviceType' => __('validation.booking.unknown_service_type')],
@@ -688,22 +697,22 @@ class BookingService
     protected function attachServiceToBookingWithSegment(Booking $booking, array $seg, int $defaultSort): void
     {
         $booking->services()->create([
-            'master_id'        => $seg['master_id'],
-            'is_any_master'    => (bool)($seg['is_any_master'] ?? false),
-            'bookable_id'      => $seg['bookable_id'],
-            'bookable_type'    => $seg['bookable_type'],
-            'price'            => $seg['price'],
-            'base_price'       => $seg['base_price'] ?? $seg['price'],
-            'vat_enabled'      => true,
-            'vat_rate'         => (float)($seg['vat_rate'] ?? (float) config('vat.rate', 0.05)),
-            'vat_amount'       => (float)($seg['vat_amount'] ?? 0),
-            'final_price'      => $seg['final_price'] ?? $seg['price'],
+            'master_id' => $seg['master_id'],
+            'is_any_master' => (bool) ($seg['is_any_master'] ?? false),
+            'bookable_id' => $seg['bookable_id'],
+            'bookable_type' => $seg['bookable_type'],
+            'price' => $seg['price'],
+            'base_price' => $seg['base_price'] ?? $seg['price'],
+            'vat_enabled' => true,
+            'vat_rate' => (float) ($seg['vat_rate'] ?? (float) config('vat.rate', 0.05)),
+            'vat_amount' => (float) ($seg['vat_amount'] ?? 0),
+            'final_price' => $seg['final_price'] ?? $seg['price'],
             'duration_minutes' => $seg['duration_minutes'],
-            'sort_order'       => $seg['sort_order'] ?? $defaultSort,
-            'date'             => $seg['date'],
-            'timezone'         => $seg['timezone'],
-            'start_time'       => $seg['start_time'],
-            'end_time'         => $seg['end_time'],
+            'sort_order' => $seg['sort_order'] ?? $defaultSort,
+            'date' => $seg['date'],
+            'timezone' => $seg['timezone'],
+            'start_time' => $seg['start_time'],
+            'end_time' => $seg['end_time'],
         ]);
     }
 
@@ -721,11 +730,11 @@ class BookingService
         $services = collect($data['services'] ?? []);
         $totalPrice = (float) $services->sum(fn ($s) => $s['price'] ?? 0);
 
-        $discountType  = $data['discount_type']  ?? $data['discountType']  ?? 'none';
+        $discountType = $data['discount_type'] ?? $data['discountType'] ?? 'none';
         $discountValue = $data['discount_value'] ?? $data['discountValue'] ?? null;
         $discountLabel = $data['discount_label'] ?? $data['discountLabel'] ?? null;
 
-        if ($discountType === 'none' || !$discountValue) {
+        if ($discountType === 'none' || ! $discountValue) {
             $autoDiscount = $this->calculateAutomaticDiscount($services->count());
             if ($autoDiscount['discount_percent'] > 0) {
                 $discountType = 'percent';
@@ -737,7 +746,7 @@ class BookingService
         $discountAmount = $this->calculateDiscountAmount(
             totalPrice: $totalPrice,
             discountType: $discountType,
-            discountValue: $discountValue !== null ? (float)$discountValue : null
+            discountValue: $discountValue !== null ? (float) $discountValue : null
         );
 
         $finalPrice = max($totalPrice - $discountAmount, 0);
@@ -747,42 +756,42 @@ class BookingService
         $paymentStatus = 'unpaid';
 
         return [
-            'total_price'     => $totalPrice,
-            'discount_type'   => $discountType,
-            'discount_value'  => $discountValue,
-            'discount_label'  => $discountLabel,
+            'total_price' => $totalPrice,
+            'discount_type' => $discountType,
+            'discount_value' => $discountValue,
+            'discount_label' => $discountLabel,
             'discount_amount' => $discountAmount,
-            'final_price'     => $finalPrice,
-            'payment_mode'    => $paymentMode,
-            'payment_status'  => $paymentStatus,
+            'final_price' => $finalPrice,
+            'payment_mode' => $paymentMode,
+            'payment_status' => $paymentStatus,
         ];
     }
 
     protected function calculateAutomaticDiscount(int $serviceCount = 0): array
     {
         $user = auth()->user();
-        
+
         if ($user && $user->id) {
             $user->loadMissing(['manualReferral', 'referral']);
-            
+
             $referral = null;
             $bypassVisitCheck = false;
-            
+
             if ($user->manual_referral_id && $user->manualReferral) {
                 $referral = $user->manualReferral;
                 $bypassVisitCheck = true;
             } elseif ($user->referral_id && $user->referral) {
                 $referral = $user->referral;
             }
-            
+
             if ($referral && $referral->enabled && $referral->type === 'percentage' && $referral->value > 0) {
                 if ($bypassVisitCheck) {
                     return [
                         'discount_percent' => (float) $referral->value,
-                        'discount_label' => $referral->name . ' Tier Discount',
+                        'discount_label' => $referral->name.' Tier Discount',
                     ];
                 }
-                
+
                 if ($referral->visit_threshold !== null) {
                     $visitCount = Booking::where('user_id', $user->id)
                         ->where('type', 'booking')
@@ -793,7 +802,7 @@ class BookingService
                     if ($visitCount >= $referral->visit_threshold) {
                         return [
                             'discount_percent' => (float) $referral->value,
-                            'discount_label' => $referral->name . ' Tier Discount',
+                            'discount_label' => $referral->name.' Tier Discount',
                         ];
                     }
                 }
@@ -818,15 +827,15 @@ class BookingService
 
         return match ($discountType) {
             'percent' => round($totalPrice * ($discountValue / 100), 2),
-            'fixed'   => min($discountValue, $totalPrice),
-            default   => 0.0,
+            'fixed' => min($discountValue, $totalPrice),
+            default => 0.0,
         };
     }
 
     protected function calculateDuration(string $startTime, string $endTime): int
     {
         $start = Carbon::parse($startTime);
-        $end   = Carbon::parse($endTime);
+        $end = Carbon::parse($endTime);
 
         return $start->diffInMinutes($end);
     }
@@ -851,9 +860,9 @@ class BookingService
         return [
             'is_closed' => false,
             'start' => substr((string) $row->start_time, 0, 5),
-            'end'   => substr((string) $row->end_time, 0, 5),
+            'end' => substr((string) $row->end_time, 0, 5),
             'break_start' => $row->break_start_time ? substr((string) $row->break_start_time, 0, 5) : null,
-            'break_end'   => $row->break_end_time   ? substr((string) $row->break_end_time  , 0, 5) : null,
+            'break_end' => $row->break_end_time ? substr((string) $row->break_end_time, 0, 5) : null,
         ];
     }
 
@@ -897,7 +906,7 @@ class BookingService
                 $this->throwError('messages.auth.unauthorized', 401);
             }
 
-            if ((int)$booking->user_id !== (int)$user->id) {
+            if ((int) $booking->user_id !== (int) $user->id) {
                 $this->throwError('messages.booking.cancel_only_own', 403);
             }
         }
@@ -910,29 +919,29 @@ class BookingService
                 $date = $booking->date instanceof \Carbon\Carbon ? $booking->date->format('Y-m-d') : (string) $booking->date;
                 $startTime = $firstService->start_time ?? $booking->start_time;
                 $timezone = $firstService->timezone ?? $booking->timezone ?? 'UTC';
-                
+
                 $timeStr = (string) $startTime;
                 if (strlen($timeStr) === 5) {
                     $timeStr .= ':00';
                 }
-                
+
                 $appointmentDateTime = Carbon::createFromFormat('Y-m-d H:i:s', "{$date} {$timeStr}", $timezone);
                 $hoursUntilAppointment = now($timezone)->diffInHours($appointmentDateTime, false);
-                
+
                 $canRefund = $hoursUntilAppointment >= 24;
             } else {
                 $date = $booking->date instanceof \Carbon\Carbon ? $booking->date->format('Y-m-d') : (string) $booking->date;
                 $startTime = $booking->start_time;
                 $timezone = $booking->timezone ?? 'UTC';
-                
+
                 $timeStr = (string) $startTime;
                 if (strlen($timeStr) === 5) {
                     $timeStr .= ':00';
                 }
-                
+
                 $appointmentDateTime = Carbon::createFromFormat('Y-m-d H:i:s', "{$date} {$timeStr}", $timezone);
                 $hoursUntilAppointment = now($timezone)->diffInHours($appointmentDateTime, false);
-                
+
                 $canRefund = $hoursUntilAppointment >= 24;
             }
         }
@@ -948,7 +957,7 @@ class BookingService
             ]);
             $this->orderService->refund($order, ['reason' => 'booking_cancelled']);
             $booking->payment_status = 'refunded';
-        } elseif ($booking->payment_status === 'paid' && !$canRefund) {
+        } elseif ($booking->payment_status === 'paid' && ! $canRefund) {
             // Booking was paid but can't be refunded (less than 24h before appointment)
             // Keep payment_status as 'paid' - the money was collected
             // Update order status to cancelled
@@ -1024,7 +1033,7 @@ class BookingService
                 );
             }
 
-            $masterId = (int)($seg['master_id'] ?? 0);
+            $masterId = (int) ($seg['master_id'] ?? 0);
             if ($masterId && $this->isMasterOffOnDate($masterId, $date, $tz)) {
                 $this->throwValidation(
                     ['masterId' => __('validation.booking.master_day_off')],
@@ -1033,7 +1042,7 @@ class BookingService
             }
 
             $start = $this->parseTimeToCarbon($date, $seg['start_time'], $tz);
-            $end   = $this->parseTimeToCarbon($date, $seg['end_time'], $tz);
+            $end = $this->parseTimeToCarbon($date, $seg['end_time'], $tz);
 
             if ($start->lte($now)) {
                 $this->throwValidation(
@@ -1043,7 +1052,7 @@ class BookingService
             }
 
             $dayStart = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$hours['start']}", $tz);
-            $dayEnd   = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$hours['end']}", $tz);
+            $dayEnd = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$hours['end']}", $tz);
 
             if ($start->lt($dayStart) || $end->gt($dayEnd)) {
                 $this->throwValidation(
@@ -1062,9 +1071,9 @@ class BookingService
                 );
             }
 
-            if (!empty($hours['break_start']) && !empty($hours['break_end'])) {
+            if (! empty($hours['break_start']) && ! empty($hours['break_end'])) {
                 $breakStart = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$hours['break_start']}", $tz);
-                $breakEnd   = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$hours['break_end']}", $tz);
+                $breakEnd = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$hours['break_end']}", $tz);
 
                 if ($start->lt($breakEnd) && $end->gt($breakStart)) {
                     $this->throwValidation(
@@ -1085,27 +1094,30 @@ class BookingService
 
         for ($i = 0; $i < $count; $i++) {
             $a = $segments[$i];
-            $masterA = (int)($a['master_id'] ?? 0);
-            if (!$masterA) {
+            $masterA = (int) ($a['master_id'] ?? 0);
+            if (! $masterA) {
                 continue;
             }
 
-            $aStart = $this->parseTimeToCarbon($a['date'], (string)$a['start_time'], (string)$a['timezone']);
-            $aEnd   = $this->parseTimeToCarbon($a['date'], (string)$a['end_time'], (string)$a['timezone']);
+            $aStart = $this->parseTimeToCarbon($a['date'], (string) $a['start_time'], (string) $a['timezone']);
+            $aEnd = $this->parseTimeToCarbon($a['date'], (string) $a['end_time'], (string) $a['timezone']);
 
             for ($j = $i + 1; $j < $count; $j++) {
                 $b = $segments[$j];
-                $masterB = (int)($b['master_id'] ?? 0);
+                $masterB = (int) ($b['master_id'] ?? 0);
                 if ($masterA !== $masterB) {
                     continue;
                 }
 
-                $bStart = $this->parseTimeToCarbon($b['date'], (string)$b['start_time'], (string)$b['timezone']);
-                $bEnd   = $this->parseTimeToCarbon($b['date'], (string)$b['end_time'], (string)$b['timezone']);
+                $bStart = $this->parseTimeToCarbon($b['date'], (string) $b['start_time'], (string) $b['timezone']);
+                $bEnd = $this->parseTimeToCarbon($b['date'], (string) $b['end_time'], (string) $b['timezone']);
 
                 if ($aStart < $bEnd && $aEnd > $bStart) {
                     $this->throwValidation(
-                        ['services' => __('validation.booking.slot_already_selected')],
+                        [
+                            "services.$i.masterId" => __('validation.booking.master_overlap_same_timeslot'),
+                            "services.$j.masterId" => __('validation.booking.master_overlap_same_timeslot'),
+                        ],
                         'validation.failed'
                     );
                 }
@@ -1114,62 +1126,64 @@ class BookingService
     }
 
     /**
-     * Validate that the same service is not already booked at overlapping times.
-     * This prevents double-booking the same service globally.
+     * Same bookable (subservice or item) cannot appear twice with overlapping times in one request.
+     * Also blocks double-booking against existing confirmed/pending booking rows.
      */
     protected function assertServiceNotAlreadyBooked(array $segments, ?int $excludeBookingId = null): void
     {
         $count = count($segments);
 
-        // First, check for duplicate services within the same booking request
         for ($i = 0; $i < $count; $i++) {
             $a = $segments[$i];
-            $serviceTypeA = $a['service_type'] ?? $a['serviceType'] ?? null;
-            $serviceIdA = (int)($a['service_id'] ?? $a['serviceId'] ?? 0);
+            $bookableTypeA = $a['bookable_type'] ?? null;
+            $bookableIdA = (int) ($a['bookable_id'] ?? 0);
 
-            $aStart = $this->parseTimeToCarbon($a['date'], (string)$a['start_time'], (string)$a['timezone']);
-            $aEnd   = $this->parseTimeToCarbon($a['date'], (string)$a['end_time'], (string)$a['timezone']);
+            if (! $bookableTypeA || ! $bookableIdA) {
+                continue;
+            }
+
+            $aStart = $this->parseTimeToCarbon($a['date'], (string) $a['start_time'], (string) $a['timezone']);
+            $aEnd = $this->parseTimeToCarbon($a['date'], (string) $a['end_time'], (string) $a['timezone']);
 
             for ($j = $i + 1; $j < $count; $j++) {
                 $b = $segments[$j];
-                $serviceTypeB = $b['service_type'] ?? $b['serviceType'] ?? null;
-                $serviceIdB = (int)($b['service_id'] ?? $b['serviceId'] ?? 0);
+                $bookableTypeB = $b['bookable_type'] ?? null;
+                $bookableIdB = (int) ($b['bookable_id'] ?? 0);
 
-                // Skip if different services
-                if ($serviceTypeA !== $serviceTypeB || $serviceIdA !== $serviceIdB) {
+                if ($bookableTypeA !== $bookableTypeB || $bookableIdA !== $bookableIdB) {
                     continue;
                 }
 
-                $bStart = $this->parseTimeToCarbon($b['date'], (string)$b['start_time'], (string)$b['timezone']);
-                $bEnd   = $this->parseTimeToCarbon($b['date'], (string)$b['end_time'], (string)$b['timezone']);
+                $bStart = $this->parseTimeToCarbon($b['date'], (string) $b['start_time'], (string) $b['timezone']);
+                $bEnd = $this->parseTimeToCarbon($b['date'], (string) $b['end_time'], (string) $b['timezone']);
 
-                // Check for overlap
                 if ($aStart < $bEnd && $aEnd > $bStart) {
                     $this->throwValidation(
-                        ['services' => __('validation.booking.same_service_already_selected')],
+                        [
+                            "services.$i.serviceId" => __('validation.booking.same_service_same_time_not_allowed'),
+                            "services.$j.serviceId" => __('validation.booking.same_service_same_time_not_allowed'),
+                        ],
                         'validation.failed'
                     );
                 }
             }
         }
 
-        // Then, check against existing bookings in the database
         foreach ($segments as $index => $seg) {
-            $serviceType = $seg['service_type'] ?? $seg['serviceType'] ?? null;
-            $serviceId   = (int)($seg['service_id'] ?? $seg['serviceId'] ?? 0);
-            $date        = $seg['date'];
-            $startTime   = $seg['start_time'];
-            $endTime     = $seg['end_time'];
-            $tz          = $seg['timezone'];
+            $bookableType = $seg['bookable_type'] ?? null;
+            $bookableId = (int) ($seg['bookable_id'] ?? 0);
+            $date = $seg['date'];
+            $startTime = $seg['start_time'];
+            $endTime = $seg['end_time'];
+            $tz = $seg['timezone'];
 
-            // Convert service type to bookable type
-            $bookableType = $serviceType === 'item'
-                ? 'App\\Models\\SubServiceItem'
-                : 'App\\Models\\SubService';
+            if (! $bookableType || ! $bookableId) {
+                continue;
+            }
 
             $hasOverlap = $this->bookingRepository->hasServiceOverlap(
                 bookableType: $bookableType,
-                bookableId: $serviceId,
+                bookableId: $bookableId,
                 date: $date,
                 startTime: $startTime,
                 endTime: $endTime,
@@ -1179,7 +1193,7 @@ class BookingService
 
             if ($hasOverlap) {
                 $this->throwValidation(
-                    ["services.{$index}" => __('validation.booking.service_already_booked_at_time')],
+                    ["services.$index.serviceId" => __('validation.booking.service_already_booked_at_time')],
                     'validation.failed'
                 );
             }
@@ -1202,6 +1216,7 @@ class BookingService
     {
         if ($userId) {
             $this->bookingSelectionRepository->deleteByUserId($userId);
+
             return;
         }
 
@@ -1212,7 +1227,7 @@ class BookingService
 
     protected function makeBookingReference(): string
     {
-        return 'BK-' . now()->format('Ymd') . '-' . Str::upper(bin2hex(random_bytes(4)));
+        return 'BK-'.now()->format('Ymd').'-'.Str::upper(bin2hex(random_bytes(4)));
     }
 
     protected function makeBatchId(): string
@@ -1224,7 +1239,7 @@ class BookingService
      * Create multiple bookings from an array of services, sharing a single order/payment.
      * Each service becomes its own booking for cleaner tracking.
      *
-     * @param array $data Contains: date, timezone, customerName, customerPhone, customerEmail, notes, paymentMode, services[]
+     * @param  array  $data  Contains: date, timezone, customerName, customerPhone, customerEmail, notes, paymentMode, services[]
      * @return array{bookings: array, order: \App\Models\Order, batchId: string}
      */
     public function createBatchBookings(array $data): array
@@ -1235,7 +1250,7 @@ class BookingService
         $date = trim($data['date'] ?? '');
 
         $rawServices = $data['services'] ?? [];
-        if (!is_array($rawServices) || count($rawServices) === 0) {
+        if (! is_array($rawServices) || count($rawServices) === 0) {
             $this->throwValidation(
                 ['services' => __('validation.booking.services_required')],
                 'validation.failed'
@@ -1261,7 +1276,7 @@ class BookingService
             'services' => $this->normalizeServicesForPricing($segments),
         ]);
 
-        return DB::transaction(function () use ($data, $user, $tz, $date, $segments, $pricing) {
+        return DB::transaction(function () use ($data, $user, $tz, $segments, $pricing) {
             $batchId = $this->makeBatchId();
             $bookings = [];
             $totalPrice = 0;
@@ -1273,32 +1288,32 @@ class BookingService
                 $segmentEnd = substr($seg['end_time'], 0, 5);
 
                 $bookingData = [
-                    'user_id'        => $user?->id,
-                    'type'           => 'booking',
-                    'reference'      => $this->makeBookingReference(),
-                    'batch_id'       => $batchId,
-                    'date'           => $seg['date'],
-                    'timezone'       => $tz,
-                    'start_time'     => $segmentStart,
-                    'end_time'       => $segmentEnd,
-                    'duration'       => $seg['duration_minutes'],
-                    'duration_unit'  => 'minutes',
-                    'price'          => $seg['price'],
-                    'discount_type'  => $pricing['discount_type'],
+                    'user_id' => $user?->id,
+                    'type' => 'booking',
+                    'reference' => $this->makeBookingReference(),
+                    'batch_id' => $batchId,
+                    'date' => $seg['date'],
+                    'timezone' => $tz,
+                    'start_time' => $segmentStart,
+                    'end_time' => $segmentEnd,
+                    'duration' => $seg['duration_minutes'],
+                    'duration_unit' => 'minutes',
+                    'price' => $seg['price'],
+                    'discount_type' => $pricing['discount_type'],
                     'discount_value' => $pricing['discount_value'],
                     'discount_label' => $pricing['discount_label'],
-                    'final_price'    => $seg['final_price'],
-                    'payment_mode'   => $pricing['payment_mode'],
+                    'final_price' => $seg['final_price'],
+                    'payment_mode' => $pricing['payment_mode'],
                     'payment_status' => $pricing['payment_status'],
-                    'status'         => $pricing['payment_mode'] === 'pay_now' ? 'pending_payment' : 'confirmed',
-                    'expires_at'     => $pricing['payment_mode'] === 'pay_now'
+                    'status' => $pricing['payment_mode'] === 'pay_now' ? 'pending_payment' : 'confirmed',
+                    'expires_at' => $pricing['payment_mode'] === 'pay_now'
                         ? now()->addMinutes((int) config('payment.booking_hold_minutes', 10))
                         : null,
-                    'customer_name'  => $data['customer_name'] ?? $data['customerName'],
+                    'customer_name' => $data['customer_name'] ?? $data['customerName'],
                     'customer_phone' => $data['customer_phone'] ?? $data['customerPhone'],
                     'customer_email' => $data['customer_email'] ?? $data['customerEmail'],
-                    'notes'          => $data['notes'] ?? null,
-                    'master_id'      => (int) $seg['master_id'],
+                    'notes' => $data['notes'] ?? null,
+                    'master_id' => (int) $seg['master_id'],
                 ];
 
                 $booking = $this->bookingRepository->create($bookingData);
@@ -1314,7 +1329,7 @@ class BookingService
             $this->clearSelectionsAfterBooking($user?->id, $data['guest_session_id'] ?? null);
 
             // Auto-create lead for non-registered users (only once for the batch)
-            if (!empty($bookings)) {
+            if (! empty($bookings)) {
                 $this->createLeadFromBooking($bookings[0]);
             }
 
@@ -1402,7 +1417,7 @@ class BookingService
     protected function createLeadFromBooking(Booking $booking): void
     {
         $phone = $booking->customer_phone;
-        if (!$phone) {
+        if (! $phone) {
             return;
         }
 
@@ -1484,7 +1499,7 @@ class BookingService
         }
 
         // Send admin notification
-        $admin = User::whereHas('role', fn($q) => $q->where('slug', 'superadmin'))->first();
+        $admin = User::whereHas('role', fn ($q) => $q->where('slug', 'superadmin'))->first();
         if ($admin && $admin->email) {
             Mail::to($admin->email)->queue(new BookingRescheduledAdminNotificationMail(
                 $booking,
@@ -1497,9 +1512,9 @@ class BookingService
 
     protected function sendAdminBookingNotification(Booking $booking, string $type, ?string $reason = null): void
     {
-        $admin = User::whereHas('role', fn($q) => $q->where('slug', 'superadmin'))->first();
+        $admin = User::whereHas('role', fn ($q) => $q->where('slug', 'superadmin'))->first();
 
-        if (!$admin || !$admin->email) {
+        if (! $admin || ! $admin->email) {
             return;
         }
 

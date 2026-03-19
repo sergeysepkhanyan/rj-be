@@ -47,16 +47,16 @@ return [
             'required' => 'Password is required.',
             'min' => 'Password must be at least :min characters.',
             'same' => 'Password and password confirmation must match.',
-            'string'    => 'Password must be a text.',
+            'string' => 'Password must be a text.',
             'confirmed' => 'Password confirmation does not match.',
         ],
         'identifier' => [
             'required' => 'Email or phone is required.',
-            'string'   => 'Email or phone must be a text.',
+            'string' => 'Email or phone must be a text.',
         ],
         'token' => [
             'required' => 'Token is required.',
-            'string'   => 'Token must be a text.',
+            'string' => 'Token must be a text.',
         ],
 
         'passwordConfirmation' => [
@@ -330,6 +330,8 @@ return [
         'slot_already_selected' => 'This time slot is already selected.',
         'guest_session_required' => 'Guest session is required for booking selection.',
         'same_service_already_selected' => 'You cannot select the same service twice at the same time.',
+        'same_service_same_time_not_allowed' => 'The same service cannot be booked twice in overlapping time slots.',
+        'master_overlap_same_timeslot' => 'The same master cannot be assigned to overlapping time slots, even for different services.',
         'service_already_booked_at_time' => 'This service is already booked at the selected time. Please choose a different time.',
     ],
 
