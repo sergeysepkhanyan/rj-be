@@ -35,4 +35,13 @@ return [
         ],
     ],
 
+    /*
+    | Google Sign-In (ID tokens from credential / One Tap / Sign-In button)
+    | OAuth 2.0 Client ID(s) from Google Cloud Console. Comma-separated if you use
+    | Web + iOS/Android client IDs that each produce their own id_token audience.
+    */
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+    ],
+
 ];

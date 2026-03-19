@@ -14,6 +14,16 @@ return [
         'payment_method_required' => 'Payment method is required.',
         'payment_method_invalid' => 'Payment method is invalid.',
         'saved_payment_method_requires_customer' => 'This saved card cannot be used. Please pay with a new card.',
+        'item_product_unavailable' => 'One or more products in your cart are no longer available. Please refresh your cart and try again.',
+        'checkout_integrity_failed' => 'Checkout could not be completed due to a data inconsistency. Please try again or contact support.',
+    ],
+
+    'order' => [
+        'items_required' => 'At least one order line item is required.',
+        'invalid_line_quantity' => 'Each line item must have a quantity of at least 1.',
+        'subtotal_lines_mismatch' => 'Subtotal does not match the sum of line items (price × quantity).',
+        'total_breakdown_mismatch' => 'Total does not match subtotal, tax, and discount.',
+        'line_persistence_mismatch' => 'Order line items could not be saved correctly. The operation was rolled back.',
     ],
 
     'custom' => [

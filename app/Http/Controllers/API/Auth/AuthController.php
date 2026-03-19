@@ -139,8 +139,8 @@ class AuthController extends Controller
     {
         $credential = $request->input('credential');
 
-        // Verify Google token and get user info
-        $googleUser = $googleAuthService->verifyAccessToken($credential);
+        // Supports Google ID token (JWT from Sign-In / One Tap) or OAuth2 access token
+        $googleUser = $googleAuthService->verifyGoogleCredential($credential);
 
         if (!$googleUser) {
             return ApiResponse::error(

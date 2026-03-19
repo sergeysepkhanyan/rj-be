@@ -16,6 +16,7 @@ use App\Repositories\Interfaces\CartItemRepositoryInterface;
 use App\Repositories\Interfaces\OrderRepositoryInterface;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tymon\JWTAuth\Exceptions\JWTException;
 use Tymon\JWTAuth\Exceptions\TokenExpiredException;
@@ -161,143 +162,198 @@ class CartService
         ?int $billingAddressId = null,
         array $billingAddress = [],
         $paymentMethodId = null
-    ): Order
-    {
+    ): Order {
         [$userId, $guestSessionId] = $this->resolveSession($guestSessionId);
-        $items = $this->cartRepository->listBySession($userId, $guestSessionId);
 
-        if ($items->isEmpty()) {
-            $this->throwValidation(['cart' => __('validation.cart.empty')], 400);
-        }
-
-        $currency = null;
-        $subtotal = 0.0;
-
-        foreach ($items as $item) {
-            $product = $item->product;
-            if (!$product) {
-                continue;
-            }
-
-            $available = $this->getAvailableQuantity($product, $userId, $guestSessionId, $item->id);
-            if ($item->quantity > $available) {
-                $this->throwValidation([
-                    'quantity' => __("validation.insufficient_stock", ['available' => $available]),
-                ]);
-            }
-
-            $itemCurrency = $product->currency ?: 'AED';
-            if ($currency && $currency !== $itemCurrency) {
-                $this->throwValidation(['currency' => __('validation.cart.mixed_currency')]);
-            }
-            $currency = $itemCurrency;
-
-            $subtotal += $product->getFinalPrice() * (int) $item->quantity;
-        }
-
-        // Add VAT (5%) to the subtotal
-        $vatRate = 0.05;
-        $tax = $subtotal * $vatRate;
-        $total = $subtotal + $tax;
-
-        $user = $userId ? User::find($userId) : null;
-
-        if ($user) {
-            $shippingName = $shippingAddress['name'] ?? null;
-            $shippingPhone = $shippingAddress['mobile'] ?? null;
-
-            $updates = [];
-            if ($shippingName && empty($user->name)) {
-                $updates['name'] = $shippingName;
-            }
-            if ($shippingPhone && empty($user->mobile)) {
-                $existingUserWithPhone = User::where('mobile', $shippingPhone)
-                    ->where('id', '!=', $user->id)
-                    ->whereNull('deleted_at')
-                    ->exists();
-
-                if ($existingUserWithPhone) {
-                    $this->throwValidation([
-                        'shippingAddress.mobile' => __('validation.custom.mobile.unique')
-                    ], 422);
-                }
-
-                $updates['mobile'] = $shippingPhone;
-            }
-
-            if (!empty($updates)) {
-                $user->update($updates);
-                $user->refresh();
-            }
-        }
-
-        $order = $this->orderRepository->create([
-            'user_id' => $userId,
-            'type' => OrderType::Ecommerce,
-            'orderable_type' => null,
-            'orderable_id' => null,
-            'amount' => $total,
-            'currency' => $currency ?: 'AED',
-            'status' => OrderStatus::PendingPayment,
-            'delivery_status' => 'ordered',
-            'delivery_status_updated_at' => now(),
-            'reference' => $this->makeReference(),
-            'meta' => [
-                'guest_session_id' => $guestSessionId,
-                'customer_name' => $customerName,
-                'customer_email' => $customerEmail,
-                'customer_phone' => $customerPhone,
-            ],
-        ]);
-
-        $this->attachOrderAddresses(
-            $order,
+        return DB::transaction(function () use (
             $userId,
+            $guestSessionId,
+            $customerName,
+            $customerEmail,
+            $customerPhone,
             $shippingAddressId,
             $shippingAddress,
             $billingSameAsShipping,
             $billingAddressId,
-            $billingAddress
-        );
+            $billingAddress,
+            $paymentMethodId
+        ) {
+            $items = $this->cartRepository->listBySessionForUpdate($userId, $guestSessionId);
 
-        foreach ($items as $item) {
-            $product = $item->product;
-            if (!$product) {
-                continue;
+            if ($items->isEmpty()) {
+                $this->throwValidation(['cart' => __('validation.cart.empty')], 400);
             }
-            $unit = $product->getFinalPrice();
-            $subtotal = $unit * (int) $item->quantity;
-            OrderItem::create([
-                'order_id' => $order->id,
-                'product_id' => $product->id,
-                'quantity' => (int) $item->quantity,
-                'unit_price' => $unit,
-                'subtotal' => $subtotal,
-                'currency' => $product->currency ?: 'AED',
-                'original_price' => $product->hasDiscount() ? (float) $product->price : null,
-                'discount_type' => $product->hasDiscount() ? $product->discount_type : null,
-                'discount_amount' => $product->hasDiscount() ? (float) $product->discount_amount : null,
+
+            $items->loadMissing('product');
+            foreach ($items as $item) {
+                if (!$item->product) {
+                    $this->throwValidation([
+                        'cart' => [__('validation.cart.item_product_unavailable')],
+                    ]);
+                }
+            }
+
+            $currency = null;
+            $subtotal = 0.0;
+
+            foreach ($items as $item) {
+                $product = $item->product;
+
+                $available = $this->getAvailableQuantity($product, $userId, $guestSessionId, $item->id);
+                if ($item->quantity > $available) {
+                    $this->throwValidation([
+                        'quantity' => __("validation.insufficient_stock", ['available' => $available]),
+                    ]);
+                }
+
+                $itemCurrency = $product->currency ?: 'AED';
+                if ($currency && $currency !== $itemCurrency) {
+                    $this->throwValidation(['currency' => __('validation.cart.mixed_currency')]);
+                }
+                $currency = $itemCurrency;
+
+                $subtotal += (float) $product->getFinalPrice() * (int) $item->quantity;
+            }
+
+            $vatRate = 0.05;
+            $tax = $subtotal * $vatRate;
+            $total = $subtotal + $tax;
+
+            $user = $userId ? User::query()->find($userId) : null;
+
+            if ($user) {
+                $shippingName = $shippingAddress['name'] ?? null;
+                $shippingPhone = $shippingAddress['mobile'] ?? null;
+
+                $updates = [];
+                if ($shippingName && empty($user->name)) {
+                    $updates['name'] = $shippingName;
+                }
+                if ($shippingPhone && empty($user->mobile)) {
+                    $existingUserWithPhone = User::where('mobile', $shippingPhone)
+                        ->where('id', '!=', $user->id)
+                        ->whereNull('deleted_at')
+                        ->exists();
+
+                    if ($existingUserWithPhone) {
+                        $this->throwValidation([
+                            'shippingAddress.mobile' => __('validation.custom.mobile.unique'),
+                        ], 422);
+                    }
+
+                    $updates['mobile'] = $shippingPhone;
+                }
+
+                if (!empty($updates)) {
+                    $user->update($updates);
+                    $user->refresh();
+                }
+            }
+
+            $order = $this->orderRepository->create([
+                'user_id' => $userId,
+                'type' => OrderType::Ecommerce,
+                'orderable_type' => null,
+                'orderable_id' => null,
+                'amount' => $total,
+                'currency' => $currency ?: 'AED',
+                'status' => OrderStatus::PendingPayment,
+                'delivery_status' => 'ordered',
+                'delivery_status_updated_at' => now(),
+                'reference' => $this->makeReference(),
+                'meta' => [
+                    'guest_session_id' => $guestSessionId,
+                    'customer_name' => $customerName,
+                    'customer_email' => $customerEmail,
+                    'customer_phone' => $customerPhone,
+                ],
             ]);
+
+            $this->attachOrderAddresses(
+                $order,
+                $userId,
+                $shippingAddressId,
+                $shippingAddress,
+                $billingSameAsShipping,
+                $billingAddressId,
+                $billingAddress
+            );
+
+            foreach ($items as $item) {
+                $product = $item->product;
+                $unit = (float) $product->getFinalPrice();
+                $lineSubtotal = $unit * (int) $item->quantity;
+                OrderItem::create([
+                    'order_id' => $order->id,
+                    'product_id' => $product->id,
+                    'quantity' => (int) $item->quantity,
+                    'unit_price' => $unit,
+                    'subtotal' => $lineSubtotal,
+                    'currency' => $product->currency ?: 'AED',
+                    'original_price' => $product->hasDiscount() ? (float) $product->price : null,
+                    'discount_type' => $product->hasDiscount() ? $product->discount_type : null,
+                    'discount_amount' => $product->hasDiscount() ? (float) $product->discount_amount : null,
+                ]);
+            }
+
+            $this->assertCheckoutOrderIntegrity($order, $items->count(), $subtotal, $vatRate, $total);
+
+            $meta = $guestSessionId ? ['guest_session_id' => $guestSessionId] : [];
+            [$stripeCustomerId, $stripePaymentMethodId] = $this->resolvePaymentMethod($user, $paymentMethodId);
+            $this->paymentService->startStripePaymentIntentForOrder(
+                $order,
+                $customerEmail,
+                $meta,
+                $stripeCustomerId,
+                $stripePaymentMethodId
+            );
+
+            $this->cartRepository->deleteBySession($userId, $guestSessionId);
+
+            if (!$userId) {
+                $this->createLeadFromOrder($customerName, $customerEmail, $customerPhone, $shippingAddress);
+            }
+
+            return $order->load(['items.product.files', 'latestPayment', 'shippingAddress.country', 'billingAddress.country']);
+        });
+    }
+
+    /**
+     * Ensures persisted order items match the cart snapshot and order amount matches VAT-inclusive total.
+     */
+    protected function assertCheckoutOrderIntegrity(
+        Order $order,
+        int $expectedItemRows,
+        float $expectedSubtotalExVat,
+        float $vatRate,
+        float $expectedTotalInclVat
+    ): void {
+        $actualRows = (int) OrderItem::query()->where('order_id', $order->id)->count();
+        if ($actualRows !== $expectedItemRows) {
+            $this->throwValidation([
+                'cart' => [__('validation.cart.checkout_integrity_failed')],
+            ], 500);
         }
 
-        $meta = $guestSessionId ? ['guest_session_id' => $guestSessionId] : [];
-        [$stripeCustomerId, $stripePaymentMethodId] = $this->resolvePaymentMethod($user, $paymentMethodId);
-        $this->paymentService->startStripePaymentIntentForOrder(
-            $order,
-            $customerEmail,
-            $meta,
-            $stripeCustomerId,
-            $stripePaymentMethodId
-        );
-
-        $this->cartRepository->deleteBySession($userId, $guestSessionId);
-
-        // Auto-create lead for guest checkouts
-        if (!$userId) {
-            $this->createLeadFromOrder($customerName, $customerEmail, $customerPhone, $shippingAddress);
+        $sumLines = (float) OrderItem::query()->where('order_id', $order->id)->sum('subtotal');
+        if (!$this->moneyClose($sumLines, $expectedSubtotalExVat)) {
+            $this->throwValidation([
+                'cart' => [__('validation.cart.checkout_integrity_failed')],
+            ], 500);
         }
 
-        return $order->load(['items.product.files', 'latestPayment', 'shippingAddress.country', 'billingAddress.country']);
+        $computedTotal = $expectedSubtotalExVat + ($expectedSubtotalExVat * $vatRate);
+        if (!$this->moneyClose((float) $order->amount, $expectedTotalInclVat)
+            || !$this->moneyClose((float) $order->amount, $computedTotal)) {
+            $this->throwValidation([
+                'cart' => [__('validation.cart.checkout_integrity_failed')],
+            ], 500);
+        }
+    }
+
+    protected function moneyClose(float $a, float $b, float $epsilon = 0.02): bool
+    {
+        return abs(round($a, 2) - round($b, 2)) <= $epsilon;
     }
 
     protected function createLeadFromOrder(string $customerName, string $customerEmail, string $customerPhone, array $shippingAddress = []): void

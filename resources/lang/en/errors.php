@@ -18,6 +18,7 @@ return [
         'email_not_verified' => 'Please verify your email first.',
         'temporary_password_already_used' => 'This temporary password has already been used. Please use your new password or reset your password.',
         'google_auth_failed' => 'Google authentication failed. Please try again.',
+        'google_account_mismatch' => 'This email is already linked to a different Google account. Sign in with the original method or contact support.',
         'account_inactive' => 'Your account is not active. Please contact support.',
     ],
     'password' => [

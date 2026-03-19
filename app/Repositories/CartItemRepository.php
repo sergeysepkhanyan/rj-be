@@ -43,6 +43,17 @@ class CartItemRepository implements CartItemRepositoryInterface
             ->get();
     }
 
+    public function listBySessionForUpdate(?int $userId, ?string $guestSessionId): Collection
+    {
+        return CartItem::query()
+            ->when($userId, fn ($q) => $q->where('user_id', $userId))
+            ->when(!$userId && $guestSessionId, fn ($q) => $q->where('guest_session_id', $guestSessionId))
+            ->with('product')
+            ->orderByDesc('created_at')
+            ->lockForUpdate()
+            ->get();
+    }
+
     public function deleteBySession(?int $userId, ?string $guestSessionId): int
     {
         return CartItem::query()

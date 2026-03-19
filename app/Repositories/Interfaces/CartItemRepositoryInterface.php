@@ -12,6 +12,12 @@ interface CartItemRepositoryInterface
     public function delete(CartItem $item): ?bool;
     public function findBySessionProduct(?int $userId, ?string $guestSessionId, int $productId): ?CartItem;
     public function listBySession(?int $userId, ?string $guestSessionId): Collection;
+
+    /**
+     * Same as listBySession but locks rows (call only inside DB::transaction).
+     */
+    public function listBySessionForUpdate(?int $userId, ?string $guestSessionId): Collection;
+
     public function deleteBySession(?int $userId, ?string $guestSessionId): int;
     public function assignGuestSessionToUser(string $guestSessionId, int $userId): int;
 }

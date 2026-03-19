@@ -27,6 +27,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response as ResponseAlias;
 
 class OrderService
@@ -41,6 +42,8 @@ class OrderService
     public function createManually(array $data, bool $sendEmail = false): Order
     {
         return DB::transaction(function () use ($data, $sendEmail) {
+            $this->assertManualOrderPayloadConsistent($data);
+
             $customerName = $data['customer_name'];
             $customerEmail = $data['customer_email'];
             $customerPhone = $data['customer_phone'];
@@ -117,12 +120,83 @@ class OrderService
                 $product->decrement('max_quantity', $quantity);
             }
 
+            $this->assertPersistedLineItemsMatchManualOrder($order, $items, (float) $data['subtotal']);
+
             if ($sendEmail) {
                 $this->sendOrderConfirmation($order);
             }
 
             return $order->load(['items.product', 'shippingAddress.country', 'billingAddress.country']);
         });
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $items
+     */
+    protected function assertManualOrderPayloadConsistent(array $data): void
+    {
+        $items = $data['items'] ?? [];
+        if (!is_array($items) || count($items) < 1) {
+            throw ValidationException::withMessages([
+                'items' => [__('validation.order.items_required')],
+            ]);
+        }
+
+        foreach ($items as $i => $item) {
+            $qty = (int) ($item['quantity'] ?? 0);
+            if ($qty < 1) {
+                throw ValidationException::withMessages([
+                    "items.{$i}.quantity" => [__('validation.order.invalid_line_quantity')],
+                ]);
+            }
+        }
+
+        $linesSubtotal = 0.0;
+        foreach ($items as $item) {
+            $linesSubtotal += (float) $item['price'] * (int) $item['quantity'];
+        }
+
+        $declaredSubtotal = (float) $data['subtotal'];
+        $tax = (float) ($data['tax'] ?? 0);
+        $discountAmount = (float) ($data['discount_amount'] ?? 0);
+        $declaredTotal = (float) $data['total'];
+
+        if (!$this->amountsClose($linesSubtotal, $declaredSubtotal)) {
+            throw ValidationException::withMessages([
+                'subtotal' => [__('validation.order.subtotal_lines_mismatch')],
+            ]);
+        }
+
+        $expectedTotal = $declaredSubtotal + $tax - $discountAmount;
+        if (!$this->amountsClose($expectedTotal, $declaredTotal)) {
+            throw ValidationException::withMessages([
+                'total' => [__('validation.order.total_breakdown_mismatch')],
+            ]);
+        }
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $items
+     */
+    protected function assertPersistedLineItemsMatchManualOrder(Order $order, array $items, float $declaredSubtotal): void
+    {
+        if ($order->items()->count() !== count($items)) {
+            throw ValidationException::withMessages([
+                'items' => [__('validation.order.line_persistence_mismatch')],
+            ]);
+        }
+
+        $sumLines = (float) OrderItem::query()->where('order_id', $order->id)->sum('subtotal');
+        if (!$this->amountsClose($sumLines, $declaredSubtotal)) {
+            throw ValidationException::withMessages([
+                'items' => [__('validation.order.line_persistence_mismatch')],
+            ]);
+        }
+    }
+
+    protected function amountsClose(float $a, float $b, float $epsilon = 0.02): bool
+    {
+        return abs(round($a, 2) - round($b, 2)) <= $epsilon;
     }
 
     protected function createOrderAddress(Order $order, ?int $userId, array $data, string $type): void
@@ -146,6 +220,8 @@ class OrderService
     public function createInStore(array $data, bool $sendEmail = false): Order
     {
         return DB::transaction(function () use ($data, $sendEmail) {
+            $this->assertManualOrderPayloadConsistent($data);
+
             $customerName = $data['customer_name'];
             $customerEmail = $data['customer_email'] ?? null;
             $customerPhone = $data['customer_phone'] ?? null;
@@ -215,6 +291,8 @@ class OrderService
                 // Decrease stock immediately
                 $product->decrement('max_quantity', $quantity);
             }
+
+            $this->assertPersistedLineItemsMatchManualOrder($order, $items, (float) $data['subtotal']);
 
             if ($sendEmail && $customerEmail) {
                 $this->sendOrderConfirmation($order);
