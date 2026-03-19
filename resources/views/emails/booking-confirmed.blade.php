@@ -164,7 +164,6 @@
                         </div>
 
                         @include('emails.partials.add-to-calendar')
-                        @include('emails.partials.review-request')
                     </td>
                 </tr>
 

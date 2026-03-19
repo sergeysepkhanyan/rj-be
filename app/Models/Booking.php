@@ -9,7 +9,6 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -32,7 +31,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  */
 class Booking extends Model
 {
-    use HasFactory, SoftDeletes, BelongsToUser;
+    use BelongsToUser, HasFactory, SoftDeletes;
 
     protected $fillable = [
         'user_id',
@@ -62,17 +61,18 @@ class Booking extends Model
         'notes',
         'timezone',
         'expires_at',
+        'post_service_followup_sent_at',
     ];
 
     protected $casts = [
-        'date'           => 'date',
-        'price'          => 'decimal:2',
+        'date' => 'date',
+        'price' => 'decimal:2',
         'discount_value' => 'decimal:2',
-        'final_price'    => 'decimal:2',
-        'cancelled_at'   => 'datetime',
-        'expires_at'     => 'datetime',
+        'final_price' => 'decimal:2',
+        'cancelled_at' => 'datetime',
+        'expires_at' => 'datetime',
+        'post_service_followup_sent_at' => 'datetime',
     ];
-
 
     public function client(): BelongsTo
     {
@@ -106,7 +106,6 @@ class Booking extends Model
     {
         return $this->morphOne(Order::class, 'orderable');
     }
-
 
     public function isBreak(): bool
     {
