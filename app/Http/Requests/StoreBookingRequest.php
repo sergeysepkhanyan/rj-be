@@ -6,7 +6,6 @@ use App\Models\SubService;
 use App\Models\SubServiceItem;
 use App\Models\User;
 use App\Support\BookingOverlap;
-use App\Support\PhoneValidation;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
@@ -35,7 +34,7 @@ class StoreBookingRequest extends BaseFormRequest
 
             'timezone' => ['nullable', 'string', 'max:64'],
             'customerName' => ['required', 'string', 'max:255'],
-            'customerPhone' => PhoneValidation::required(),
+            'customerPhone' => ['required', 'string', 'max:50', 'regex:/^[+\-0-9]+$/'],
             'customerEmail' => ['required', 'email'],
 
             'paymentMode' => ['required', 'string', Rule::in(['pay_now', 'pay_later'])],
