@@ -14,6 +14,8 @@ return [
     'webhook' => [
         'header_name'  => env('TABBY_WEBHOOK_HEADER_NAME', 'X-Tabby-Signature'),
         'header_value' => env('TABBY_WEBHOOK_HEADER_VALUE'),
+        'hmac_secret'  => env('TABBY_WEBHOOK_HMAC_SECRET'),
+        'timestamp_tolerance' => env('TABBY_WEBHOOK_TIMESTAMP_TOLERANCE', 300),
     ],
 ];
 

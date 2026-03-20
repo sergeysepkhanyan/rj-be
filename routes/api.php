@@ -87,11 +87,13 @@ Route::middleware(['set.locale'])->group(function () {
     Route::patch('/cart/items/{product}', [CartController::class, 'update']);
     Route::delete('/cart/items/{product}', [CartController::class, 'destroy']);
     Route::delete('/cart', [CartController::class, 'clear']);
-    Route::post('/cart/checkout', [CartController::class, 'checkout']);
+    Route::post('/cart/checkout', [CartController::class, 'checkout'])
+        ->middleware(['throttle:5,1', 'idempotency']);
 
     // Payment verification for orders (works for both guests and authenticated users)
     Route::get('/orders/{order}', [OrdersController::class, 'show']);
-    Route::post('/orders/{order}/verify-payment', [OrdersController::class, 'verifyPayment']);
+    Route::post('/orders/{order}/verify-payment', [OrdersController::class, 'verifyPayment'])
+        ->middleware('throttle:10,1');
 
     Route::prefix('auth')->group(function () {
         Route::post('signup', [AuthController::class, 'signup']);
@@ -113,8 +115,10 @@ Route::middleware(['set.locale'])->group(function () {
         });
     });
 
-    Route::post('/bookings', [BookingsController::class, 'store']);
-    Route::post('/bookings/batch', [BookingsController::class, 'storeBatch']);
+    Route::post('/bookings', [BookingsController::class, 'store'])
+        ->middleware(['throttle:5,1', 'idempotency']);
+    Route::post('/bookings/batch', [BookingsController::class, 'storeBatch'])
+        ->middleware(['throttle:5,1', 'idempotency']);
 
     Route::middleware(['jwt.custom', 'verified'])->group(function () {
 
@@ -134,8 +138,10 @@ Route::middleware(['set.locale'])->group(function () {
         Route::get('/bookings', [BookingsController::class, 'index']);
         Route::put('/bookings/{booking}', [BookingsController::class, 'update']);
         Route::patch('/bookings/cancel/{booking}', [BookingsController::class, 'cancel']);
-        Route::post('/bookings/{booking}/pay', [BookingPaymentController::class, 'initiatePayment']);
-        Route::post('/bookings/{booking}/confirm-payment', [BookingPaymentController::class, 'confirmPayment']);
+        Route::post('/bookings/{booking}/pay', [BookingPaymentController::class, 'initiatePayment'])
+            ->middleware('throttle:payment');
+        Route::post('/bookings/{booking}/confirm-payment', [BookingPaymentController::class, 'confirmPayment'])
+            ->middleware('throttle:payment');
 
         Route::get('/orders', [OrdersController::class, 'index']);
 

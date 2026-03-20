@@ -193,13 +193,21 @@ class CartService
                 }
             }
 
+            // Lock product rows to prevent concurrent checkout race conditions
+            $productIds = $items->pluck('product.id')->filter()->unique()->toArray();
+            $lockedProducts = Product::whereIn('id', $productIds)
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('id');
+
             $currency = null;
             $subtotal = 0.0;
 
             foreach ($items as $item) {
-                $product = $item->product;
+                // Use the locked product instance for accurate stock check
+                $product = $lockedProducts->get($item->product_id) ?? $item->product;
 
-                $available = $this->getAvailableQuantity($product, $userId, $guestSessionId, $item->id);
+                $available = (int) ($product->max_quantity ?? 0);
                 if ($item->quantity > $available) {
                     $this->throwValidation([
                         'quantity' => __("validation.insufficient_stock", ['available' => $available]),
@@ -213,6 +221,14 @@ class CartService
                 $currency = $itemCurrency;
 
                 $subtotal += (float) $product->getFinalPrice() * (int) $item->quantity;
+            }
+
+            // Decrement stock immediately within this transaction to prevent overselling
+            foreach ($items as $item) {
+                $product = $lockedProducts->get($item->product_id);
+                if ($product) {
+                    $product->decrement('max_quantity', (int) $item->quantity);
+                }
             }
 
             $vatRate = 0.05;

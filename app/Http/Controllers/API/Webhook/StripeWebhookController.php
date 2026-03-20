@@ -102,7 +102,15 @@ class StripeWebhookController extends Controller
 
                     $wasAlreadyPaid = $previousOrderStatus === OrderStatus::Paid->value;
 
-                    $order = $this->orderService->markPaid($order, ['stripe_payment_intent_id' => $paymentIntentId]);
+                    try {
+                        $order = $this->orderService->markPaid($order, ['stripe_payment_intent_id' => $paymentIntentId]);
+                    } catch (\InvalidArgumentException $e) {
+                        \Log::warning('[stripe][webhook] Cannot mark order paid - invalid transition', [
+                            'order_id' => $order->id, 'status' => $order->status, 'error' => $e->getMessage(),
+                        ]);
+                        DB::commit();
+                        return response()->json(['ok' => true]);
+                    }
                     $order->refresh();
 
                     if ($order->user_id) {
@@ -126,6 +134,29 @@ class StripeWebhookController extends Controller
 
                     if ($order->orderable && $order->getTypeValue() === 'booking') {
                         $booking = $order->orderable;
+
+                        // Re-validate slot availability before confirming
+                        $slotStillAvailable = $this->bookingService->isSlotAvailable($booking);
+                        if (!$slotStillAvailable) {
+                            \Log::error('[stripe][webhook] Booking slot no longer available, initiating refund', [
+                                'booking_id' => $booking->id,
+                                'order_id' => $order->id,
+                            ]);
+                            // Refund the payment since slot is gone
+                            try {
+                                $this->stripeClient->createRefund(['payment_intent' => $paymentIntentId]);
+                            } catch (\Throwable $refundErr) {
+                                \Log::error('[stripe][webhook] Auto-refund failed', ['error' => $refundErr->getMessage()]);
+                            }
+                            $this->bookingRepo->update($booking, [
+                                'status' => 'cancelled',
+                                'payment_status' => 'refunded',
+                            ]);
+                            $order = $this->orderService->refund($order, ['reason' => 'slot_unavailable']);
+                            DB::commit();
+                            return response()->json(['ok' => true]);
+                        }
+
                         $this->bookingRepo->update($booking, [
                             'status' => 'confirmed',
                             'payment_status' => 'paid',
@@ -171,7 +202,13 @@ class StripeWebhookController extends Controller
                 $paymentUpdate['status'] = 'failed';
                 $paymentUpdate['failed_at'] = now();
                 if ($order) {
-                    $order = $this->orderService->cancel($order, ['reason' => 'payment_failed']);
+                    try {
+                        $order = $this->orderService->cancel($order, ['reason' => 'payment_failed']);
+                    } catch (\InvalidArgumentException $e) {
+                        \Log::warning('[stripe][webhook] Cannot cancel order - invalid transition', [
+                            'order_id' => $order->id, 'status' => $order->status, 'error' => $e->getMessage(),
+                        ]);
+                    }
                     $order->refresh();
                     $this->orderService->cancelBookingForOrder($order);
 
@@ -184,7 +221,13 @@ class StripeWebhookController extends Controller
                 $paymentUpdate['status'] = 'cancelled';
                 $paymentUpdate['failed_at'] = now();
                 if ($order) {
-                    $order = $this->orderService->cancel($order, ['reason' => 'canceled']);
+                    try {
+                        $order = $this->orderService->cancel($order, ['reason' => 'canceled']);
+                    } catch (\InvalidArgumentException $e) {
+                        \Log::warning('[stripe][webhook] Cannot cancel order - invalid transition', [
+                            'order_id' => $order->id, 'status' => $order->status, 'error' => $e->getMessage(),
+                        ]);
+                    }
                     $order->refresh();
                     $this->orderService->cancelBookingForOrder($order);
                 }

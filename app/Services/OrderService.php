@@ -21,6 +21,7 @@ use App\Repositories\Interfaces\BookingRepositoryInterface;
 use App\Repositories\Interfaces\OrderRepositoryInterface;
 use App\Services\ApiResponse;
 use App\Services\PaymentService;
+use App\Support\OrderStateMachine;
 use Illuminate\Http\Response;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
@@ -330,7 +331,15 @@ class OrderService
 
     public function markPaid(Order $order, array $meta = []): Order
     {
-        $wasAlreadyPaid = $order->status === OrderStatus::Paid->value;
+        $currentStatus = $order->status;
+
+        // Idempotent: already paid, just return
+        if ($currentStatus === OrderStatus::Paid->value) {
+            return $order;
+        }
+
+        // Validate status transition
+        OrderStateMachine::assertTransition($currentStatus, OrderStatus::Paid->value);
 
         $updateData = [
             'status' => OrderStatus::Paid->value,
@@ -352,15 +361,29 @@ class OrderService
             $order->refresh();
         }
 
-        if (!$wasAlreadyPaid && $order->getTypeValue() === OrderType::Ecommerce->value) {
-            $this->decreaseProductQuantities($order);
-        }
+        // Stock is now decremented at checkout time (CartService),
+        // so no need to decrement again here for ecommerce orders.
+        // Manual/in-store orders decrement at creation time.
 
         return $order;
     }
 
     public function cancel(Order $order, array $meta = []): Order
     {
+        $currentStatus = $order->status;
+
+        // Idempotent
+        if ($currentStatus === OrderStatus::Canceled->value) {
+            return $order;
+        }
+
+        OrderStateMachine::assertTransition($currentStatus, OrderStatus::Canceled->value);
+
+        // Restore stock for ecommerce orders (stock was decremented at checkout)
+        if ($order->getTypeValue() === OrderType::Ecommerce->value) {
+            $this->increaseProductQuantities($order);
+        }
+
         return $this->orderRepository->update($order, [
             'status' => OrderStatus::Canceled->value,
             'cancelled_at' => now(),
@@ -385,7 +408,16 @@ class OrderService
 
     public function refund(Order $order, array $meta = []): Order
     {
-        if ($order->getTypeValue() === OrderType::Ecommerce->value && $order->status === OrderStatus::Paid->value) {
+        $currentStatus = $order->status;
+
+        // Idempotent
+        if ($currentStatus === OrderStatus::Refunded->value) {
+            return $order;
+        }
+
+        OrderStateMachine::assertTransition($currentStatus, OrderStatus::Refunded->value);
+
+        if ($order->getTypeValue() === OrderType::Ecommerce->value) {
             $this->increaseProductQuantities($order);
         }
 
@@ -477,6 +509,8 @@ class OrderService
 
     public function updateStatus(Order $order, string $status, ?string $note = null, ?int $createdBy = null): Order
     {
+        OrderStateMachine::assertTransition($order->status, $status);
+
         $order = $this->orderRepository->update($order, [
             'status' => $status,
         ]);

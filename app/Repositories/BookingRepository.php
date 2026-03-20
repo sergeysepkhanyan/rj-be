@@ -24,13 +24,47 @@ class BookingRepository implements BookingRepositoryInterface
 
     public function create(array $data)
     {
+        // Auto-set active_slot_key for non-cancelled bookings to enforce uniqueness
+        if (($data['status'] ?? '') !== 'cancelled' && !empty($data['master_id'])) {
+            $data['active_slot_key'] = $this->buildSlotKey($data);
+        }
+
         return Booking::create($data);
     }
 
     public function update(Booking $booking, array $data): Booking
     {
+        // Update active_slot_key when status changes or time/master fields change
+        $merged = array_merge($booking->toArray(), $data);
+        $status = $data['status'] ?? $booking->status;
+
+        if ($status === 'cancelled') {
+            $data['active_slot_key'] = null;
+        } elseif ($booking->master_id || !empty($data['master_id'])) {
+            $data['active_slot_key'] = $this->buildSlotKey($merged);
+        }
+
         $booking->update($data);
         return $booking;
+    }
+
+    protected function buildSlotKey(array $data): ?string
+    {
+        $masterId = $data['master_id'] ?? null;
+        $date = $data['date'] ?? null;
+        $startTime = $data['start_time'] ?? null;
+        $endTime = $data['end_time'] ?? null;
+
+        if (!$masterId || !$date || !$startTime || !$endTime) {
+            return null;
+        }
+
+        // Normalize date if it's a Carbon instance
+        if ($date instanceof \DateTimeInterface) {
+            $date = $date->format('Y-m-d');
+        }
+
+        return "{$masterId}_{$date}_" . substr((string) $startTime, 0, 5) . "_" . substr((string) $endTime, 0, 5);
     }
 
     public function delete(Booking $booking): ?bool
@@ -99,7 +133,7 @@ class BookingRepository implements BookingRepositoryInterface
         $endTimeStr = (string) $endTime;
         if (strlen($startTimeStr) === 5) $startTimeStr .= ':00';
         if (strlen($endTimeStr) === 5) $endTimeStr .= ':00';
-        
+
         $reqStart = Carbon::createFromFormat('Y-m-d H:i:s', "{$date} {$startTimeStr}", $tz);
         $reqEnd   = Carbon::createFromFormat('Y-m-d H:i:s', "{$date} {$endTimeStr}", $tz);
 
@@ -196,7 +230,11 @@ class BookingRepository implements BookingRepositoryInterface
     }
 
     /**
-     * Check if a specific service is already booked at overlapping times
+     * Check if a specific service is already booked at overlapping times.
+     *
+     * @param bool $withLock When true, acquires a pessimistic FOR UPDATE lock on
+     *                       relevant booking rows before checking overlap. Must be
+     *                       called inside a DB::transaction().
      */
     public function hasServiceOverlap(
         string $bookableType,
@@ -205,7 +243,8 @@ class BookingRepository implements BookingRepositoryInterface
         string $startTime,
         string $endTime,
         ?int $excludeBookingId = null,
-        ?string $timezone = null
+        ?string $timezone = null,
+        bool $withLock = false
     ): bool {
         $tz = $timezone ?: 'UTC';
         $startTimeStr = (string) $startTime;
@@ -222,6 +261,17 @@ class BookingRepository implements BookingRepositoryInterface
             $dateObj->toDateString(),
             $dateObj->copy()->addDay()->toDateString(),
         ];
+
+        // Acquire a pessimistic lock on the relevant booking rows so concurrent
+        // transactions block until this one commits/rolls back.
+        if ($withLock) {
+            Booking::query()
+                ->whereIn('date', $dateRange)
+                ->where('status', '!=', 'cancelled')
+                ->where('type', 'booking')
+                ->lockForUpdate()
+                ->get(['id']);
+        }
 
         // Check booking_services for the same service at overlapping times
         $segments = DB::table('booking_services as bs')

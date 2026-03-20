@@ -26,11 +26,7 @@ class TabbyWebhookController extends Controller
 
     public function handle(Request $request)
     {
-        $hn = config('tabby.webhook.header_name');
-        $expected = config('tabby.webhook.header_value');
-        $actual = $request->header($hn);
-
-        if (!$actual || !hash_equals((string) $expected, (string) $actual)) {
+        if (!$this->verifyWebhookSignature($request)) {
             Log::warning('[tabby][webhook] Invalid signature');
             return response()->json(['message' => 'Invalid signature'], Response::HTTP_UNAUTHORIZED);
         }
@@ -81,12 +77,35 @@ class TabbyWebhookController extends Controller
                     $this->paymentRepo->update($payment, $paymentUpdate);
                     $payment->refresh();
 
-                    $order = $this->orderService->markPaid($order, ['tabby_payment_id' => $tabbyPaymentId]);
+                    try {
+                        $order = $this->orderService->markPaid($order, ['tabby_payment_id' => $tabbyPaymentId]);
+                    } catch (\InvalidArgumentException $e) {
+                        Log::warning('[tabby][webhook] Cannot mark order paid - invalid transition', [
+                            'order_id' => $order->id, 'status' => $order->status, 'error' => $e->getMessage(),
+                        ]);
+                        DB::commit();
+                        return response()->json(['ok' => true]);
+                    }
                     $order->refresh();
 
                     if (!$wasAlreadyPaid) {
                         if ($order->orderable && $order->getTypeValue() === 'booking') {
                             $booking = $order->orderable;
+
+                            // Re-validate slot availability before confirming
+                            if (!$this->bookingService->isSlotAvailable($booking)) {
+                                Log::error('[tabby][webhook] Booking slot no longer available', [
+                                    'booking_id' => $booking->id, 'order_id' => $order->id,
+                                ]);
+                                $this->bookingRepo->update($booking, [
+                                    'status' => 'cancelled',
+                                    'payment_status' => 'refunded',
+                                ]);
+                                // Note: Tabby refund should be handled manually by admin
+                                DB::commit();
+                                return response()->json(['ok' => true]);
+                            }
+
                             $this->bookingRepo->update($booking, [
                                 'status' => 'confirmed',
                                 'payment_status' => 'paid',
@@ -114,7 +133,11 @@ class TabbyWebhookController extends Controller
                 $paymentUpdate['status'] = 'failed';
                 $paymentUpdate['failed_at'] = now();
                 if ($order) {
-                    $order = $this->orderService->cancel($order, ['reason' => $status]);
+                    try {
+                        $order = $this->orderService->cancel($order, ['reason' => $status]);
+                    } catch (\InvalidArgumentException $e) {
+                        Log::warning('[tabby][webhook] Cannot cancel order', ['order_id' => $order->id, 'error' => $e->getMessage()]);
+                    }
                     $order->refresh();
                     $this->orderService->cancelBookingForOrder($order);
                 }
@@ -124,7 +147,11 @@ class TabbyWebhookController extends Controller
                 $paymentUpdate['status'] = 'expired';
                 $paymentUpdate['expired_at'] = now();
                 if ($order) {
-                    $order = $this->orderService->cancel($order, ['reason' => $status]);
+                    try {
+                        $order = $this->orderService->cancel($order, ['reason' => $status]);
+                    } catch (\InvalidArgumentException $e) {
+                        Log::warning('[tabby][webhook] Cannot cancel order', ['order_id' => $order->id, 'error' => $e->getMessage()]);
+                    }
                     $order->refresh();
                     $this->orderService->cancelBookingForOrder($order);
                 }
@@ -141,5 +168,50 @@ class TabbyWebhookController extends Controller
         }
 
         return response()->json(['ok' => true]);
+    }
+
+    /**
+     * Verify webhook signature with HMAC support (backward compatible).
+     * If hmac_secret is configured, validate HMAC-SHA256 of payload.
+     * Otherwise, fall back to static header comparison.
+     */
+    private function verifyWebhookSignature(Request $request): bool
+    {
+        $hmacSecret = config('tabby.webhook.hmac_secret');
+
+        if ($hmacSecret) {
+            $signatureHeader = $request->header('X-Tabby-Signature');
+            if (!$signatureHeader) {
+                return false;
+            }
+
+            $payload = $request->getContent();
+            $computed = hash_hmac('sha256', $payload, $hmacSecret);
+
+            if (!hash_equals($computed, (string) $signatureHeader)) {
+                return false;
+            }
+
+            // Replay protection: check timestamp if provided
+            $timestamp = $request->header('X-Tabby-Timestamp');
+            if ($timestamp) {
+                $requestTime = (int) $timestamp;
+                $tolerance = (int) config('tabby.webhook.timestamp_tolerance', 300);
+                if (abs(time() - $requestTime) > $tolerance) {
+                    Log::warning('[tabby][webhook] Request timestamp too old, possible replay attack');
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        // Fallback: static header comparison (legacy)
+        Log::info('[tabby][webhook] Using legacy static header verification — consider configuring TABBY_WEBHOOK_HMAC_SECRET');
+        $hn = config('tabby.webhook.header_name');
+        $expected = config('tabby.webhook.header_value');
+        $actual = $request->header($hn);
+
+        return $actual && hash_equals((string) $expected, (string) $actual);
     }
 }

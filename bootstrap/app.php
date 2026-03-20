@@ -33,6 +33,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'jwt.optional' => JwtOptionalMiddleware::class,
             'cors.custom' => \App\Http\Middleware\Cors::class,
             'set.locale' => \App\Http\Middleware\SetLocale::class,
+            'idempotency' => \App\Http\Middleware\IdempotencyMiddleware::class,
         ]);
         $middleware->remove(\Illuminate\Http\Middleware\HandleCors::class);
         $middleware->append(\App\Http\Middleware\Cors::class);

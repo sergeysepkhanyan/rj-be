@@ -62,6 +62,7 @@ class Booking extends Model
         'timezone',
         'expires_at',
         'post_service_followup_sent_at',
+        'active_slot_key',
     ];
 
     protected $casts = [

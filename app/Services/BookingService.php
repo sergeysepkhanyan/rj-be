@@ -484,7 +484,6 @@ class BookingService
 
         $this->validateSegmentsBasic($segments, $tz);
         $this->assertNoDuplicateSegments($segments);
-        $this->assertServiceNotAlreadyBooked($segments);
         $this->validateRootTimeMatchesSegments($data, $segments);
 
         $pricing = $this->buildPricingData([
@@ -493,6 +492,10 @@ class BookingService
         ]);
 
         return DB::transaction(function () use ($data, $user, $tz, $segments, $pricing) {
+
+            // Re-check inside transaction with pessimistic locking to prevent race conditions.
+            // lockForUpdate() ensures concurrent requests block until this transaction completes.
+            $this->assertServiceNotAlreadyBooked($segments, null, true);
 
             $firstSegment = $segments[0];
             $lastSegment = $segments[count($segments) - 1];
@@ -565,6 +568,13 @@ class BookingService
 
     public function updateBooking(Booking $booking, array $data): Booking
     {
+        if (in_array($booking->status, ['completed', 'cancelled'], true)) {
+            $this->throwValidation(
+                ['booking' => __('validation.booking.cannot_update_status', ['status' => $booking->status])],
+                'validation.failed'
+            );
+        }
+
         $tz = $data['timezone'] ?? $booking->timezone ?? 'UTC';
         $date = trim($data['date'] ?? ($booking->date?->format('Y-m-d') ?? ''));
 
@@ -584,7 +594,6 @@ class BookingService
 
         $this->validateSegmentsBasic($segments, $tz);
         $this->assertNoDuplicateSegments($segments);
-        $this->assertServiceNotAlreadyBooked($segments, $booking->id);
         $this->validateRootTimeMatchesSegments($data, $segments);
 
         $pricing = $this->buildPricingData([
@@ -593,6 +602,9 @@ class BookingService
         ]);
 
         return DB::transaction(function () use ($booking, $data, $tz, $segments, $pricing) {
+            // Check inside transaction with pessimistic locking to prevent race conditions
+            $this->assertServiceNotAlreadyBooked($segments, $booking->id, true);
+
             $firstSegment = $segments[0];
             $lastSegment = $segments[count($segments) - 1];
             $bookingStart = substr($firstSegment['start_time'], 0, 5);
@@ -839,14 +851,22 @@ class BookingService
         })->all();
     }
 
-    protected function buildPricingData(array $data): array
+    protected function buildPricingData(array $data, bool $isAdmin = false): array
     {
         $services = collect($data['services'] ?? []);
         $totalPrice = (float) $services->sum(fn ($s) => $s['price'] ?? 0);
 
-        $discountType = $data['discount_type'] ?? $data['discountType'] ?? 'none';
-        $discountValue = $data['discount_value'] ?? $data['discountValue'] ?? null;
-        $discountLabel = $data['discount_label'] ?? $data['discountLabel'] ?? null;
+        // Only trust client-provided discounts from admin contexts.
+        // Public booking endpoints must always calculate discounts server-side.
+        if ($isAdmin) {
+            $discountType = $data['discount_type'] ?? $data['discountType'] ?? 'none';
+            $discountValue = $data['discount_value'] ?? $data['discountValue'] ?? null;
+            $discountLabel = $data['discount_label'] ?? $data['discountLabel'] ?? null;
+        } else {
+            $discountType = 'none';
+            $discountValue = null;
+            $discountLabel = null;
+        }
 
         if ($discountType === 'none' || ! $discountValue) {
             $autoDiscount = $this->calculateAutomaticDiscount($services->count());
@@ -1110,6 +1130,14 @@ class BookingService
             $this->throwValidation([], 'messages.booking.cancelled_cannot_be_marked_paid');
         }
 
+        // Re-validate slot availability before confirming
+        if (!$this->isSlotAvailable($booking)) {
+            $this->throwValidation(
+                ['booking' => __('validation.booking.slot_no_longer_available')],
+                'validation.failed'
+            );
+        }
+
         $booking->load('order.latestPayment');
 
         $booking->update([
@@ -1130,6 +1158,43 @@ class BookingService
         }
 
         return $booking->fresh()->load(['services.bookable', 'services.master', 'master', 'order.latestPayment']);
+    }
+
+    /**
+     * Check if a booking's slot is still available (used before confirming after payment).
+     * Returns true if the slot is free (excluding the given booking itself).
+     */
+    public function isSlotAvailable(Booking $booking): bool
+    {
+        $booking->loadMissing('services');
+
+        foreach ($booking->services as $service) {
+            $bookableType = $service->bookable_type;
+            $bookableId = $service->bookable_id;
+            $date = $booking->date instanceof \Carbon\Carbon
+                ? $booking->date->format('Y-m-d')
+                : (string) $booking->date;
+
+            if (!$bookableType || !$bookableId) {
+                continue;
+            }
+
+            $hasOverlap = $this->bookingRepository->hasServiceOverlap(
+                bookableType: $bookableType,
+                bookableId: $bookableId,
+                date: $date,
+                startTime: $service->start_time ?? $booking->start_time,
+                endTime: $service->end_time ?? $booking->end_time,
+                excludeBookingId: $booking->id,
+                timezone: $booking->timezone ?? 'UTC'
+            );
+
+            if ($hasOverlap) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     protected function validateSegmentsBasic(array $segments, string $tz): void
@@ -1242,8 +1307,11 @@ class BookingService
     /**
      * Same bookable (subservice or item) cannot appear twice with overlapping times in one request.
      * Also blocks double-booking against existing confirmed/pending booking rows.
+     *
+     * @param bool $withLock When true, acquires pessimistic locks to prevent concurrent double-booking.
+     *                       Must be called inside a DB::transaction().
      */
-    protected function assertServiceNotAlreadyBooked(array $segments, ?int $excludeBookingId = null): void
+    protected function assertServiceNotAlreadyBooked(array $segments, ?int $excludeBookingId = null, bool $withLock = false): void
     {
         $count = count($segments);
 
@@ -1302,7 +1370,8 @@ class BookingService
                 startTime: $startTime,
                 endTime: $endTime,
                 excludeBookingId: $excludeBookingId,
-                timezone: $tz
+                timezone: $tz,
+                withLock: $withLock
             );
 
             if ($hasOverlap) {
@@ -1382,7 +1451,6 @@ class BookingService
         $segments = $this->buildServiceSegmentsFromRequest($date, $rawServices, $tz);
         $this->validateSegmentsBasic($segments, $tz);
         $this->assertNoDuplicateSegments($segments);
-        $this->assertServiceNotAlreadyBooked($segments);
 
         // Calculate total pricing across all services
         $pricing = $this->buildPricingData([
@@ -1391,6 +1459,9 @@ class BookingService
         ]);
 
         return DB::transaction(function () use ($data, $user, $tz, $segments, $pricing) {
+            // Check inside transaction with pessimistic locking to prevent race conditions
+            $this->assertServiceNotAlreadyBooked($segments, null, true);
+
             $batchId = $this->makeBatchId();
             $bookings = [];
             $totalPrice = 0;

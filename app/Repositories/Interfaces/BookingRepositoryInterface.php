@@ -14,7 +14,10 @@ interface BookingRepositoryInterface
     public function delete(Booking $booking);
 
     /**
-     * Check if a specific service is already booked at overlapping times
+     * Check if a specific service is already booked at overlapping times.
+     *
+     * @param bool $withLock When true, acquires a pessimistic FOR UPDATE lock.
+     *                       Must be called inside a DB::transaction().
      */
     public function hasServiceOverlap(
         string $bookableType,
@@ -23,7 +26,8 @@ interface BookingRepositoryInterface
         string $startTime,
         string $endTime,
         ?int $excludeBookingId = null,
-        ?string $timezone = null
+        ?string $timezone = null,
+        bool $withLock = false
     ): bool;
 
     /**
