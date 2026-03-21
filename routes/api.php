@@ -6,6 +6,7 @@ use App\Http\Controllers\API\Admin\ClientsController;
 use App\Http\Controllers\API\Admin\ContactMessageController as AdminContactMessageController;
 use App\Http\Controllers\API\Admin\DiscountSettingController;
 use App\Http\Controllers\API\Admin\FaqController as AdminFaqController;
+use App\Http\Controllers\API\Admin\OrderReturnController as AdminOrderReturnController;
 use App\Http\Controllers\API\Admin\OrdersController as AdminOrdersController;
 use App\Http\Controllers\API\Admin\PagesController as AdminPagesController;
 use App\Http\Controllers\API\Admin\PageSeoController;
@@ -14,6 +15,8 @@ use App\Http\Controllers\API\Admin\ProductCategoriesController as AdminProductCa
 use App\Http\Controllers\API\Admin\ProductImportsController;
 use App\Http\Controllers\API\Admin\ProductsController as AdminProductsController;
 use App\Http\Controllers\API\Admin\ReferralsController;
+use App\Http\Controllers\API\Admin\ReferralRewardsConfigController;
+use App\Http\Controllers\API\RewardsController;
 use App\Http\Controllers\API\Admin\ReportsController as AdminReportsController;
 use App\Http\Controllers\API\Admin\ServicesController as AdminServicesController;
 use App\Http\Controllers\API\Admin\StaffController as AdminStaffController;
@@ -36,6 +39,7 @@ use App\Http\Controllers\API\CountriesController;
 use App\Http\Controllers\API\EmailVerificationController;
 use App\Http\Controllers\API\FaqController;
 use App\Http\Controllers\API\FilesController;
+use App\Http\Controllers\API\OrderReturnController;
 use App\Http\Controllers\API\OrdersController;
 use App\Http\Controllers\API\PagesController;
 use App\Http\Controllers\API\PostsController;
@@ -135,6 +139,9 @@ Route::middleware(['set.locale'])->group(function () {
             ]);
         });
 
+        Route::get('/rewards', [RewardsController::class, 'index']);
+        Route::post('/rewards/{reward}/redeem', [RewardsController::class, 'redeem']);
+
         Route::get('/bookings', [BookingsController::class, 'index']);
         Route::put('/bookings/{booking}', [BookingsController::class, 'update']);
         Route::patch('/bookings/cancel/{booking}', [BookingsController::class, 'cancel']);
@@ -144,6 +151,9 @@ Route::middleware(['set.locale'])->group(function () {
             ->middleware('throttle:payment');
 
         Route::get('/orders', [OrdersController::class, 'index']);
+
+        Route::post('/orders/{order}/return', [OrderReturnController::class, 'store']);
+        Route::get('/orders/{order}/return', [OrderReturnController::class, 'show']);
 
         // Wishlist
         Route::get('/wishlist', [\App\Http\Controllers\API\WishlistController::class, 'index']);
@@ -262,7 +272,14 @@ Route::middleware(['set.locale'])->group(function () {
         Route::post('/admin/product-categories/reorder', [AdminProductCategoriesController::class, 'reorder']);
 
         Route::get('/admin/referrals', [ReferralsController::class, 'index']);
+        Route::post('/admin/referrals', [ReferralsController::class, 'store']);
         Route::put('/admin/referrals/{id}', [ReferralsController::class, 'update']);
+        Route::delete('/admin/referrals/{id}', [ReferralsController::class, 'destroy']);
+
+        Route::get('/admin/referral-rewards-config', [ReferralRewardsConfigController::class, 'show']);
+        Route::put('/admin/referral-rewards-config', [ReferralRewardsConfigController::class, 'update']);
+
+        Route::get('/admin/clients/{user}/referrals', [ClientsController::class, 'referrals']);
 
         Route::post('/admin/orders', [AdminOrdersController::class, 'store']);
         Route::post('/admin/orders/in-store', [AdminOrdersController::class, 'storeInStore']);
@@ -314,6 +331,7 @@ Route::middleware(['set.locale'])->group(function () {
         Route::put('/admin/booking/break/{booking}', [AdminBookingsController::class, 'updateBreak']);
         Route::get('/admin/bookings', [AdminBookingsController::class, 'index']);
         Route::patch('/admin/bookings/{booking}/mark-paid', [AdminBookingsController::class, 'markPaid']);
+        Route::post('/admin/bookings/validate-gift-card', [AdminBookingsController::class, 'validateGiftCard']);
 
         Route::get('/admin/orders', [AdminOrdersController::class, 'index']);
         Route::get('/admin/orders/{order}', [AdminOrdersController::class, 'show']);
@@ -323,6 +341,13 @@ Route::middleware(['set.locale'])->group(function () {
         Route::get('/admin/orders/{order}/invoice/xlsx', [AdminOrdersController::class, 'downloadInvoiceXlsx']);
         Route::get('/admin/orders/export/pdf', [AdminOrdersController::class, 'exportOrdersPdf']);
         Route::get('/admin/orders/export/xlsx', [AdminOrdersController::class, 'exportOrdersXlsx']);
+
+        // Order Returns management
+        Route::get('/admin/order-returns', [AdminOrderReturnController::class, 'index']);
+        Route::patch('/admin/order-returns/{orderReturn}/approve', [AdminOrderReturnController::class, 'approve']);
+        Route::patch('/admin/order-returns/{orderReturn}/reject', [AdminOrderReturnController::class, 'reject']);
+        Route::get('/admin/return-policy', [AdminOrderReturnController::class, 'policy']);
+        Route::put('/admin/return-policy', [AdminOrderReturnController::class, 'updatePolicy']);
     });
 
     Route::get('/masters', [StaffController::class, 'getMasters']);
@@ -330,9 +355,12 @@ Route::middleware(['set.locale'])->group(function () {
     Route::get('working-hours', [WorkingHoursController::class, 'index']);
     Route::get('/faqs', [FaqController::class, 'index']);
     Route::get('/referrals', [ReferralsController::class, 'index']);
+    Route::get('/loyalty-tiers', [ReferralsController::class, 'publicTiers']);
 
     Route::get('/tracking-config/public', [TrackingConfigController::class, 'public']);
     Route::get('/discount-setting/public', [DiscountSettingController::class, 'public']);
+
+    Route::get('/return-policy', [OrderReturnController::class, 'policy']);
 });
 
 Route::post('/webhooks/tabby', [TabbyWebhookController::class, 'handle']);

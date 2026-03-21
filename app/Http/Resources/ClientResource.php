@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\BookingReferral;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
@@ -43,6 +44,7 @@ class ClientResource extends BaseResource
             'role' => $this->role->name ?? null,
             'bookingsCount' => $this->clientBookings->count(),
             'ordersCount' => 0,
+            'referralCount' => BookingReferral::where('referrer_user_id', $data['id'])->where('status', 'completed')->count(),
             'referral' => $this->referral ? new ReferralResource($this->referral) : null,
             'manualReferral' => $this->whenLoaded('manualReferral', function () {
                 return new ReferralResource($this->manualReferral);

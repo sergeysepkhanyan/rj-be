@@ -12,4 +12,8 @@ enum OrderStatus: string
     case Canceled = 'cancelled';
     case Refunded = 'refunded';
     case Fulfilled = 'fulfilled';
+    case Gift = 'gift';
+    case ReturnRequested = 'return_requested';
+    case ReturnApproved = 'return_approved';
+    case ReturnRejected = 'return_rejected';
 }

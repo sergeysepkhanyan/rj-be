@@ -23,6 +23,8 @@ class StoreBookingRequest extends BaseFormRequest
         'paymentMode' => 'payment_mode',
         'paymentProvider' => 'payment_provider',
         'guestSessionId' => 'guest_session_id',
+        'referrerUserId' => 'referrer_user_id',
+        'complimentaryRewardId' => 'complimentary_reward_id',
     ];
 
     public function rules(): array
@@ -59,6 +61,8 @@ class StoreBookingRequest extends BaseFormRequest
 
             'notes' => ['nullable', 'string', 'max:1000'],
             'guestSessionId' => ['nullable', 'string', 'max:64'],
+            'referrerUserId' => ['nullable', 'integer', 'exists:users,id'],
+            'complimentaryRewardId' => ['nullable', 'integer', 'exists:complimentary_rewards,id'],
         ];
     }
 

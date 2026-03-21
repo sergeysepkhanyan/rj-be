@@ -159,7 +159,7 @@ class GiftCardController extends Controller
                     return [
                         'id' => $u->id,
                         'amountUsed' => (float) $u->amount_used,
-                        'usedForType' => $u->used_for_type,
+                        'usedForType' => str_contains($u->used_for_type ?? '', 'Booking') ? 'booking' : ($u->used_for_type ?? $u->used_for),
                         'usedForId' => $u->used_for_id,
                         'usedForName' => $u->used_for_name ?? $u->used_for,
                         'notes' => $u->notes,

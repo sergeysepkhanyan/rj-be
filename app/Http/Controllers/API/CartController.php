@@ -110,6 +110,7 @@ class CartController extends Controller
         $paymentMethodToken = $request->input('payment_method_token') ?? $request->input('paymentMethodToken');
 
         $paymentMethod = $paymentMethodToken ?: $paymentMethodId;
+        $giftCardCode = $request->input('gift_card_code') ?? $request->input('giftCardCode');
 
         $order = $this->cartService->checkout(
             $guestSessionId,
@@ -121,7 +122,8 @@ class CartController extends Controller
             $billingSameAsShipping,
             $billingAddressId,
             $billingAddress,
-            $paymentMethod
+            $paymentMethod,
+            $giftCardCode
         );
 
         return ApiResponse::success([

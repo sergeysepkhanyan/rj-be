@@ -93,15 +93,11 @@ class TabbyWebhookController extends Controller
                             $booking = $order->orderable;
 
                             // Re-validate slot availability before confirming
-                            if (!$this->bookingService->isSlotAvailable($booking)) {
+                            if (!$this->bookingService->areSlotsStillAvailable($booking)) {
                                 Log::error('[tabby][webhook] Booking slot no longer available', [
                                     'booking_id' => $booking->id, 'order_id' => $order->id,
                                 ]);
-                                $this->bookingRepo->update($booking, [
-                                    'status' => 'cancelled',
-                                    'payment_status' => 'refunded',
-                                ]);
-                                // Note: Tabby refund should be handled manually by admin
+                                $this->bookingService->cancelBookingDueToSlotConflict($booking);
                                 DB::commit();
                                 return response()->json(['ok' => true]);
                             }

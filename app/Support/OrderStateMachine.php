@@ -11,14 +11,18 @@ class OrderStateMachine
      * Allowed status transitions: from => [to, to, ...]
      */
     protected static array $transitions = [
-        'pending'         => ['pending_payment', 'paid', 'cancelled', 'processing'],
-        'pending_payment' => ['paid', 'cancelled'],
-        'processing'      => ['shipped', 'paid', 'cancelled'],
-        'shipped'         => ['fulfilled', 'cancelled'],
-        'paid'            => ['refunded', 'fulfilled', 'processing', 'shipped'],
-        'cancelled'       => [],
-        'refunded'        => [],
-        'fulfilled'       => [],
+        'pending'           => ['pending_payment', 'paid', 'cancelled', 'processing', 'gift'],
+        'pending_payment'   => ['paid', 'cancelled'],
+        'processing'        => ['shipped', 'paid', 'cancelled'],
+        'shipped'           => ['fulfilled', 'cancelled'],
+        'paid'              => ['refunded', 'fulfilled', 'processing', 'shipped', 'return_requested'],
+        'cancelled'         => [],
+        'refunded'          => [],
+        'fulfilled'         => ['return_requested'],
+        'gift'              => [],
+        'return_requested'  => ['return_approved', 'return_rejected'],
+        'return_approved'   => ['refunded'],
+        'return_rejected'   => ['paid', 'fulfilled'],
     ];
 
     public static function canTransition(string $from, string $to): bool

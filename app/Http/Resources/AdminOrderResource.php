@@ -30,7 +30,7 @@ class AdminOrderResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
-        [$productName, $productId, $quantity] = $this->resolveProductInfo();
+        [$productName, $productId, $quantity, $productImage] = $this->resolveProductInfo();
         $address = $this->formatAddress();
         [$customerName, $customerEmail, $customerPhone] = $this->resolveCustomerInfo();
         [$paymentId, $paymentMethod, $paymentMethodLast4, $paymentMethodBrand] = $this->resolvePaymentInfo();
@@ -44,6 +44,7 @@ class AdminOrderResource extends JsonResource
             'paymentId' => $paymentId,
             'productName' => $productName,
             'productId' => $productId,
+            'productImage' => $productImage,
             'paymentMethod' => $paymentMethod,
             'paymentMethodLast4' => $paymentMethodLast4,
             'paymentMethodBrand' => $paymentMethodBrand,
@@ -68,6 +69,27 @@ class AdminOrderResource extends JsonResource
             'discountValue' => $discountValue,
             'discountLabel' => $discountLabel,
             'discountAmount' => $discountAmount,
+            // Booking payment details (tip, gift card, payment method)
+            'tipAmount' => $this->type === 'booking' && $this->relationLoaded('orderable') && $this->orderable instanceof \App\Models\Booking
+                ? (float) ($this->orderable->tip_amount ?? 0) : 0,
+            'paidPaymentMethod' => $this->type === 'booking' && $this->relationLoaded('orderable') && $this->orderable instanceof \App\Models\Booking
+                ? $this->orderable->paid_payment_method : null,
+            'giftCardCode' => $this->type === 'booking' && $this->relationLoaded('orderable') && $this->orderable instanceof \App\Models\Booking
+                ? $this->orderable->gift_card_code
+                : ($this->meta['gift_card_code'] ?? null),
+            'giftCardAmount' => $this->meta['gift_card_amount'] ?? null,
+            'returnRequest' => $this->whenLoaded('orderReturn', function () {
+                if (!$this->orderReturn) {
+                    return null;
+                }
+                return [
+                    'id' => $this->orderReturn->id,
+                    'status' => $this->orderReturn->status,
+                    'reason' => $this->orderReturn->reason,
+                    'createdAt' => $this->orderReturn->created_at,
+                    'adminNotes' => $this->orderReturn->admin_notes,
+                ];
+            }),
         ];
     }
 
@@ -121,12 +143,13 @@ class AdminOrderResource extends JsonResource
         return [round($subtotal, 2), round($tax, 2)];
     }
 
-    /** @return array{0: ?string, 1: ?int, 2: int} [productName, productId, quantity] */
+    /** @return array{0: ?string, 1: ?int, 2: int, 3: ?string} [productName, productId, quantity, productImage] */
     protected function resolveProductInfo(): array
     {
         $productName = null;
         $productId = null;
         $quantity = 0;
+        $productImage = null;
 
         if ($this->type === 'gift_card') {
             $productName = $this->meta['gift_card_name'] ?? 'Gift Card';
@@ -139,6 +162,14 @@ class AdminOrderResource extends JsonResource
                 $productName = $first->product?->name;
                 $productId = $first->product_id;
                 $quantity = (int) $this->items->sum('quantity');
+                // Get product image
+                if ($first->product) {
+                    $first->product->loadMissing('files');
+                    $firstFile = $first->product->files->first();
+                    if ($firstFile) {
+                        $productImage = asset('storage/' . $firstFile->path);
+                    }
+                }
             }
         } elseif ($this->type === 'booking' && $this->orderable instanceof Booking) {
             // Get all bookings (including batch bookings)
@@ -169,7 +200,7 @@ class AdminOrderResource extends JsonResource
             $quantity = $totalServices;
         }
 
-        return [$productName, $productId, $quantity];
+        return [$productName, $productId, $quantity, $productImage];
     }
 
     protected function ensureItemsLoaded(): void
@@ -225,6 +256,20 @@ class AdminOrderResource extends JsonResource
             $customerName = trim(($this->user->name ?? '') . ' ' . ($this->user->last_name ?? ''));
             $customerEmail = $this->user->email ?? null;
             $customerPhone = $this->user->mobile ?? null;
+        }
+
+        // For booking orders, prefer the booking's customer info over the order's user (which may be the admin)
+        if ($this->type === 'booking' && $this->relationLoaded('orderable') && $this->orderable instanceof \App\Models\Booking) {
+            $booking = $this->orderable;
+            if ($booking->customer_name) {
+                $customerName = $booking->customer_name;
+            }
+            if ($booking->customer_email) {
+                $customerEmail = $booking->customer_email;
+            }
+            if ($booking->customer_phone) {
+                $customerPhone = $booking->customer_phone;
+            }
         }
 
         $meta = $this->meta ?? [];
@@ -310,6 +355,9 @@ class AdminOrderResource extends JsonResource
             'refunded' => 'refunded',
             'cancelled' => 'cancelled',
             'fulfilled' => 'paid',
+            'return_requested' => 'return_requested',
+            'return_approved' => 'return_approved',
+            'return_rejected' => 'return_rejected',
             default => (string) $this->status,
         };
     }
@@ -323,11 +371,9 @@ class AdminOrderResource extends JsonResource
         $discountAmount = null;
 
         if ($this->type === 'booking' && $this->orderable instanceof Booking) {
-            // Get all bookings (including batch bookings)
             $allBookings = $this->resource->getAllBookings();
             foreach ($allBookings as $booking) {
                 if ($booking instanceof Booking) {
-                    // Use first booking's discount type/value/label
                     if (!$discountType && $booking->discount_type && $booking->discount_type !== 'none') {
                         $discountType = $booking->discount_type;
                         $discountValue = (float) $booking->discount_value;
@@ -336,13 +382,23 @@ class AdminOrderResource extends JsonResource
                 }
             }
 
-            // Calculate discount amount: (subtotal + tax) - order total
             if ($discountType && $discountValue) {
                 $expectedTotal = $subtotal + $tax;
                 $actualTotal = (float) $this->amount;
                 if ($expectedTotal > $actualTotal) {
                     $discountAmount = round($expectedTotal - $actualTotal, 2);
                 }
+            }
+        }
+
+        // For ecommerce/in-store orders, get discount from meta
+        if (!$discountType && $this->meta) {
+            $meta = $this->meta;
+            if (!empty($meta['discount_type']) && $meta['discount_type'] !== 'none') {
+                $discountType = $meta['discount_type'];
+                $discountValue = isset($meta['discount_value']) ? (float) $meta['discount_value'] : null;
+                $discountLabel = $meta['discount_label'] ?? null;
+                $discountAmount = isset($meta['discount_amount']) ? (float) $meta['discount_amount'] : null;
             }
         }
 

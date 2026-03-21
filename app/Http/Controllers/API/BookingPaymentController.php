@@ -163,6 +163,16 @@ class BookingPaymentController extends Controller
                 );
             }
 
+            // Re-validate slot availability before confirming the booking
+            if (!$this->bookingService->areSlotsStillAvailable($booking)) {
+                $this->bookingService->cancelBookingDueToSlotConflict($booking);
+                return ApiResponse::error(
+                    ['slot' => 'The requested time slot is no longer available. The booking has been cancelled and a refund initiated.'],
+                    __('messages.booking.slot_no_longer_available'),
+                    409
+                );
+            }
+
             // Payment succeeded - update booking and order
             DB::transaction(function () use ($booking) {
                 $order = $booking->order;

@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -54,6 +55,9 @@ class Booking extends Model
         'final_price',
         'payment_mode',
         'payment_status',
+        'paid_payment_method',
+        'gift_card_code',
+        'tip_amount',
         'status',
         'cancelled_at',
         'cancelled_by_user_id',
@@ -63,6 +67,8 @@ class Booking extends Model
         'expires_at',
         'post_service_followup_sent_at',
         'active_slot_key',
+        'is_complimentary',
+        'complimentary_reward_id',
     ];
 
     protected $casts = [
@@ -70,9 +76,11 @@ class Booking extends Model
         'price' => 'decimal:2',
         'discount_value' => 'decimal:2',
         'final_price' => 'decimal:2',
+        'tip_amount' => 'decimal:2',
         'cancelled_at' => 'datetime',
         'expires_at' => 'datetime',
         'post_service_followup_sent_at' => 'datetime',
+        'is_complimentary' => 'boolean',
     ];
 
     public function client(): BelongsTo
@@ -106,6 +114,16 @@ class Booking extends Model
     public function order(): MorphOne
     {
         return $this->morphOne(Order::class, 'orderable');
+    }
+
+    public function bookingReferral(): HasOne
+    {
+        return $this->hasOne(BookingReferral::class);
+    }
+
+    public function complimentaryReward(): BelongsTo
+    {
+        return $this->belongsTo(ComplimentaryReward::class);
     }
 
     public function isBreak(): bool

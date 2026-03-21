@@ -105,6 +105,9 @@ class BookingResource extends BaseResource
             'type'          => $this->type,
             'status'        => $this->status,
             'paymentStatus' => $data['payment_status'] ?? null,
+            'paidPaymentMethod' => $this->paid_payment_method,
+            'giftCardCode'  => $this->gift_card_code,
+            'tipAmount'     => $this->tip_amount ? (float) $this->tip_amount : 0,
             'cancelledBy'   => $this->when($this->cancelledBy, new UserResource($this->cancelledBy)),
             'cancelledAt'   => $this->cancelled_at,
             'cancelReason'  => $this->cancel_reason,
@@ -168,6 +171,17 @@ class BookingResource extends BaseResource
             'master' => $this->when(
                 $isAdmin && $this->relationLoaded('master') && $this->master,
                 new StaffResource($this->master)
+            ),
+            'isComplimentary' => (bool) ($this->is_complimentary ?? false),
+            'referrer' => $this->when(
+                $this->relationLoaded('bookingReferral') && $this->bookingReferral,
+                function () {
+                    $referrer = $this->bookingReferral->referrer ?? null;
+                    return $referrer ? [
+                        'id' => $referrer->id,
+                        'name' => $referrer->name ?? trim(($referrer->first_name ?? '') . ' ' . ($referrer->last_name ?? '')) ?: null,
+                    ] : null;
+                }
             ),
             'cancellation' => [
                 'canCancel' => $canCancel,

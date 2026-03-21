@@ -14,6 +14,8 @@ class StoreInStoreOrderRequest extends BaseFormRequest
         'discountValue' => 'discount_value',
         'discountLabel' => 'discount_label',
         'discountAmount' => 'discount_amount',
+        'giftCardCode' => 'gift_card_code',
+        'giftCardAmount' => 'gift_card_amount',
     ];
 
     public function rules(): array
@@ -39,6 +41,8 @@ class StoreInStoreOrderRequest extends BaseFormRequest
             'discountAmount' => ['nullable', 'numeric', 'min:0'],
             'notes' => ['nullable', 'string', 'max:1000'],
             'sendEmail' => ['sometimes', 'boolean'],
+            'giftCardCode' => ['nullable', 'string', 'max:255'],
+            'giftCardAmount' => ['nullable', 'numeric', 'min:0'],
         ];
     }
 }

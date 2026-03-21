@@ -6,9 +6,11 @@ use App\Enums\DeliveryStatus;
 use App\Enums\OrderStatus;
 use App\Enums\OrderType;
 use App\Filters\OrderFilter;
+use App\Mail\GiftCardBalanceDeductedMail;
 use App\Mail\NewOrderAdminNotificationMail;
 use App\Mail\OrderConfirmedMail;
 use App\Mail\OrderDeliveryStatusUpdatedMail;
+use App\Mail\OrderRefundedMail;
 use App\Models\User;
 use App\Models\Address;
 use App\Models\Booking;
@@ -168,8 +170,9 @@ class OrderService
             ]);
         }
 
-        $expectedTotal = $declaredSubtotal + $tax - $discountAmount;
-        if (!$this->amountsClose($expectedTotal, $declaredTotal)) {
+        $giftCardAmount = (float) ($data['gift_card_amount'] ?? 0);
+        $expectedTotal = $declaredSubtotal + $tax - $discountAmount - $giftCardAmount;
+        if (!$this->amountsClose(max(0, $expectedTotal), $declaredTotal)) {
             throw ValidationException::withMessages([
                 'total' => [__('validation.order.total_breakdown_mismatch')],
             ]);
@@ -269,6 +272,8 @@ class OrderService
                     'discount_value' => $data['discount_value'] ?? null,
                     'discount_label' => $data['discount_label'] ?? null,
                     'discount_amount' => $data['discount_amount'] ?? null,
+                    'gift_card_code' => $data['gift_card_code'] ?? null,
+                    'gift_card_amount' => $data['gift_card_amount'] ?? null,
                     'notes' => $data['notes'] ?? null,
                 ],
             ]);
@@ -294,6 +299,39 @@ class OrderService
             }
 
             $this->assertPersistedLineItemsMatchManualOrder($order, $items, (float) $data['subtotal']);
+
+            // Deduct from gift card if used
+            $giftCardCode = $data['gift_card_code'] ?? null;
+            $giftCardAmount = (float) ($data['gift_card_amount'] ?? 0);
+            if ($giftCardCode && $giftCardAmount > 0) {
+                $purchase = \App\Models\GiftCardPurchase::where('code', $giftCardCode)
+                    ->where('status', 'active')
+                    ->lockForUpdate()
+                    ->first();
+                if ($purchase && $purchase->balance > 0) {
+                    $amountToDeduct = min($giftCardAmount, (float) $purchase->balance);
+                    $newBalance = max(0, (float) $purchase->balance - $amountToDeduct);
+                    $purchase->update([
+                        'balance' => $newBalance,
+                        ...($newBalance <= 0 ? ['status' => 'used'] : []),
+                    ]);
+                    \App\Models\GiftCardUsage::create([
+                        'gift_card_purchase_id' => $purchase->id,
+                        'amount_used' => $amountToDeduct,
+                        'used_for_type' => 'product',
+                        'used_for_id' => $order->id,
+                        'used_for_name' => $customerName ?? 'In-Store Order #' . $order->reference,
+                        'used_for' => 'order',
+                        'notes' => 'Applied via in-store sale',
+                        'verified_by' => auth()->id(),
+                    ]);
+
+                    // Notify gift card buyer about balance deduction
+                    if ($purchase->buyer_email) {
+                        Mail::to($purchase->buyer_email)->queue(new GiftCardBalanceDeductedMail($purchase, $amountToDeduct));
+                    }
+                }
+            }
 
             if ($sendEmail && $customerEmail) {
                 $this->sendOrderConfirmation($order);
@@ -421,11 +459,19 @@ class OrderService
             $this->increaseProductQuantities($order);
         }
 
-        return $this->orderRepository->update($order, [
+        $order = $this->orderRepository->update($order, [
             'status' => OrderStatus::Refunded->value,
             'refunded_at' => now(),
             'meta'   => array_merge($order->meta ?? [], $meta),
         ]);
+
+        // Send refund notification email
+        $email = $this->resolveOrderEmail($order);
+        if ($email) {
+            Mail::to($email)->queue(new OrderRefundedMail($order));
+        }
+
+        return $order;
     }
 
     public function sendOrderConfirmation(Order $order): void

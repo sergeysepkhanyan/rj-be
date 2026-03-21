@@ -134,6 +134,7 @@ class BookingsController extends Controller
             'services.master',
             'master',
             'order.latestPayment',
+            'bookingReferral.referrer',
         ]);
 
         return ApiResponse::success([

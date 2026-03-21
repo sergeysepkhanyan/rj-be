@@ -10,11 +10,15 @@ use App\Models\User;
 use App\Models\Lead;
 use App\Models\ClientNote;
 use App\Models\Booking;
+use App\Models\BookingReferral;
 use App\Models\Order;
+use App\Mail\DiscountTierChangedMail;
+use App\Models\Referral;
 use App\Services\ApiResponse;
 use App\Services\UserService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 
 class ClientsController extends Controller
 {
@@ -48,11 +52,10 @@ class ClientsController extends Controller
     {
         $user->load(['referral', 'manualReferral', 'notes.createdBy']);
 
-        // Get confirmed bookings count and total
+        // Get confirmed bookings count and total (paid, gift, or confirmed pay_later)
         $confirmedBookings = Booking::where('user_id', $user->id)
             ->where('type', 'booking')
-            ->where('status', '!=', 'cancelled')
-            ->where('payment_status', 'paid')
+            ->whereIn('status', ['confirmed', 'completed'])
             ->get();
 
         $bookingsCount = $confirmedBookings->count();
@@ -80,9 +83,10 @@ class ClientsController extends Controller
             })
             ->count();
 
-        // Get confirmed orders count and total (paid, fulfilled, processing, shipped)
+        // Get confirmed product orders count and total (paid, fulfilled, processing, shipped)
         $confirmedOrders = Order::where('user_id', $user->id)
-            ->whereIn('status', ['paid', 'fulfilled', 'processing', 'shipped'])
+            ->where('type', 'ecommerce')
+            ->whereIn('status', ['paid', 'fulfilled', 'processing', 'shipped', 'return_requested', 'return_approved', 'return_rejected', 'refunded'])
             ->get();
 
         $ordersCount = $confirmedOrders->count();
@@ -102,6 +106,7 @@ class ClientsController extends Controller
                 'orders_total' => (float) $ordersTotal,
                 'total_spent' => (float) ($bookingsTotal + $ordersTotal),
                 'wishlist_count' => $wishlistCount,
+                'referral_count' => BookingReferral::where('referrer_user_id', $user->id)->where('status', 'completed')->count(),
             ],
         ]);
     }
@@ -133,7 +138,8 @@ class ClientsController extends Controller
         $perPage = (int) $request->get('per_page', 10);
 
         $orders = Order::where('user_id', $user->id)
-            ->with(['items.product', 'shippingAddress.country'])
+            ->where('type', 'ecommerce')
+            ->with(['items.product', 'shippingAddress.country', 'orderReturn'])
             ->orderBy('created_at', 'desc')
             ->paginate($perPage);
 
@@ -145,7 +151,9 @@ class ClientsController extends Controller
                 'currency' => $order->currency,
                 'type' => $order->type, // 'product' or 'booking'
                 'status' => $order->status,
-                'payment_status' => $order->paid_at ? 'paid' : ($order->status === 'cancelled' ? 'cancelled' : 'unpaid'),
+                'payment_status' => in_array($order->status, ['return_requested', 'return_approved', 'return_rejected', 'refunded', 'gift'])
+                    ? $order->status
+                    : ($order->paid_at ? 'paid' : ($order->status === 'cancelled' ? 'cancelled' : 'unpaid')),
                 'delivery_status' => $order->delivery_status,
                 'created_at' => $order->created_at,
                 'paid_at' => $order->paid_at,
@@ -259,9 +267,53 @@ class ClientsController extends Controller
         $client = $this->userService->updateUser($user, $request->all());
         $client->load(['referral', 'manualReferral']);
 
+        // Send email notification when admin assigns/changes a manual discount tier
+        $manualReferral = $client->manualReferral;
+        if ($manualReferral && $manualReferral->enabled && $client->email) {
+            Mail::to($client->email)->queue(new DiscountTierChangedMail($client, $manualReferral));
+        }
+
         return ApiResponse::success([
             'user' => new ClientResource($client),
         ], __('success.client.referral_added'));
+    }
+
+    public function referrals(User $user, Request $request): JsonResponse
+    {
+        $perPage = (int) $request->get('per_page', 10);
+
+        $referrals = BookingReferral::where('referrer_user_id', $user->id)
+            ->with(['booking.client', 'booking.services.bookable'])
+            ->orderBy('created_at', 'desc')
+            ->paginate($perPage);
+
+        return ApiResponse::success([
+            'referrals' => collect($referrals->items())->map(function ($referral) {
+                return [
+                    'id' => $referral->id,
+                    'bookingId' => $referral->booking_id,
+                    'status' => $referral->status,
+                    'booking' => $referral->booking ? [
+                        'id' => $referral->booking->id,
+                        'reference' => $referral->booking->reference ?? "BK-{$referral->booking->id}",
+                        'date' => $referral->booking->date?->format('Y-m-d'),
+                        'status' => $referral->booking->status,
+                        'customerName' => $referral->booking->customer_name
+                            ?? ($referral->booking->client ? trim(($referral->booking->client->name ?? '') . ' ' . ($referral->booking->client->last_name ?? '')) : null)
+                            ?? 'Unknown',
+                        'customerEmail' => $referral->booking->customer_email
+                            ?? $referral->booking->client?->email,
+                    ] : null,
+                    'createdAt' => $referral->created_at,
+                ];
+            }),
+            'meta' => [
+                'current_page' => $referrals->currentPage(),
+                'last_page' => $referrals->lastPage(),
+                'per_page' => $referrals->perPage(),
+                'total' => $referrals->total(),
+            ],
+        ]);
     }
 
     /**

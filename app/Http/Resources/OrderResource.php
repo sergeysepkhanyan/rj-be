@@ -41,6 +41,20 @@ class OrderResource extends JsonResource
         $customerEmail = $this->meta['customer_email'] ?? null;
         $customerPhone = $this->meta['customer_phone'] ?? null;
 
+        // For booking orders, fall back to booking's customer info when meta is incomplete
+        if ($this->type === 'booking' && $this->relationLoaded('orderable') && $this->orderable instanceof Booking) {
+            $booking = $this->orderable;
+            if (!$customerName && $booking->customer_name) {
+                $customerName = $booking->customer_name;
+            }
+            if (!$customerEmail && $booking->customer_email) {
+                $customerEmail = $booking->customer_email;
+            }
+            if (!$customerPhone && $booking->customer_phone) {
+                $customerPhone = $booking->customer_phone;
+            }
+        }
+
         $clientName = null;
         $clientEmail = null;
         $clientPhone = null;
@@ -206,8 +220,11 @@ class OrderResource extends JsonResource
             'paid' => 'paid',
             'refunded' => 'refunded',
             'cancelled' => 'cancelled',
-            'fulfilled' => 'paid', // Fulfilled orders must have been paid
-            default => $this->status, // Fallback to order status
+            'fulfilled' => 'paid',
+            'return_requested' => 'paid',
+            'return_approved' => 'refunded',
+            'return_rejected' => 'paid',
+            default => $this->status,
         };
 
         return [
@@ -382,6 +399,18 @@ class OrderResource extends JsonResource
                         'note' => $history->note,
                     ];
                 })->all();
+            }),
+            'returnRequest' => $this->whenLoaded('orderReturn', function () {
+                if (!$this->orderReturn) {
+                    return null;
+                }
+                return [
+                    'id' => $this->orderReturn->id,
+                    'status' => $this->orderReturn->status,
+                    'reason' => $this->orderReturn->reason,
+                    'createdAt' => $this->orderReturn->created_at,
+                    'adminNotes' => $this->orderReturn->admin_notes,
+                ];
             }),
         ];
     }

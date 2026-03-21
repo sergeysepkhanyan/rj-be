@@ -47,6 +47,7 @@ class OrderRepository implements OrderRepositoryInterface
                 'billingAddress.country',
                 'orderable',
                 'latestPayment.paymentMethod',
+                'orderReturn',
             ]);
 
         if ($filter) {

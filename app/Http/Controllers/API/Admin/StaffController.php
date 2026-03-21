@@ -79,10 +79,19 @@ class StaffController extends Controller
 
     public function destroy(User $user): JsonResponse
     {
-        // Super admin cannot delete admins, superadmins, or clients
-        if (in_array($user->role->slug, ['superadmin', 'admin', 'client'], true)) {
+        // Cannot deactivate superadmins or clients
+        if (in_array($user->role->slug, ['superadmin', 'client'], true)) {
             return ApiResponse::error(
                 ['role' => [__('errors.staff.cannot_delete_user_type')]],
+                __('errors.common.forbidden'),
+                403
+            );
+        }
+
+        // Cannot deactivate yourself
+        if ((int) $user->id === (int) auth()->id()) {
+            return ApiResponse::error(
+                ['role' => ['You cannot deactivate your own account.']],
                 __('errors.common.forbidden'),
                 403
             );

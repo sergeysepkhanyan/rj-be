@@ -22,10 +22,19 @@ class ReferralRepository implements ReferralRepositoryInterface
         return Referral::where('name', $name)->first();
     }
 
+    public function create(array $data): Referral
+    {
+        return Referral::create($data);
+    }
+
     public function update(Referral $referral, array $data): Referral
     {
         $referral->update($data);
         return $referral->fresh();
     }
-}
 
+    public function delete(Referral $referral): void
+    {
+        $referral->delete();
+    }
+}

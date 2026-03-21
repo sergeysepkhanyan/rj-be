@@ -173,6 +173,16 @@ class User extends Authenticatable implements JWTSubject, CanResetPasswordContra
     {
         return $this->belongsTo(Referral::class, 'manual_referral_id');
     }
+
+    public function bookingReferrals(): HasMany
+    {
+        return $this->hasMany(BookingReferral::class, 'referrer_user_id');
+    }
+
+    public function complimentaryRewards(): HasMany
+    {
+        return $this->hasMany(ComplimentaryReward::class);
+    }
     public function scopeMasters($query)
     {
         return $query->whereHas('role', function ($q) {

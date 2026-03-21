@@ -233,6 +233,7 @@ class ProductsController extends Controller
     {
         $ids = $request->input('ids', []);
         $status = $request->input('status');
+        $salesChannel = $request->input('sales_channel');
 
         if (!is_array($ids) || count($ids) === 0) {
             return ApiResponse::success([
@@ -240,7 +241,7 @@ class ProductsController extends Controller
             ], __('success.product.updated'));
         }
 
-        $updated = $this->productService->bulkUpdateStatus($ids, $status);
+        $updated = $this->productService->bulkUpdateStatus($ids, $status, $salesChannel);
 
         return ApiResponse::success([
             'updated' => $updated,

@@ -43,6 +43,8 @@ class BookingService
         protected PaymentService $paymentService,
         protected PaymentRepositoryInterface $paymentRepository,
         protected DiscountSettingService $discountSettingService,
+        protected ReferralRewardService $referralRewardService,
+        protected LoyaltyService $loyaltyService,
     ) {}
 
     public function getAllBooking()
@@ -196,29 +198,17 @@ class BookingService
 
         if (! $date) {
             $this->throwValidation(
-                [
-                    'date' => __('validation.available_slots.date_required'),
-                ],
+                ['date' => __('validation.available_slots.date_required')],
                 'validation.failed'
             );
         }
 
-        // If masterId is not provided (or is 0), treat it as "any master" to support the UI flow.
-        if (! $masterId) {
+        if (! $masterId && ! $anyMaster) {
+            // Neither a specific master nor "any master" was requested
             $anyMaster = true;
         }
 
-        if (! $anyMaster) {
-            $this->throwValidation(
-                [
-                    'masterId' => __('validation.available_slots.master_required'),
-                ],
-                'validation.failed'
-            );
-        }
-
-        // If "any master" is selected, we return slots where at least one eligible master is free.
-        if (! $masterId || $anyMaster) {
+        if ($anyMaster || ! $masterId) {
             $candidateMasterIds = $this->resolveCandidateMasterIds(
                 subserviceId: $subserviceId,
                 subserviceItemId: $subserviceItemId
@@ -242,7 +232,6 @@ class BookingService
             $workStart = $hours['start'];
             $workEnd = $hours['end'];
 
-            // Service-wide busy times (same service booked regardless of master)
             $serviceBusy = collect();
             if ($subserviceId) {
                 $serviceBusy = $this->bookingRepository->getBusyForServiceOnDate(
@@ -305,10 +294,8 @@ class BookingService
         $workStart = $hours['start'];
         $workEnd = $hours['end'];
 
-        // Get master's busy times
         $masterBusy = $this->bookingRepository->getBusyForMasterOnDate($masterId, $date);
 
-        // Get service-specific busy times (same service already booked at that time)
         $serviceBusy = collect();
         if ($subserviceId) {
             $serviceBusy = $this->bookingRepository->getBusyForServiceOnDate(
@@ -324,17 +311,11 @@ class BookingService
             );
         }
 
-        // Merge both busy collections
         $busy = $masterBusy->merge($serviceBusy);
 
         return $this->buildSlots($date, $workStart, $workEnd, $busy, $durationMinutes, $tz);
     }
 
-    /**
-     * Resolve eligible master IDs for "any master" availability.
-     *
-     * @return \\Illuminate\\Support\\Collection<int, int>
-     */
     protected function resolveCandidateMasterIds(?int $subserviceId, ?int $subserviceItemId): \Illuminate\Support\Collection
     {
         if ($subserviceId) {
@@ -385,6 +366,11 @@ class BookingService
 
         $dayStart = Carbon::createFromFormat('Y-m-d H:i', "$date $workStart", $tz);
         $dayEnd = Carbon::createFromFormat('Y-m-d H:i', "$date $workEnd", $tz);
+
+        // 00:00 means midnight end of day — advance to next day
+        if ($workEnd === '00:00') {
+            $dayEnd->addDay();
+        }
         $now = Carbon::now($tz);
 
         if ($dayEnd->lt($now->copy()->startOfDay())) {
@@ -484,6 +470,7 @@ class BookingService
 
         $this->validateSegmentsBasic($segments, $tz);
         $this->assertNoDuplicateSegments($segments);
+        $this->assertServiceNotAlreadyBooked($segments);
         $this->validateRootTimeMatchesSegments($data, $segments);
 
         $pricing = $this->buildPricingData([
@@ -493,10 +480,6 @@ class BookingService
 
         return DB::transaction(function () use ($data, $user, $tz, $segments, $pricing) {
 
-            // Re-check inside transaction with pessimistic locking to prevent race conditions.
-            // lockForUpdate() ensures concurrent requests block until this transaction completes.
-            $this->assertServiceNotAlreadyBooked($segments, null, true);
-
             $firstSegment = $segments[0];
             $lastSegment = $segments[count($segments) - 1];
             $bookingStart = substr($firstSegment['start_time'], 0, 5);
@@ -504,8 +487,6 @@ class BookingService
             $uniqueMasters = collect($segments)->pluck('master_id')->unique()->values();
             $uniqueDates = collect($segments)->pluck('date')->unique();
 
-            // For multi-date bookings, calculate total duration from all segments
-            // For single-date bookings, use start/end time difference
             if ($uniqueDates->count() > 1) {
                 $totalDuration = collect($segments)->sum('duration_minutes');
             } else {
@@ -516,7 +497,7 @@ class BookingService
                 'user_id' => $user?->id,
                 'type' => 'booking',
                 'reference' => $this->makeBookingReference(),
-                'date' => $firstSegment['date'], // Use first segment's date
+                'date' => $firstSegment['date'],
                 'timezone' => $tz,
                 'start_time' => $bookingStart,
                 'end_time' => $bookingEnd,
@@ -542,6 +523,31 @@ class BookingService
                 'master_id' => $uniqueMasters->count() === 1 ? (int) $uniqueMasters->first() : null,
             ];
 
+            // Handle complimentary gift booking
+            $isGiftBooking = false;
+            $complimentaryRewardId = $data['complimentary_reward_id'] ?? null;
+            if ($complimentaryRewardId && $user) {
+                $reward = \App\Models\ComplimentaryReward::where('id', $complimentaryRewardId)
+                    ->where('user_id', $user->id)
+                    ->where('status', 'available')
+                    ->first();
+
+                if ($reward) {
+                    $isGiftBooking = true;
+                    $bookingData['is_complimentary'] = true;
+                    $bookingData['complimentary_reward_id'] = $reward->id;
+                    $bookingData['price'] = 0;
+                    $bookingData['final_price'] = 0;
+                    $bookingData['discount_type'] = 'none';
+                    $bookingData['discount_value'] = null;
+                    $bookingData['discount_label'] = null;
+                    $bookingData['payment_mode'] = 'pay_later';
+                    $bookingData['payment_status'] = 'gift';
+                    $bookingData['status'] = 'confirmed';
+                    $bookingData['expires_at'] = null;
+                }
+            }
+
             $booking = $this->bookingRepository->create($bookingData);
 
             foreach ($segments as $i => $seg) {
@@ -550,31 +556,40 @@ class BookingService
 
             $this->clearSelectionsAfterBooking($user?->id, $data['guest_session_id'] ?? null);
 
-            // Auto-create lead for non-registered users
             $this->createLeadFromBooking($booking);
+
+            // Assign referrer if provided
+            if (!empty($data['referrer_user_id'])) {
+                $this->referralRewardService->assignReferrer($booking, (int) $data['referrer_user_id']);
+            }
+
+            // Handle gift booking — redeem reward and skip payment
+            if ($isGiftBooking && isset($reward)) {
+                $this->referralRewardService->redeemReward($reward, $booking);
+                $order = $this->orderService->createForBooking($booking, 'pay_later');
+                // Mark order as gift
+                $order->update(['status' => 'gift']);
+                return $booking->fresh()->load(['services.bookable', 'order.latestPayment', 'bookingReferral.referrer']);
+            }
 
             $order = $this->orderService->createForBooking($booking, $booking->payment_mode);
             if ($booking->payment_mode === 'pay_later') {
                 $this->bookingRepository->update($booking, ['status' => 'confirmed']);
 
-                return $booking->fresh()->load(['services.bookable', 'order.latestPayment']);
+                // Complete referral for pay_later bookings (immediately confirmed)
+                $this->referralRewardService->completeReferral($booking);
+
+                return $booking->fresh()->load(['services.bookable', 'order.latestPayment', 'bookingReferral.referrer']);
             }
             $provider = $data['payment_provider'] ?? $data['paymentProvider'] ?? 'stripe';
             $this->paymentService->startStripePaymentIntent($order, $booking);
 
-            return $booking->load(['services.bookable', 'services.master', 'master', 'order.latestPayment']);
+            return $booking->load(['services.bookable', 'services.master', 'master', 'order.latestPayment', 'bookingReferral.referrer']);
         });
     }
 
     public function updateBooking(Booking $booking, array $data): Booking
     {
-        if (in_array($booking->status, ['completed', 'cancelled'], true)) {
-            $this->throwValidation(
-                ['booking' => __('validation.booking.cannot_update_status', ['status' => $booking->status])],
-                'validation.failed'
-            );
-        }
-
         $tz = $data['timezone'] ?? $booking->timezone ?? 'UTC';
         $date = trim($data['date'] ?? ($booking->date?->format('Y-m-d') ?? ''));
 
@@ -594,6 +609,7 @@ class BookingService
 
         $this->validateSegmentsBasic($segments, $tz);
         $this->assertNoDuplicateSegments($segments);
+        $this->assertServiceNotAlreadyBooked($segments, $booking->id);
         $this->validateRootTimeMatchesSegments($data, $segments);
 
         $pricing = $this->buildPricingData([
@@ -602,9 +618,6 @@ class BookingService
         ]);
 
         return DB::transaction(function () use ($booking, $data, $tz, $segments, $pricing) {
-            // Check inside transaction with pessimistic locking to prevent race conditions
-            $this->assertServiceNotAlreadyBooked($segments, $booking->id, true);
-
             $firstSegment = $segments[0];
             $lastSegment = $segments[count($segments) - 1];
             $bookingStart = substr($firstSegment['start_time'], 0, 5);
@@ -613,7 +626,6 @@ class BookingService
             $uniqueMasters = collect($segments)->pluck('master_id')->unique()->values();
             $uniqueDates = collect($segments)->pluck('date')->unique();
 
-            // For multi-date bookings, calculate total duration from all segments
             if ($uniqueDates->count() > 1) {
                 $totalDuration = collect($segments)->sum('duration_minutes');
             } else {
@@ -655,7 +667,7 @@ class BookingService
                 $this->attachServiceToBookingWithSegment($booking, $seg, $i + 1);
             }
 
-            return $booking->load(['services.bookable', 'services.master']);
+            return $booking->load(['services.bookable', 'services.master', 'bookingReferral.referrer']);
         });
     }
 
@@ -670,7 +682,7 @@ class BookingService
 
             $startTime = $s['start_time'] ?? $s['startTime'] ?? null;
             $endTime = $s['end_time'] ?? $s['endTime'] ?? null;
-            $serviceDate = $s['date'] ?? $date; // Allow per-service date
+            $serviceDate = $s['date'] ?? $date;
 
             if (! $serviceType || ! $serviceId) {
                 $this->throwValidation(
@@ -728,7 +740,6 @@ class BookingService
                 );
             }
 
-            // Use discounted price if service has a discount
             $basePrice = method_exists($serviceable, 'getFinalPrice')
                 ? (float) $serviceable->getFinalPrice()
                 : (float) ($serviceable->price ?? 0);
@@ -756,7 +767,6 @@ class BookingService
             ];
         }
 
-        // Sort by date first, then by start_time
         usort($segments, function ($a, $b) {
             $dateCompare = strcmp($a['date'], $b['date']);
 
@@ -775,7 +785,6 @@ class BookingService
             return;
         }
 
-        // Skip validation if services are on different dates - time matching doesn't apply
         $uniqueDates = collect($segments)->pluck('date')->unique();
         if ($uniqueDates->count() > 1) {
             return;
@@ -851,18 +860,30 @@ class BookingService
         })->all();
     }
 
-    protected function buildPricingData(array $data, bool $isAdmin = false): array
+    protected function buildPricingData(array $data): array
     {
         $services = collect($data['services'] ?? []);
         $totalPrice = (float) $services->sum(fn ($s) => $s['price'] ?? 0);
 
-        // Only trust client-provided discounts from admin contexts.
-        // Public booking endpoints must always calculate discounts server-side.
+        // Only allow admin users to provide custom discount values.
+        // For non-admin (public) requests, always calculate discounts server-side
+        // based on the user's actual referral/tier status to prevent abuse.
+        $isAdmin = auth()->user()?->isAdmin() ?? false;
+
         if ($isAdmin) {
             $discountType = $data['discount_type'] ?? $data['discountType'] ?? 'none';
             $discountValue = $data['discount_value'] ?? $data['discountValue'] ?? null;
             $discountLabel = $data['discount_label'] ?? $data['discountLabel'] ?? null;
+
+            // Sanitize admin-provided values
+            if ($discountValue !== null) {
+                $discountValue = max(0, (float) $discountValue);
+                if ($discountType === 'percent') {
+                    $discountValue = min($discountValue, 100);
+                }
+            }
         } else {
+            // Never trust client-provided discounts for non-admin users
             $discountType = 'none';
             $discountValue = null;
             $discountLabel = null;
@@ -930,7 +951,7 @@ class BookingService
                     $visitCount = Booking::where('user_id', $user->id)
                         ->where('type', 'booking')
                         ->where('status', '!=', 'cancelled')
-                        ->where('payment_status', 'paid')
+                        ->whereIn('payment_status', ['paid', 'gift'])
                         ->count();
 
                     if ($visitCount >= $referral->visit_threshold) {
@@ -960,7 +981,7 @@ class BookingService
         }
 
         return match ($discountType) {
-            'percent' => round($totalPrice * ($discountValue / 100), 2),
+            'percent' => round($totalPrice * (min($discountValue, 100) / 100), 2),
             'fixed' => min($discountValue, $totalPrice),
             default => 0.0,
         };
@@ -1080,7 +1101,6 @@ class BookingService
             }
         }
 
-        // Load order relation if not already loaded
         $booking->loadMissing('order');
         $order = $booking->order?->load('latestPayment');
 
@@ -1092,9 +1112,6 @@ class BookingService
             $this->orderService->refund($order, ['reason' => 'booking_cancelled']);
             $booking->payment_status = 'refunded';
         } elseif ($booking->payment_status === 'paid' && ! $canRefund) {
-            // Booking was paid but can't be refunded (less than 24h before appointment)
-            // Keep payment_status as 'paid' - the money was collected
-            // Update order status to cancelled
             if ($order) {
                 $order->update([
                     'status' => 'cancelled',
@@ -1102,7 +1119,6 @@ class BookingService
                 ]);
             }
         } elseif ($order) {
-            // Update order status to cancelled for unpaid bookings
             $order->update([
                 'status' => 'cancelled',
                 'cancelled_at' => now(),
@@ -1117,10 +1133,21 @@ class BookingService
             'cancel_reason' => $data['reason'] ?? null,
         ]);
 
-        return $booking->load(['services.bookable', 'services.master', 'master', 'cancelledBy'])->refresh();
+        // Cancel referral if applicable
+        $this->referralRewardService->cancelReferral($booking);
+
+        // Re-check loyalty tier after cancellation (may downgrade)
+        if ($booking->user_id) {
+            $user = User::find($booking->user_id);
+            if ($user) {
+                $this->loyaltyService->checkAndUpgradeUser($user);
+            }
+        }
+
+        return $booking->load(['services.bookable', 'services.master', 'master', 'cancelledBy', 'bookingReferral.referrer'])->refresh();
     }
 
-    public function markBookingPaid(Booking $booking): Booking
+    public function markBookingPaid(Booking $booking, array $paymentDetails = []): Booking
     {
         if ($booking->type !== 'booking') {
             $this->throwValidation([], 'messages.booking.only_bookings_can_be_marked_paid');
@@ -1130,20 +1157,34 @@ class BookingService
             $this->throwValidation([], 'messages.booking.cancelled_cannot_be_marked_paid');
         }
 
-        // Re-validate slot availability before confirming
-        if (!$this->isSlotAvailable($booking)) {
+        // Re-validate slot availability before confirming the booking
+        if (!$this->areSlotsStillAvailable($booking)) {
+            $this->cancelBookingDueToSlotConflict($booking);
             $this->throwValidation(
-                ['booking' => __('validation.booking.slot_no_longer_available')],
-                'validation.failed'
+                ['slot' => 'The requested time slot is no longer available. The booking has been cancelled and a refund initiated.'],
+                'messages.booking.slot_no_longer_available'
             );
         }
 
         $booking->load('order.latestPayment');
 
-        $booking->update([
+        $updateData = [
             'status' => 'confirmed',
             'payment_status' => 'paid',
-        ]);
+        ];
+
+        // Store payment details from admin mark-as-paid
+        if (!empty($paymentDetails['paid_payment_method'])) {
+            $updateData['paid_payment_method'] = $paymentDetails['paid_payment_method'];
+        }
+        if (!empty($paymentDetails['gift_card_code'])) {
+            $updateData['gift_card_code'] = $paymentDetails['gift_card_code'];
+        }
+        if (isset($paymentDetails['tip_amount']) && $paymentDetails['tip_amount'] > 0) {
+            $updateData['tip_amount'] = $paymentDetails['tip_amount'];
+        }
+
+        $booking->update($updateData);
 
         if ($booking->order) {
             $this->orderService->markPaid($booking->order, ['marked_paid_manually' => true]);
@@ -1158,43 +1199,6 @@ class BookingService
         }
 
         return $booking->fresh()->load(['services.bookable', 'services.master', 'master', 'order.latestPayment']);
-    }
-
-    /**
-     * Check if a booking's slot is still available (used before confirming after payment).
-     * Returns true if the slot is free (excluding the given booking itself).
-     */
-    public function isSlotAvailable(Booking $booking): bool
-    {
-        $booking->loadMissing('services');
-
-        foreach ($booking->services as $service) {
-            $bookableType = $service->bookable_type;
-            $bookableId = $service->bookable_id;
-            $date = $booking->date instanceof \Carbon\Carbon
-                ? $booking->date->format('Y-m-d')
-                : (string) $booking->date;
-
-            if (!$bookableType || !$bookableId) {
-                continue;
-            }
-
-            $hasOverlap = $this->bookingRepository->hasServiceOverlap(
-                bookableType: $bookableType,
-                bookableId: $bookableId,
-                date: $date,
-                startTime: $service->start_time ?? $booking->start_time,
-                endTime: $service->end_time ?? $booking->end_time,
-                excludeBookingId: $booking->id,
-                timezone: $booking->timezone ?? 'UTC'
-            );
-
-            if ($hasOverlap) {
-                return false;
-            }
-        }
-
-        return true;
     }
 
     protected function validateSegmentsBasic(array $segments, string $tz): void
@@ -1232,6 +1236,9 @@ class BookingService
 
             $dayStart = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$hours['start']}", $tz);
             $dayEnd = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$hours['end']}", $tz);
+            if ($hours['end'] === '00:00') {
+                $dayEnd->addDay();
+            }
 
             if ($start->lt($dayStart) || $end->gt($dayEnd)) {
                 $this->throwValidation(
@@ -1304,14 +1311,7 @@ class BookingService
         }
     }
 
-    /**
-     * Same bookable (subservice or item) cannot appear twice with overlapping times in one request.
-     * Also blocks double-booking against existing confirmed/pending booking rows.
-     *
-     * @param bool $withLock When true, acquires pessimistic locks to prevent concurrent double-booking.
-     *                       Must be called inside a DB::transaction().
-     */
-    protected function assertServiceNotAlreadyBooked(array $segments, ?int $excludeBookingId = null, bool $withLock = false): void
+    protected function assertServiceNotAlreadyBooked(array $segments, ?int $excludeBookingId = null): void
     {
         $count = count($segments);
 
@@ -1370,8 +1370,7 @@ class BookingService
                 startTime: $startTime,
                 endTime: $endTime,
                 excludeBookingId: $excludeBookingId,
-                timezone: $tz,
-                withLock: $withLock
+                timezone: $tz
             );
 
             if ($hasOverlap) {
@@ -1440,34 +1439,28 @@ class BookingService
             );
         }
 
-        // Assign and validate masters for all services
         $rawServices = $this->masterAssignmentService->assignAndValidateMasters(
             date: $date,
             tz: $tz,
             services: $rawServices
         );
 
-        // Build service segments with validation
         $segments = $this->buildServiceSegmentsFromRequest($date, $rawServices, $tz);
         $this->validateSegmentsBasic($segments, $tz);
         $this->assertNoDuplicateSegments($segments);
+        $this->assertServiceNotAlreadyBooked($segments);
 
-        // Calculate total pricing across all services
         $pricing = $this->buildPricingData([
             ...$data,
             'services' => $this->normalizeServicesForPricing($segments),
         ]);
 
         return DB::transaction(function () use ($data, $user, $tz, $segments, $pricing) {
-            // Check inside transaction with pessimistic locking to prevent race conditions
-            $this->assertServiceNotAlreadyBooked($segments, null, true);
-
             $batchId = $this->makeBatchId();
             $bookings = [];
             $totalPrice = 0;
             $totalFinalPrice = 0;
 
-            // Create a booking for each service segment
             foreach ($segments as $index => $seg) {
                 $segmentStart = substr($seg['start_time'], 0, 5);
                 $segmentEnd = substr($seg['end_time'], 0, 5);
@@ -1503,7 +1496,6 @@ class BookingService
 
                 $booking = $this->bookingRepository->create($bookingData);
 
-                // Attach the single service to this booking
                 $this->attachServiceToBookingWithSegment($booking, $seg, 1);
 
                 $totalPrice += $seg['price'];
@@ -1513,34 +1505,27 @@ class BookingService
 
             $this->clearSelectionsAfterBooking($user?->id, $data['guest_session_id'] ?? null);
 
-            // Auto-create lead for non-registered users (only once for the batch)
             if (! empty($bookings)) {
                 $this->createLeadFromBooking($bookings[0]);
             }
 
-            // Create order for the first booking (primary booking)
-            // The order total should cover all bookings
             $primaryBooking = $bookings[0];
 
-            // Temporarily set the primary booking's price to total for order creation
             $originalPrice = $primaryBooking->price;
             $originalFinalPrice = $primaryBooking->final_price;
             $primaryBooking->price = $totalPrice;
-            $primaryBooking->final_price = $pricing['final_price']; // Use calculated final price with discount
+            $primaryBooking->final_price = $pricing['final_price'];
 
             $order = $this->orderService->createForBooking($primaryBooking, $primaryBooking->payment_mode);
 
-            // Restore original values
             $primaryBooking->price = $originalPrice;
             $primaryBooking->final_price = $originalFinalPrice;
 
             if ($primaryBooking->payment_mode === 'pay_later') {
-                // Mark all bookings as confirmed
                 foreach ($bookings as $booking) {
                     $this->bookingRepository->update($booking, ['status' => 'confirmed']);
                 }
 
-                // Load relationships
                 foreach ($bookings as $booking) {
                     $booking->refresh()->load(['services.bookable', 'master']);
                 }
@@ -1552,10 +1537,8 @@ class BookingService
                 ];
             }
 
-            // Create payment intent for pay_now
             $this->paymentService->startStripePaymentIntent($order, $primaryBooking);
 
-            // Load relationships
             foreach ($bookings as $booking) {
                 $booking->load(['services.bookable', 'services.master', 'master']);
             }
@@ -1571,6 +1554,7 @@ class BookingService
 
     /**
      * Mark all bookings in a batch as paid.
+     * Re-validates slot availability for each booking before confirming.
      */
     public function markBatchBookingsPaid(string $batchId): void
     {
@@ -1578,6 +1562,12 @@ class BookingService
 
         foreach ($bookings as $booking) {
             if ($booking->payment_status !== 'paid') {
+                // Re-validate slot availability before confirming each booking
+                if (!$this->areSlotsStillAvailable($booking)) {
+                    $this->cancelBookingDueToSlotConflict($booking);
+                    continue;
+                }
+
                 $booking->update([
                     'status' => 'confirmed',
                     'payment_status' => 'paid',
@@ -1596,9 +1586,6 @@ class BookingService
             ->get();
     }
 
-    /**
-     * Auto-create lead from booking if customer is not a registered user
-     */
     protected function createLeadFromBooking(Booking $booking): void
     {
         $phone = $booking->customer_phone;
@@ -1606,19 +1593,16 @@ class BookingService
             return;
         }
 
-        // Check if user already exists with this phone
         $existingUser = User::where('mobile', $phone)->first();
         if ($existingUser) {
             return;
         }
 
-        // Check if lead already exists with this phone
         $existingLead = Lead::where('phone', $phone)->first();
         if ($existingLead) {
             return;
         }
 
-        // Create new lead
         Lead::create([
             'name' => $booking->customer_name ?? 'Unknown',
             'phone' => $phone,
@@ -1650,8 +1634,18 @@ class BookingService
             Mail::to($email)->queue(new BookingConfirmedMail($booking));
         }
 
-        // Send admin notification
         $this->sendAdminBookingNotification($booking, 'new');
+
+        // Complete referral when booking is confirmed/paid
+        $this->referralRewardService->completeReferral($booking);
+
+        // Check loyalty tier upgrade after booking confirmation
+        if ($booking->user_id) {
+            $user = User::find($booking->user_id);
+            if ($user) {
+                $this->loyaltyService->checkAndUpgradeUser($user);
+            }
+        }
     }
 
     public function sendBookingCancellation(Booking $booking, ?string $reason = null): void
@@ -1662,7 +1656,6 @@ class BookingService
             Mail::to($email)->queue(new BookingCancelledMail($booking));
         }
 
-        // Send admin notification
         $this->sendAdminBookingNotification($booking, 'cancelled', $reason);
     }
 
@@ -1683,7 +1676,6 @@ class BookingService
             ));
         }
 
-        // Send admin notification
         $admin = User::whereHas('role', fn ($q) => $q->where('slug', 'superadmin'))->first();
         if ($admin && $admin->email) {
             Mail::to($admin->email)->queue(new BookingRescheduledAdminNotificationMail(
@@ -1712,5 +1704,108 @@ class BookingService
         if ($mail) {
             Mail::to($admin->email)->queue($mail);
         }
+    }
+
+    /**
+     * Re-validate that all service slots for a booking are still available.
+     * Used before confirming payment to prevent double-bookings if the slot
+     * was taken or the master's schedule changed after payment was initiated.
+     *
+     * @return bool true if all slots are still available
+     */
+    public function areSlotsStillAvailable(Booking $booking): bool
+    {
+        $booking->loadMissing('services');
+
+        foreach ($booking->services as $service) {
+            $bookableType = $service->bookable_type;
+            $bookableId = $service->bookable_id;
+            $date = is_string($service->date) ? $service->date : $service->date->toDateString();
+            $startTime = (string) $service->start_time;
+            $endTime = (string) $service->end_time;
+            $tz = $service->timezone ?? $booking->timezone ?? 'UTC';
+
+            if (!$bookableType || !$bookableId) {
+                continue;
+            }
+
+            $hasServiceOverlap = $this->bookingRepository->hasServiceOverlap(
+                bookableType: $bookableType,
+                bookableId: $bookableId,
+                date: $date,
+                startTime: $startTime,
+                endTime: $endTime,
+                excludeBookingId: $booking->id,
+                timezone: $tz
+            );
+
+            if ($hasServiceOverlap) {
+                return false;
+            }
+
+            $masterId = $service->master_id;
+            if ($masterId) {
+                $hasMasterOverlap = $this->bookingRepository->hasOverlap(
+                    masterId: $masterId,
+                    date: $date,
+                    startTime: $startTime,
+                    endTime: $endTime,
+                    excludeBookingId: $booking->id,
+                    timezone: $tz
+                );
+
+                if ($hasMasterOverlap) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Cancel a booking due to slot conflict at payment confirmation time
+     * and initiate a refund if a payment exists.
+     */
+    public function cancelBookingDueToSlotConflict(Booking $booking): void
+    {
+        \Log::critical('[booking][slot-conflict] Slot no longer available at payment confirmation', [
+            'booking_id' => $booking->id,
+            'reference' => $booking->reference,
+            'date' => $booking->date,
+            'start_time' => $booking->start_time,
+            'end_time' => $booking->end_time,
+            'master_id' => $booking->master_id,
+            'customer_name' => $booking->customer_name,
+            'customer_email' => $booking->customer_email,
+        ]);
+
+        $this->bookingRepository->update($booking, [
+            'status' => 'cancelled',
+            'cancel_reason' => 'Slot no longer available at time of payment confirmation. Automatic refund initiated.',
+            'cancelled_at' => now(),
+        ]);
+
+        $booking->loadMissing('order.latestPayment');
+        if ($booking->order && $booking->order->latestPayment) {
+            try {
+                $this->paymentService->refundOrderPayment($booking->order, [
+                    'reason' => 'slot_conflict',
+                    'booking_id' => $booking->id,
+                ]);
+                \Log::info('[booking][slot-conflict] Refund initiated successfully', [
+                    'booking_id' => $booking->id,
+                    'order_id' => $booking->order->id,
+                ]);
+            } catch (\Throwable $e) {
+                \Log::error('[booking][slot-conflict] Failed to initiate refund', [
+                    'booking_id' => $booking->id,
+                    'order_id' => $booking->order->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        $this->sendBookingCancellation($booking, 'Slot was no longer available when payment was confirmed.');
     }
 }

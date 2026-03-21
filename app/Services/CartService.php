@@ -161,7 +161,8 @@ class CartService
         bool $billingSameAsShipping = false,
         ?int $billingAddressId = null,
         array $billingAddress = [],
-        $paymentMethodId = null
+        $paymentMethodId = null,
+        ?string $giftCardCode = null
     ): Order {
         [$userId, $guestSessionId] = $this->resolveSession($guestSessionId);
 
@@ -176,7 +177,8 @@ class CartService
             $billingSameAsShipping,
             $billingAddressId,
             $billingAddress,
-            $paymentMethodId
+            $paymentMethodId,
+            $giftCardCode
         ) {
             $items = $this->cartRepository->listBySessionForUpdate($userId, $guestSessionId);
 
@@ -313,6 +315,77 @@ class CartService
             }
 
             $this->assertCheckoutOrderIntegrity($order, $items->count(), $subtotal, $vatRate, $total);
+
+            // Handle gift card if provided
+            $giftCardAmountApplied = 0;
+            if ($giftCardCode) {
+                $purchase = \App\Models\GiftCardPurchase::where('code', $giftCardCode)
+                    ->where('status', 'active')
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($purchase && !$purchase->isExpired() && $purchase->balance > 0) {
+                    $giftCardAmountApplied = min((float) $purchase->balance, $total);
+                    $newBalance = max(0, (float) $purchase->balance - $giftCardAmountApplied);
+                    $purchase->update([
+                        'balance' => $newBalance,
+                        ...($newBalance <= 0 ? ['status' => 'used'] : []),
+                    ]);
+
+                    \App\Models\GiftCardUsage::create([
+                        'gift_card_purchase_id' => $purchase->id,
+                        'amount_used' => $giftCardAmountApplied,
+                        'used_for_type' => 'product',
+                        'used_for_id' => $order->id,
+                        'used_for_name' => $customerName ?? 'Order #' . $order->reference,
+                        'used_for' => 'order',
+                        'notes' => 'Applied at online checkout',
+                        'verified_by' => $userId,
+                    ]);
+
+                    // Update order meta with gift card info
+                    $order->update([
+                        'meta' => array_merge($order->meta ?? [], [
+                            'gift_card_code' => $giftCardCode,
+                            'gift_card_amount' => $giftCardAmountApplied,
+                        ]),
+                    ]);
+
+                    // If gift card fully covers the order, mark as paid immediately
+                    if ($giftCardAmountApplied >= $total) {
+                        $order->update([
+                            'status' => \App\Enums\OrderStatus::Paid->value,
+                            'paid_at' => now(),
+                        ]);
+                        $this->cartRepository->deleteBySession($userId, $guestSessionId);
+
+                        if (!$userId) {
+                            $this->createLeadFromOrder($customerName, $customerEmail, $customerPhone, $shippingAddress);
+                        }
+
+                        // Send gift card balance notification
+                        if ($purchase->buyer_email) {
+                            \Illuminate\Support\Facades\Mail::to($purchase->buyer_email)->queue(new \App\Mail\GiftCardBalanceDeductedMail($purchase, $giftCardAmountApplied));
+                        }
+
+                        // Send order confirmation
+                        if ($customerEmail) {
+                            \Illuminate\Support\Facades\Mail::to($customerEmail)->queue(new \App\Mail\OrderConfirmedMail($order, $customerEmail));
+                        }
+
+                        return $order->load(['items.product.files', 'latestPayment', 'shippingAddress.country', 'billingAddress.country']);
+                    }
+
+                    // Reduce the order amount for partial gift card coverage
+                    $remainingAmount = $total - $giftCardAmountApplied;
+                    $order->update(['amount' => $remainingAmount]);
+
+                    // Send gift card balance notification
+                    if ($purchase->buyer_email) {
+                        \Illuminate\Support\Facades\Mail::to($purchase->buyer_email)->queue(new \App\Mail\GiftCardBalanceDeductedMail($purchase, $giftCardAmountApplied));
+                    }
+                }
+            }
 
             $meta = $guestSessionId ? ['guest_session_id' => $guestSessionId] : [];
             [$stripeCustomerId, $stripePaymentMethodId] = $this->resolvePaymentMethod($user, $paymentMethodId);

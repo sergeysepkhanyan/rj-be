@@ -68,6 +68,7 @@ class CheckoutCartRequest extends BaseFormRequest
         'billingSameAsShipping' => 'billing_same_as_shipping',
         'paymentMethodId' => 'payment_method_id',
         'paymentMethodToken' => 'payment_method_token',
+        'giftCardCode' => 'gift_card_code',
     ];
 
     public function rules(): array
@@ -100,6 +101,7 @@ class CheckoutCartRequest extends BaseFormRequest
             'billingAddress.city' => ['required_without_all:billingAddressId,billingSameAsShipping', 'string', 'max:100'],
             'billingAddress.countryId' => ['required_without_all:billingAddressId,billingSameAsShipping', 'integer', 'exists:countries,id'],
             'billingAddress.zipCode' => ['nullable', 'string', 'max:20'],
+            'giftCardCode' => ['nullable', 'string', 'max:255'],
         ];
     }
 }

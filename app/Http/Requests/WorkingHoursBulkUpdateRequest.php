@@ -64,7 +64,8 @@ class WorkingHoursBulkUpdateRequest extends BaseFormRequest
                     );
                 }
 
-                if ($start && $end && $start >= $end) {
+                // 00:00 means midnight (end of day) — always valid as a closing time
+                if ($start && $end && $end !== '00:00' && $start >= $end) {
                     $validator->errors()->add(
                         "days.$i.endTime",
                         __('validation_scoped.working_hours.end_after_start')
@@ -89,7 +90,8 @@ class WorkingHoursBulkUpdateRequest extends BaseFormRequest
                 }
 
                 if ($bs && $be && $start && $end) {
-                    if ($bs < $start || $be > $end) {
+                    // When end is 00:00 (midnight), break end only needs to be after start
+                    if ($bs < $start || ($end !== '00:00' && $be > $end)) {
                         $validator->errors()->add(
                             "days.$i.breakStartTime",
                             __('validation_scoped.working_hours.break_within_hours')

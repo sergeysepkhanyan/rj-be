@@ -110,6 +110,7 @@ class ProductService
     {
         return Product::with(['details', 'files', 'productCategory'])
             ->where('status', 'active')
+            ->whereIn('sales_channel', ['online', 'both'])
             ->where('max_quantity', '>', 0)
             ->orderByDesc('created_at')
             ->paginate($perPage, ['*'], 'page', $page);
@@ -151,14 +152,17 @@ class ProductService
         });
     }
 
-    public function bulkUpdateStatus(array $ids, string $status): int
+    public function bulkUpdateStatus(array $ids, string $status, ?string $salesChannel = null): int
     {
         if (empty($ids)) {
             return 0;
         }
 
-        return Product::whereIn('id', $ids)->update([
-            'status' => $status,
-        ]);
+        $data = ['status' => $status];
+        if ($salesChannel) {
+            $data['sales_channel'] = $salesChannel;
+        }
+
+        return Product::whereIn('id', $ids)->update($data);
     }
 }

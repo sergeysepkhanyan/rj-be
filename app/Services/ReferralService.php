@@ -27,10 +27,20 @@ class ReferralService
         return $this->referralRepository->findByName($name);
     }
 
+    public function create(array $data): Referral
+    {
+        return $this->referralRepository->create($data);
+    }
+
     public function update(int $id, array $data): Referral
     {
         $referral = $this->referralRepository->find($id);
         return $this->referralRepository->update($referral, $data);
     }
-}
 
+    public function delete(int $id): void
+    {
+        $referral = $this->referralRepository->find($id);
+        $this->referralRepository->delete($referral);
+    }
+}

@@ -102,15 +102,7 @@ class StripeWebhookController extends Controller
 
                     $wasAlreadyPaid = $previousOrderStatus === OrderStatus::Paid->value;
 
-                    try {
-                        $order = $this->orderService->markPaid($order, ['stripe_payment_intent_id' => $paymentIntentId]);
-                    } catch (\InvalidArgumentException $e) {
-                        \Log::warning('[stripe][webhook] Cannot mark order paid - invalid transition', [
-                            'order_id' => $order->id, 'status' => $order->status, 'error' => $e->getMessage(),
-                        ]);
-                        DB::commit();
-                        return response()->json(['ok' => true]);
-                    }
+                    $order = $this->orderService->markPaid($order, ['stripe_payment_intent_id' => $paymentIntentId]);
                     $order->refresh();
 
                     if ($order->user_id) {
@@ -135,44 +127,34 @@ class StripeWebhookController extends Controller
                     if ($order->orderable && $order->getTypeValue() === 'booking') {
                         $booking = $order->orderable;
 
-                        // Re-validate slot availability before confirming
-                        $slotStillAvailable = $this->bookingService->isSlotAvailable($booking);
-                        if (!$slotStillAvailable) {
-                            \Log::error('[stripe][webhook] Booking slot no longer available, initiating refund', [
+                        // Re-validate slot availability before confirming the booking
+                        if (!$this->bookingService->areSlotsStillAvailable($booking)) {
+                            // Slot conflict: cancel the booking and initiate refund
+                            $this->bookingService->cancelBookingDueToSlotConflict($booking);
+                            \Log::warning('[stripe][webhook] Booking cancelled due to slot conflict after payment', [
                                 'booking_id' => $booking->id,
-                                'order_id' => $order->id,
+                                'payment_intent_id' => $paymentIntentId,
                             ]);
-                            // Refund the payment since slot is gone
-                            try {
-                                $this->stripeClient->createRefund(['payment_intent' => $paymentIntentId]);
-                            } catch (\Throwable $refundErr) {
-                                \Log::error('[stripe][webhook] Auto-refund failed', ['error' => $refundErr->getMessage()]);
-                            }
-                            $this->bookingRepo->update($booking, [
-                                'status' => 'cancelled',
-                                'payment_status' => 'refunded',
-                            ]);
-                            $order = $this->orderService->refund($order, ['reason' => 'slot_unavailable']);
-                            DB::commit();
-                            return response()->json(['ok' => true]);
-                        }
-
-                        $this->bookingRepo->update($booking, [
-                            'status' => 'confirmed',
-                            'payment_status' => 'paid',
-                        ]);
-                        $booking->refresh();
-
-                        // If this booking is part of a batch, mark all bookings in the batch as paid
-                        if ($booking->batch_id) {
-                            $this->bookingService->markBatchBookingsPaid($booking->batch_id);
-                            // Send confirmation for all bookings in batch
-                            $batchBookings = $this->bookingService->getBookingsByBatchId($booking->batch_id);
-                            foreach ($batchBookings as $batchBooking) {
-                                $this->bookingService->sendBookingConfirmation($batchBooking);
-                            }
                         } else {
-                            $this->bookingService->sendBookingConfirmation($booking);
+                            $this->bookingRepo->update($booking, [
+                                'status' => 'confirmed',
+                                'payment_status' => 'paid',
+                            ]);
+                            $booking->refresh();
+
+                            // If this booking is part of a batch, mark all bookings in the batch as paid
+                            if ($booking->batch_id) {
+                                $this->bookingService->markBatchBookingsPaid($booking->batch_id);
+                                // Send confirmation for all bookings in batch
+                                $batchBookings = $this->bookingService->getBookingsByBatchId($booking->batch_id);
+                                foreach ($batchBookings as $batchBooking) {
+                                    if ($batchBooking->status === 'confirmed') {
+                                        $this->bookingService->sendBookingConfirmation($batchBooking);
+                                    }
+                                }
+                            } else {
+                                $this->bookingService->sendBookingConfirmation($booking);
+                            }
                         }
                     }
 
@@ -202,13 +184,7 @@ class StripeWebhookController extends Controller
                 $paymentUpdate['status'] = 'failed';
                 $paymentUpdate['failed_at'] = now();
                 if ($order) {
-                    try {
-                        $order = $this->orderService->cancel($order, ['reason' => 'payment_failed']);
-                    } catch (\InvalidArgumentException $e) {
-                        \Log::warning('[stripe][webhook] Cannot cancel order - invalid transition', [
-                            'order_id' => $order->id, 'status' => $order->status, 'error' => $e->getMessage(),
-                        ]);
-                    }
+                    $order = $this->orderService->cancel($order, ['reason' => 'payment_failed']);
                     $order->refresh();
                     $this->orderService->cancelBookingForOrder($order);
 
@@ -221,13 +197,7 @@ class StripeWebhookController extends Controller
                 $paymentUpdate['status'] = 'cancelled';
                 $paymentUpdate['failed_at'] = now();
                 if ($order) {
-                    try {
-                        $order = $this->orderService->cancel($order, ['reason' => 'canceled']);
-                    } catch (\InvalidArgumentException $e) {
-                        \Log::warning('[stripe][webhook] Cannot cancel order - invalid transition', [
-                            'order_id' => $order->id, 'status' => $order->status, 'error' => $e->getMessage(),
-                        ]);
-                    }
+                    $order = $this->orderService->cancel($order, ['reason' => 'canceled']);
                     $order->refresh();
                     $this->orderService->cancelBookingForOrder($order);
                 }
