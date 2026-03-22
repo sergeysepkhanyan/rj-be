@@ -80,6 +80,9 @@ Route::middleware(['set.locale'])->group(function () {
     Route::post('/gift-cards/purchase', [\App\Http\Controllers\API\GiftCardPurchaseController::class, 'store']);
     Route::post('/gift-cards/confirm', [\App\Http\Controllers\API\GiftCardPurchaseController::class, 'confirm']);
 
+    // Service Packages (public)
+    Route::get('/service-packages', [\App\Http\Controllers\API\ServicePackageController::class, 'index']);
+
     Route::get('/products', [ProductsController::class, 'index']);
     Route::get('/products/by-slug/{slug}', [ProductsController::class, 'getBySlug']);
     Route::get('/product-categories', [ProductCategoriesController::class, 'index']);
@@ -141,6 +144,11 @@ Route::middleware(['set.locale'])->group(function () {
 
         Route::get('/rewards', [RewardsController::class, 'index']);
         Route::post('/rewards/{reward}/redeem', [RewardsController::class, 'redeem']);
+
+        // Service Packages (auth required)
+        Route::get('/service-packages/my', [\App\Http\Controllers\API\ServicePackageController::class, 'myPackages']);
+        Route::post('/service-packages/purchase', [\App\Http\Controllers\API\ServicePackagePurchaseController::class, 'store']);
+        Route::post('/service-packages/confirm', [\App\Http\Controllers\API\ServicePackagePurchaseController::class, 'confirm']);
 
         Route::get('/bookings', [BookingsController::class, 'index']);
         Route::put('/bookings/{booking}', [BookingsController::class, 'update']);
@@ -325,6 +333,13 @@ Route::middleware(['set.locale'])->group(function () {
         Route::get('/admin/gift-card-purchases', [\App\Http\Controllers\API\Admin\GiftCardController::class, 'purchases']);
         Route::post('/admin/gift-card-purchases/{giftCardPurchase}/usage', [\App\Http\Controllers\API\Admin\GiftCardController::class, 'recordUsage']);
         Route::get('/admin/gift-card-usage/search-items', [\App\Http\Controllers\API\Admin\GiftCardController::class, 'searchItems']);
+
+        // Service Packages management
+        Route::get('/admin/service-packages', [\App\Http\Controllers\API\Admin\ServicePackageController::class, 'index']);
+        Route::post('/admin/service-packages', [\App\Http\Controllers\API\Admin\ServicePackageController::class, 'store']);
+        Route::put('/admin/service-packages/{id}', [\App\Http\Controllers\API\Admin\ServicePackageController::class, 'update']);
+        Route::delete('/admin/service-packages/{id}', [\App\Http\Controllers\API\Admin\ServicePackageController::class, 'destroy']);
+        Route::get('/admin/clients/{user}/packages', [\App\Http\Controllers\API\Admin\ServicePackageController::class, 'clientPackages']);
 
         Route::post('/admin/booking/break', [AdminBookingsController::class, 'storeBreak']);
         Route::delete('/admin/booking/break/{booking}', [AdminBookingsController::class, 'deleteBreak']);

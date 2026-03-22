@@ -51,7 +51,7 @@ class AdminOrderResource extends JsonResource
             'price' => (string) $subtotal,
             'subtotal' => (string) $subtotal,
             'tax' => (string) $tax,
-            'total' => (string) $this->amount,
+            'total' => (string) round($subtotal + $tax - ($discountAmount ?? 0), 2),
             'amount' => (string) $this->amount,
             'quantity' => $quantity,
             'address' => $address,
@@ -78,6 +78,11 @@ class AdminOrderResource extends JsonResource
                 ? $this->orderable->gift_card_code
                 : ($this->meta['gift_card_code'] ?? null),
             'giftCardAmount' => $this->meta['gift_card_amount'] ?? null,
+            'isPackageBooking' => (bool) ($this->meta['is_package_booking'] ?? (
+                $this->type === 'booking' && $this->relationLoaded('orderable') && $this->orderable instanceof \App\Models\Booking
+                    ? $this->orderable->is_package_booking
+                    : false
+            )),
             'returnRequest' => $this->whenLoaded('orderReturn', function () {
                 if (!$this->orderReturn) {
                     return null;
@@ -114,6 +119,11 @@ class AdminOrderResource extends JsonResource
                 $subtotal = round($totalAmount / (1 + $vatRate), 2);
                 $tax = round($totalAmount - $subtotal, 2);
             }
+        } elseif (in_array($this->type, ['gift_card', 'service_package'])) {
+            // Gift cards & service packages: price is the base price, tax is added on top.
+            // The stored amount is the base price; total = amount + tax.
+            $subtotal = (float) $this->amount;
+            $tax = round($subtotal * $vatRate, 2);
         } elseif ($this->type === 'booking' && $this->orderable instanceof Booking) {
             // Get all bookings (including batch bookings)
             $allBookings = $this->resource->getAllBookings();
@@ -171,6 +181,10 @@ class AdminOrderResource extends JsonResource
                     }
                 }
             }
+        } elseif ($this->type === 'service_package') {
+            $productName = $this->meta['service_package_name'] ?? 'Service Package';
+            $productId = $this->meta['service_package_id'] ?? null;
+            $quantity = 1;
         } elseif ($this->type === 'booking' && $this->orderable instanceof Booking) {
             // Get all bookings (including batch bookings)
             $allBookings = $this->resource->getAllBookings();

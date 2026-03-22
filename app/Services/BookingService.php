@@ -42,9 +42,9 @@ class BookingService
         protected OrderService $orderService,
         protected PaymentService $paymentService,
         protected PaymentRepositoryInterface $paymentRepository,
-        protected DiscountSettingService $discountSettingService,
         protected ReferralRewardService $referralRewardService,
         protected LoyaltyService $loyaltyService,
+        protected ServicePackageService $servicePackageService,
     ) {}
 
     public function getAllBooking()
@@ -548,6 +548,32 @@ class BookingService
                 }
             }
 
+            // Handle service package booking
+            $isPackageBooking = false;
+            $servicePackagePurchaseId = $data['service_package_purchase_id'] ?? null;
+            $servicePackageItemId = $data['service_package_item_id'] ?? null;
+            if ($servicePackagePurchaseId && $servicePackageItemId && $user) {
+                $packagePurchase = \App\Models\ServicePackagePurchase::where('id', $servicePackagePurchaseId)
+                    ->where('user_id', $user->id)
+                    ->where('status', 'active')
+                    ->first();
+
+                if ($packagePurchase) {
+                    $isPackageBooking = true;
+                    $bookingData['service_package_purchase_id'] = $packagePurchase->id;
+                    $bookingData['is_package_booking'] = true;
+                    $bookingData['price'] = 0;
+                    $bookingData['final_price'] = 0;
+                    $bookingData['discount_type'] = 'none';
+                    $bookingData['discount_value'] = null;
+                    $bookingData['discount_label'] = null;
+                    $bookingData['payment_mode'] = 'pay_later';
+                    $bookingData['payment_status'] = 'package';
+                    $bookingData['status'] = 'confirmed';
+                    $bookingData['expires_at'] = null;
+                }
+            }
+
             $booking = $this->bookingRepository->create($bookingData);
 
             foreach ($segments as $i => $seg) {
@@ -569,6 +595,17 @@ class BookingService
                 $order = $this->orderService->createForBooking($booking, 'pay_later');
                 // Mark order as gift
                 $order->update(['status' => 'gift']);
+                return $booking->fresh()->load(['services.bookable', 'order.latestPayment', 'bookingReferral.referrer']);
+            }
+
+            // Handle package booking — redeem visit and skip payment
+            if ($isPackageBooking && isset($packagePurchase) && $servicePackageItemId) {
+                $this->servicePackageService->redeemVisit($packagePurchase, (int) $servicePackageItemId, $booking);
+                $order = $this->orderService->createForBooking($booking, 'pay_later');
+                $order->update([
+                    'status' => 'gift',
+                    'meta' => array_merge($order->meta ?? [], ['is_package_booking' => true]),
+                ]);
                 return $booking->fresh()->load(['services.bookable', 'order.latestPayment', 'bookingReferral.referrer']);
             }
 
@@ -964,10 +1001,6 @@ class BookingService
             }
         }
 
-        if ($serviceCount > 0) {
-            return $this->discountSettingService->getAutomaticDiscount($serviceCount);
-        }
-
         return [
             'discount_percent' => 0,
             'discount_label' => null,
@@ -1135,6 +1168,11 @@ class BookingService
 
         // Cancel referral if applicable
         $this->referralRewardService->cancelReferral($booking);
+
+        // Reverse package usage if applicable
+        if ($booking->is_package_booking) {
+            $this->servicePackageService->reverseUsage($booking);
+        }
 
         // Re-check loyalty tier after cancellation (may downgrade)
         if ($booking->user_id) {

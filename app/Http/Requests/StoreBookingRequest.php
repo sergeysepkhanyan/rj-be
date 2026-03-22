@@ -25,6 +25,8 @@ class StoreBookingRequest extends BaseFormRequest
         'guestSessionId' => 'guest_session_id',
         'referrerUserId' => 'referrer_user_id',
         'complimentaryRewardId' => 'complimentary_reward_id',
+        'servicePackagePurchaseId' => 'service_package_purchase_id',
+        'servicePackageItemId' => 'service_package_item_id',
     ];
 
     public function rules(): array
@@ -63,6 +65,8 @@ class StoreBookingRequest extends BaseFormRequest
             'guestSessionId' => ['nullable', 'string', 'max:64'],
             'referrerUserId' => ['nullable', 'integer', 'exists:users,id'],
             'complimentaryRewardId' => ['nullable', 'integer', 'exists:complimentary_rewards,id'],
+            'servicePackagePurchaseId' => ['nullable', 'integer', 'exists:service_package_purchases,id'],
+            'servicePackageItemId' => ['nullable', 'integer', 'exists:service_package_items,id'],
         ];
     }
 

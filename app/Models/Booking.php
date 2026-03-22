@@ -69,6 +69,8 @@ class Booking extends Model
         'active_slot_key',
         'is_complimentary',
         'complimentary_reward_id',
+        'service_package_purchase_id',
+        'is_package_booking',
     ];
 
     protected $casts = [
@@ -81,6 +83,7 @@ class Booking extends Model
         'expires_at' => 'datetime',
         'post_service_followup_sent_at' => 'datetime',
         'is_complimentary' => 'boolean',
+        'is_package_booking' => 'boolean',
     ];
 
     public function client(): BelongsTo
@@ -124,6 +127,11 @@ class Booking extends Model
     public function complimentaryReward(): BelongsTo
     {
         return $this->belongsTo(ComplimentaryReward::class);
+    }
+
+    public function servicePackagePurchase(): BelongsTo
+    {
+        return $this->belongsTo(ServicePackagePurchase::class);
     }
 
     public function isBreak(): bool

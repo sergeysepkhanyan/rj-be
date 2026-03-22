@@ -183,6 +183,11 @@ class User extends Authenticatable implements JWTSubject, CanResetPasswordContra
     {
         return $this->hasMany(ComplimentaryReward::class);
     }
+
+    public function servicePackagePurchases(): HasMany
+    {
+        return $this->hasMany(ServicePackagePurchase::class);
+    }
     public function scopeMasters($query)
     {
         return $query->whereHas('role', function ($q) {
