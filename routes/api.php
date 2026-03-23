@@ -14,6 +14,7 @@ use App\Http\Controllers\API\Admin\PostsController as AdminPostsController;
 use App\Http\Controllers\API\Admin\ProductCategoriesController as AdminProductCategoriesController;
 use App\Http\Controllers\API\Admin\ProductImportsController;
 use App\Http\Controllers\API\Admin\ProductsController as AdminProductsController;
+use App\Http\Controllers\API\Admin\ProductDiscountTiersController;
 use App\Http\Controllers\API\Admin\ReferralsController;
 use App\Http\Controllers\API\Admin\ReferralRewardsConfigController;
 use App\Http\Controllers\API\RewardsController;
@@ -136,7 +137,7 @@ Route::middleware(['set.locale'])->group(function () {
         Route::patch('/user/details', [UsersController::class, 'updateDetails']);
         Route::patch('/user/change-password', [UsersController::class, 'changePassword']);
         Route::middleware('auth:api')->get('me', function () {
-            $user = auth()->user()->load(['role', 'referral'])->loadCount('clientBookings');
+            $user = auth()->user()->load(['role', 'referral', 'productDiscountTier'])->loadCount('clientBookings');
 
             return ApiResponse::success([
                 'user' => new UserResource($user),
@@ -145,6 +146,8 @@ Route::middleware(['set.locale'])->group(function () {
 
         Route::get('/rewards', [RewardsController::class, 'index']);
         Route::post('/rewards/{reward}/redeem', [RewardsController::class, 'redeem']);
+
+        Route::get('/product-discount-info', [ProductDiscountTiersController::class, 'userDiscountInfo']);
 
         // Service Packages (auth required)
         Route::get('/service-packages/my', [\App\Http\Controllers\API\ServicePackageController::class, 'myPackages']);
@@ -288,6 +291,11 @@ Route::middleware(['set.locale'])->group(function () {
         Route::get('/admin/referral-rewards-config', [ReferralRewardsConfigController::class, 'show']);
         Route::put('/admin/referral-rewards-config', [ReferralRewardsConfigController::class, 'update']);
 
+        Route::get('/admin/product-discount-tiers', [ProductDiscountTiersController::class, 'index']);
+        Route::post('/admin/product-discount-tiers', [ProductDiscountTiersController::class, 'store']);
+        Route::put('/admin/product-discount-tiers/{id}', [ProductDiscountTiersController::class, 'update']);
+        Route::delete('/admin/product-discount-tiers/{id}', [ProductDiscountTiersController::class, 'destroy']);
+
         Route::get('/admin/clients/{user}/referrals', [ClientsController::class, 'referrals']);
 
         Route::post('/admin/orders', [AdminOrdersController::class, 'store']);
@@ -374,6 +382,7 @@ Route::middleware(['set.locale'])->group(function () {
     Route::get('/faqs', [FaqController::class, 'index']);
     Route::get('/referrals', [ReferralsController::class, 'index']);
     Route::get('/loyalty-tiers', [ReferralsController::class, 'publicTiers']);
+    Route::get('/product-discount-tiers', [ProductDiscountTiersController::class, 'publicTiers']);
 
     Route::get('/tracking-config/public', [TrackingConfigController::class, 'public']);
     Route::get('/discount-setting/public', [DiscountSettingController::class, 'public']);

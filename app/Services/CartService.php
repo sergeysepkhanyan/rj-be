@@ -29,6 +29,7 @@ class CartService
         protected CartItemRepositoryInterface $cartRepository,
         protected OrderRepositoryInterface $orderRepository,
         protected PaymentService $paymentService,
+        protected ProductDiscountTierService $productDiscountTierService,
     ) {}
 
     public function listCart(?string $guestSessionId = null): Collection
@@ -233,11 +234,24 @@ class CartService
                 }
             }
 
+            $user = $userId ? User::query()->find($userId) : null;
+
+            // Apply product discount tier if user has one
+            $productDiscountPercentage = 0.0;
+            $productDiscountAmount = 0.0;
+            $subtotalBeforeDiscount = $subtotal;
+            if ($user) {
+                $user->load('productDiscountTier');
+                $productDiscountPercentage = $this->productDiscountTierService->getDiscountForUser($user);
+                if ($productDiscountPercentage > 0) {
+                    $productDiscountAmount = round($subtotal * ($productDiscountPercentage / 100), 2);
+                    $subtotal -= $productDiscountAmount;
+                }
+            }
+
             $vatRate = 0.05;
             $tax = $subtotal * $vatRate;
             $total = $subtotal + $tax;
-
-            $user = $userId ? User::query()->find($userId) : null;
 
             if ($user) {
                 $shippingName = $shippingAddress['name'] ?? null;
@@ -279,12 +293,14 @@ class CartService
                 'delivery_status' => 'ordered',
                 'delivery_status_updated_at' => now(),
                 'reference' => $this->makeReference(),
-                'meta' => [
+                'meta' => array_filter([
                     'guest_session_id' => $guestSessionId,
                     'customer_name' => $customerName,
                     'customer_email' => $customerEmail,
                     'customer_phone' => $customerPhone,
-                ],
+                    'product_discount_percentage' => $productDiscountPercentage > 0 ? $productDiscountPercentage : null,
+                    'product_discount_amount' => $productDiscountAmount > 0 ? $productDiscountAmount : null,
+                ], fn ($v) => $v !== null),
             ]);
 
             $this->attachOrderAddresses(
@@ -314,7 +330,7 @@ class CartService
                 ]);
             }
 
-            $this->assertCheckoutOrderIntegrity($order, $items->count(), $subtotal, $vatRate, $total);
+            $this->assertCheckoutOrderIntegrity($order, $items->count(), $subtotalBeforeDiscount, $vatRate, $total, $productDiscountAmount);
 
             // Handle gift card if provided
             $giftCardAmountApplied = 0;
@@ -373,6 +389,11 @@ class CartService
                             \Illuminate\Support\Facades\Mail::to($customerEmail)->queue(new \App\Mail\OrderConfirmedMail($order, $customerEmail));
                         }
 
+                        // Upgrade product discount tier after gift-card-paid order
+                        if ($userId) {
+                            $this->productDiscountTierService->checkAndUpgradeUser($user);
+                        }
+
                         return $order->load(['items.product.files', 'latestPayment', 'shippingAddress.country', 'billingAddress.country']);
                     }
 
@@ -415,7 +436,8 @@ class CartService
         int $expectedItemRows,
         float $expectedSubtotalExVat,
         float $vatRate,
-        float $expectedTotalInclVat
+        float $expectedTotalInclVat,
+        float $discountAmount = 0.0
     ): void {
         $actualRows = (int) OrderItem::query()->where('order_id', $order->id)->count();
         if ($actualRows !== $expectedItemRows) {
@@ -431,7 +453,8 @@ class CartService
             ], 500);
         }
 
-        $computedTotal = $expectedSubtotalExVat + ($expectedSubtotalExVat * $vatRate);
+        $discountedSubtotal = $expectedSubtotalExVat - $discountAmount;
+        $computedTotal = $discountedSubtotal + ($discountedSubtotal * $vatRate);
         if (!$this->moneyClose((float) $order->amount, $expectedTotalInclVat)
             || !$this->moneyClose((float) $order->amount, $computedTotal)) {
             $this->throwValidation([

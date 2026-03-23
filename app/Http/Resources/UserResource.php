@@ -35,6 +35,11 @@ class UserResource extends BaseResource
             'bookingsCount' => $this->client_bookings_count ?? ($this->relationLoaded('clientBookings') ? $this->clientBookings->count() : 0),
             'ordersCount' => 0,
             'referral' => $this->referral ? new ReferralResource($this->referral) : null,
+            'productDiscountTier' => $this->productDiscountTier ? [
+                'id' => $this->productDiscountTier->id,
+                'name' => $this->productDiscountTier->name,
+                'discountPercentage' => $this->productDiscountTier->discount_percentage,
+            ] : null,
             'isTemporaryPassword' => (bool) ($data['is_temporary_password'] ?? false),
         ];
     }

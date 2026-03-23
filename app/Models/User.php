@@ -57,6 +57,7 @@ class User extends Authenticatable implements JWTSubject, CanResetPasswordContra
         'timezone',
         'email_verified_at',
         'status',
+        'product_discount_tier_id',
     ];
 
     protected $casts = [
@@ -172,6 +173,11 @@ class User extends Authenticatable implements JWTSubject, CanResetPasswordContra
     public function manualReferral(): BelongsTo
     {
         return $this->belongsTo(Referral::class, 'manual_referral_id');
+    }
+
+    public function productDiscountTier(): BelongsTo
+    {
+        return $this->belongsTo(ProductDiscountTier::class);
     }
 
     public function bookingReferrals(): HasMany

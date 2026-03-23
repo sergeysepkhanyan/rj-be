@@ -160,6 +160,11 @@ class StripeWebhookController extends Controller
 
                     if ($order->getTypeValue() === 'ecommerce' && !$wasAlreadyPaid) {
                         $this->orderService->sendOrderConfirmation($order);
+
+                        if ($order->user_id) {
+                            app(\App\Services\ProductDiscountTierService::class)
+                                ->checkAndUpgradeUser($order->user);
+                        }
                     }
 
                     // Handle gift card order - create purchase + send emails
