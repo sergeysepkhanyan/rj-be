@@ -192,6 +192,15 @@ class OrderExportService
             $pdf->Cell(30, 7, '-' . number_format($data['discount'], 2) . ' ' . $currency, 0, 1, 'R');
         }
 
+        // Tip
+        if (isset($data['tipAmount']) && $data['tipAmount'] > 0) {
+            $pdf->SetX($totalsX);
+            $pdf->SetTextColor(100, 100, 100);
+            $pdf->Cell(40, 7, 'Tip:', 0, 0, 'L');
+            $pdf->SetTextColor(...$brandColor);
+            $pdf->Cell(30, 7, number_format($data['tipAmount'], 2) . ' ' . $currency, 0, 1, 'R');
+        }
+
         // Total
         $pdf->SetX($totalsX);
         $pdf->SetFillColor(...$brandColor);
@@ -258,6 +267,11 @@ class OrderExportService
         $row++;
         $sheet->setCellValue("C{$row}", 'Tax:');
         $sheet->setCellValue("D{$row}", $data['tax']);
+        if (isset($data['tipAmount']) && $data['tipAmount'] > 0) {
+            $row++;
+            $sheet->setCellValue("C{$row}", 'Tip:');
+            $sheet->setCellValue("D{$row}", $data['tipAmount']);
+        }
         $row++;
         $sheet->setCellValue("C{$row}", 'Total:');
         $sheet->setCellValue("D{$row}", $data['total']);
@@ -421,6 +435,14 @@ class OrderExportService
                 $discountLabel = $data['discountLabel'] ? "Discount ({$data['discountLabel']}):" : 'Discount:';
                 $pdf->Cell(40, 7, $discountLabel, 0, 0, 'L');
                 $pdf->Cell(30, 7, '-' . number_format($data['discount'], 2) . ' ' . $currency, 0, 1, 'R');
+            }
+
+            if (isset($data['tipAmount']) && $data['tipAmount'] > 0) {
+                $pdf->SetX($totalsX);
+                $pdf->SetTextColor(100, 100, 100);
+                $pdf->Cell(40, 7, 'Tip:', 0, 0, 'L');
+                $pdf->SetTextColor(...$brandColor);
+                $pdf->Cell(30, 7, number_format($data['tipAmount'], 2) . ' ' . $currency, 0, 1, 'R');
             }
 
             $pdf->SetX($totalsX);
@@ -596,8 +618,16 @@ class OrderExportService
             }
         }
 
+        // Tip amount (booking orders only)
+        $tipAmount = 0;
+        if ($order->type === 'booking' && $order->orderable instanceof Booking) {
+            $tipAmount = (float) ($order->orderable->tip_amount ?? 0);
+        }
+
         $paymentMethod = null;
-        if ($order->latestPayment?->paymentMethod) {
+        if ($order->type === 'booking' && $order->orderable instanceof Booking && $order->orderable->paid_payment_method) {
+            $paymentMethod = ucfirst(str_replace('_', ' ', $order->orderable->paid_payment_method));
+        } elseif ($order->latestPayment?->paymentMethod) {
             $pm = $order->latestPayment->paymentMethod;
             $paymentMethod = ($pm->brand ? ucfirst($pm->brand) : 'Card') . ' ...' . $pm->last4;
         } elseif ($order->latestPayment?->provider === 'stripe') {
@@ -613,7 +643,8 @@ class OrderExportService
             'tax' => $tax,
             'discount' => $discount,
             'discountLabel' => $discountLabel,
-            'total' => $total,
+            'tipAmount' => $tipAmount,
+            'total' => (float) $total + $tipAmount,
             'paymentMethod' => $paymentMethod,
             'reference' => $order->reference ?? "#{$order->id}",
         ];
