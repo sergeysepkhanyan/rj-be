@@ -130,6 +130,19 @@ class OrderReturnController extends Controller
     }
 
     /**
+     * Get count of pending return requests.
+     * GET /admin/order-returns/pending-count
+     */
+    public function pendingCount(): JsonResponse
+    {
+        $count = OrderReturn::where('status', 'pending')->count();
+
+        return ApiResponse::success([
+            'count' => $count,
+        ]);
+    }
+
+    /**
      * Get return policy.
      * GET /admin/return-policy
      */

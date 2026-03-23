@@ -367,6 +367,7 @@ Route::middleware(['set.locale'])->group(function () {
         Route::get('/admin/orders/export/xlsx', [AdminOrdersController::class, 'exportOrdersXlsx']);
 
         // Order Returns management
+        Route::get('/admin/order-returns/pending-count', [AdminOrderReturnController::class, 'pendingCount']);
         Route::get('/admin/order-returns', [AdminOrderReturnController::class, 'index']);
         Route::patch('/admin/order-returns/{orderReturn}/approve', [AdminOrderReturnController::class, 'approve']);
         Route::patch('/admin/order-returns/{orderReturn}/reject', [AdminOrderReturnController::class, 'reject']);
