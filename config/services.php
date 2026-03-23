@@ -44,4 +44,20 @@ return [
         'client_id' => env('GOOGLE_CLIENT_ID'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Google Places API (reviews on website)
+    |--------------------------------------------------------------------------
+    |
+    | Used to fetch real Google Reviews for display on the frontend.
+    | Enable "Places API (New)" in Google Cloud Console and create an API key.
+    | Find your Place ID at: https://developers.google.com/maps/documentation/places/web-service/place-id
+    |
+    */
+    'google_places' => [
+        'api_key'       => env('GOOGLE_PLACES_API_KEY'),
+        'place_id'      => env('GOOGLE_PLACE_ID'),
+        'cache_minutes' => (int) env('GOOGLE_PLACES_CACHE_MINUTES', 360),
+    ],
+
 ];

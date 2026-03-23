@@ -39,6 +39,7 @@ use App\Http\Controllers\API\CountriesController;
 use App\Http\Controllers\API\EmailVerificationController;
 use App\Http\Controllers\API\FaqController;
 use App\Http\Controllers\API\FilesController;
+use App\Http\Controllers\API\GoogleReviewsController;
 use App\Http\Controllers\API\OrderReturnController;
 use App\Http\Controllers\API\OrdersController;
 use App\Http\Controllers\API\PagesController;
@@ -363,6 +364,8 @@ Route::middleware(['set.locale'])->group(function () {
         Route::patch('/admin/order-returns/{orderReturn}/reject', [AdminOrderReturnController::class, 'reject']);
         Route::get('/admin/return-policy', [AdminOrderReturnController::class, 'policy']);
         Route::put('/admin/return-policy', [AdminOrderReturnController::class, 'updatePolicy']);
+
+        Route::post('/admin/google-reviews/refresh', [GoogleReviewsController::class, 'refresh']);
     });
 
     Route::get('/masters', [StaffController::class, 'getMasters']);
@@ -376,6 +379,8 @@ Route::middleware(['set.locale'])->group(function () {
     Route::get('/discount-setting/public', [DiscountSettingController::class, 'public']);
 
     Route::get('/return-policy', [OrderReturnController::class, 'policy']);
+
+    Route::get('/google-reviews', [GoogleReviewsController::class, 'index']);
 });
 
 Route::post('/webhooks/tabby', [TabbyWebhookController::class, 'handle']);
