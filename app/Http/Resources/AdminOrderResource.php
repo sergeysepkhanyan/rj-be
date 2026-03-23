@@ -51,7 +51,7 @@ class AdminOrderResource extends JsonResource
             'price' => (string) $subtotal,
             'subtotal' => (string) $subtotal,
             'tax' => (string) $tax,
-            'total' => (string) round($subtotal + $tax - ($discountAmount ?? 0), 2),
+            'total' => (string) round($subtotal + $tax - ($discountAmount ?? 0) + $this->resolveTipAmount(), 2),
             'amount' => (string) $this->amount,
             'quantity' => $quantity,
             'address' => $address,
@@ -417,5 +417,13 @@ class AdminOrderResource extends JsonResource
         }
 
         return [$discountType, $discountValue, $discountLabel, $discountAmount];
+    }
+
+    protected function resolveTipAmount(): float
+    {
+        if ($this->type === 'booking' && $this->relationLoaded('orderable') && $this->orderable instanceof Booking) {
+            return (float) ($this->orderable->tip_amount ?? 0);
+        }
+        return 0.0;
     }
 }

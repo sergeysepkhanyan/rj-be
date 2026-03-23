@@ -14,9 +14,9 @@ class UpdateProductDiscountTierRequest extends BaseFormRequest
     {
         return [
             'name' => ['sometimes', 'string', 'max:255'],
-            'name_ar' => ['nullable', 'string', 'max:255'],
-            'spend_threshold' => ['sometimes', 'numeric', 'min:0'],
-            'discount_percentage' => ['sometimes', 'numeric', 'min:0', 'max:100'],
+            'nameAr' => ['nullable', 'string', 'max:255'],
+            'spendThreshold' => ['sometimes', 'numeric', 'min:0'],
+            'discountPercentage' => ['sometimes', 'numeric', 'min:0', 'max:100'],
             'enabled' => ['nullable', 'boolean'],
         ];
     }

@@ -14,9 +14,9 @@ class StoreProductDiscountTierRequest extends BaseFormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'name_ar' => ['nullable', 'string', 'max:255'],
-            'spend_threshold' => ['required', 'numeric', 'min:0'],
-            'discount_percentage' => ['required', 'numeric', 'min:0', 'max:100'],
+            'nameAr' => ['nullable', 'string', 'max:255'],
+            'spendThreshold' => ['required', 'numeric', 'min:0'],
+            'discountPercentage' => ['required', 'numeric', 'min:0', 'max:100'],
             'enabled' => ['nullable', 'boolean'],
         ];
     }
