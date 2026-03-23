@@ -380,6 +380,38 @@ class ClientsController extends Controller
                 ];
             }
 
+            // Get active package purchases for this user
+            $activePackages = \App\Models\ServicePackagePurchase::where('user_id', $user->id)
+                ->where('status', 'active')
+                ->where(function ($q) {
+                    $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
+                })
+                ->with(['servicePackage.items.subService'])
+                ->get()
+                ->map(function ($purchase) {
+                    return [
+                        'purchaseId' => $purchase->id,
+                        'packageName' => $purchase->servicePackage?->name,
+                        'expiresAt' => $purchase->expires_at?->toIso8601String(),
+                        'items' => $purchase->servicePackage?->items->map(function ($item) use ($purchase) {
+                            $usedCount = $purchase->usages()->where('service_package_item_id', $item->id)->count();
+                            $remaining = $item->isUnlimited() ? -1 : max(0, $item->total_visits - $usedCount);
+                            // Skip items with no remaining visits
+                            if (!$item->isUnlimited() && $remaining <= 0) return null;
+                            return [
+                                'itemId' => $item->id,
+                                'subServiceId' => $item->sub_service_id,
+                                'subServiceName' => $item->subService?->name,
+                                'totalVisits' => $item->total_visits,
+                                'isUnlimited' => $item->isUnlimited(),
+                                'remainingVisits' => $remaining,
+                            ];
+                        })->filter()->values(),
+                    ];
+                })
+                ->filter(fn ($p) => $p['items']->isNotEmpty())
+                ->values();
+
             $results[] = [
                 'id' => $user->id,
                 'type' => 'user',
@@ -387,6 +419,7 @@ class ClientsController extends Controller
                 'phone' => $user->mobile,
                 'email' => $user->email,
                 'discount' => $discount,
+                'activePackages' => $activePackages,
             ];
         }
 

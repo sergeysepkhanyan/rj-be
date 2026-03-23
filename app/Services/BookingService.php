@@ -449,6 +449,15 @@ class BookingService
     {
         $user = auth()->user();
 
+        // If admin is creating a booking on behalf of a client, use the client's user
+        $clientUserId = $data['client_user_id'] ?? $data['clientUserId'] ?? null;
+        if ($clientUserId && $user && in_array(optional($user->role)->slug, ['admin', 'superadmin'])) {
+            $clientUser = User::find($clientUserId);
+            if ($clientUser) {
+                $user = $clientUser;
+            }
+        }
+
         $tz = $data['timezone'] ?? 'UTC';
         $date = trim($data['date'] ?? '');
 
