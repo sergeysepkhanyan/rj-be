@@ -117,6 +117,12 @@ class OrdersController extends Controller
                 } elseif ($order->getTypeValue() === 'ecommerce') {
                     // Send confirmation email for ecommerce orders
                     $this->orderService->sendOrderConfirmation($order);
+
+                    // Upgrade product discount tier
+                    if ($order->user_id) {
+                        app(\App\Services\ProductDiscountTierService::class)
+                            ->checkAndUpgradeUser($order->user);
+                    }
                 } elseif ($order->getTypeValue() === 'booking' && $order->orderable instanceof Booking) {
                     // Update booking status for booking orders
                     $booking = $order->orderable;
