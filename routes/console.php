@@ -10,7 +10,7 @@ Artisan::command('inspire', function () {
 
 Schedule::command('bookings:expire-pending')->everyFiveMinutes();
 
-Schedule::command('bookings:send-post-service-followup')->everyFifteenMinutes();
+Schedule::command('bookings:send-post-service-followup')->everyFiveMinutes();
 
 // Send inventory alerts daily at 9 AM
 Schedule::command('inventory:send-alerts')->dailyAt('09:00');

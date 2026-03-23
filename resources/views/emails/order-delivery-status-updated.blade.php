@@ -95,6 +95,10 @@
                         <div style="font-size:12px; color:#666; line-height:1.6;">
                             If you have any questions about your order, please contact us and mention order #{{ $order['reference'] ?? $order['id'] ?? '' }}.
                         </div>
+
+                        @if($isDelivered)
+                            @include('emails.partials.review-request')
+                        @endif
                     </td>
                 </tr>
 

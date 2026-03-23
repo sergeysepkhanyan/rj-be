@@ -13,12 +13,12 @@ class SendBookingPostServiceFollowupCommand extends Command
 {
     protected $signature = 'bookings:send-post-service-followup';
 
-    protected $description = 'Send thank-you / review email 1h after the last booked service ends (paid bookings only)';
+    protected $description = 'Send thank-you / review email 5 min after the last booked service ends (paid bookings only)';
 
     public function handle(): int
     {
-        $delayHours = max(0, (int) config('booking.post_service_followup_delay_hours', 1));
-        $threshold = now()->utc()->subHours($delayHours);
+        $delayMinutes = max(0, (int) config('booking.post_service_followup_delay_minutes', 5));
+        $threshold = now()->utc()->subMinutes($delayMinutes);
 
         $query = Booking::query()
             ->onlyBookings()

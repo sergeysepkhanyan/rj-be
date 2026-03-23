@@ -42,3 +42,8 @@ Delivery Address:
 @endif
 
 If you have any questions about your order, please contact us and mention order #{{ $order['reference'] ?? $order['id'] ?? '' }}.
+
+@if($isDelivered && config('mail.review_url'))
+⭐⭐⭐⭐⭐
+Your feedback means a lot to us — please take a moment to leave a review here: {{ config('mail.review_url') }}
+@endif
