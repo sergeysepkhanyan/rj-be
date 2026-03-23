@@ -1112,6 +1112,7 @@ class BookingService
             $this->orderService->refund($order, ['reason' => 'booking_cancelled']);
             $booking->payment_status = 'refunded';
         } elseif ($booking->payment_status === 'paid' && ! $canRefund) {
+            // Non-refundable cancellation — keep payment as paid (money retained)
             if ($order) {
                 $order->update([
                     'status' => 'cancelled',

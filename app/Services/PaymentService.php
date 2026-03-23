@@ -412,6 +412,7 @@ class PaymentService
         $raw['refund'] = $refund;
 
         $this->paymentRepository->update($payment, [
+            'status' => 'refunded',
             'raw' => $raw,
         ]);
 
