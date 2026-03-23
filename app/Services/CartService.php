@@ -612,7 +612,7 @@ class CartService
             'additional_address' => $addressData['additional_address'] ?? null,
             'city' => $addressData['city'],
             'country_id' => $addressData['country_id'] ?? $addressData['countryId'] ?? null,
-            'zip_code' => $addressData['zip_code'],
+            'zip_code' => $addressData['zip_code'] ?? $addressData['zipCode'] ?? null,
         ];
     }
 
