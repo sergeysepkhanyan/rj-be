@@ -468,10 +468,6 @@ class BookingService
 
         $segments = $this->buildServiceSegmentsFromRequest($date, $rawServices, $tz);
 
-        $this->assertNoServiceOverlap($segments);
-        $this->assertNoMasterOverlap($segments);
-        $this->validateRootTimeMatchesSegments($data, $segments);
-
         $pricing = $this->buildPricingData([
             ...$data,
             'services' => $this->normalizeServicesForPricing($segments),
@@ -643,10 +639,6 @@ class BookingService
 
         $segments = $this->buildServiceSegmentsFromRequest($date, $rawServices, $tz);
 
-        $this->assertNoServiceOverlap($segments, $booking->id);
-        $this->assertNoMasterOverlap($segments, $booking->id);
-        $this->validateRootTimeMatchesSegments($data, $segments);
-
         $pricing = $this->buildPricingData([
             ...$data,
             'services' => $this->normalizeServicesForPricing($segments),
@@ -809,38 +801,6 @@ class BookingService
         });
 
         return $segments;
-    }
-
-    protected function validateRootTimeMatchesSegments(array $data, array $segments): void
-    {
-        $rootStart = $data['start_time'] ?? $data['startTime'] ?? null;
-        $rootEnd = $data['end_time'] ?? $data['endTime'] ?? null;
-
-        if (! $rootStart && ! $rootEnd) {
-            return;
-        }
-
-        $uniqueDates = collect($segments)->pluck('date')->unique();
-        if ($uniqueDates->count() > 1) {
-            return;
-        }
-
-        $min = substr($segments[0]['start_time'], 0, 5);
-        $max = substr($segments[count($segments) - 1]['end_time'], 0, 5);
-
-        if ($rootStart && $rootStart !== $min) {
-            $this->throwValidation(
-                ['startTime' => __('validation.booking.root_start_must_match', ['time' => $min])],
-                'validation.failed'
-            );
-        }
-
-        if ($rootEnd && $rootEnd !== $max) {
-            $this->throwValidation(
-                ['endTime' => __('validation.booking.root_end_must_match', ['time' => $max])],
-                'validation.failed'
-            );
-        }
     }
 
     protected function resolveServiceable(string $type, int $id): Model
@@ -1251,145 +1211,6 @@ class BookingService
         return $booking->fresh()->load(['services.bookable', 'services.master', 'master', 'order.latestPayment']);
     }
 
-    /**
-     * Ensure the same service (bookable) is not booked more than once in an overlapping time slot.
-     * Checks both within the current request segments AND against existing bookings in the DB.
-     */
-    protected function assertNoServiceOverlap(array $segments, ?int $excludeBookingId = null): void
-    {
-        $count = count($segments);
-
-        // 1. Check within the request itself — same service can't appear twice in overlapping slots
-        for ($i = 0; $i < $count; $i++) {
-            $a = $segments[$i];
-            $bookableTypeA = $a['bookable_type'] ?? null;
-            $bookableIdA = (int) ($a['bookable_id'] ?? 0);
-
-            if (! $bookableTypeA || ! $bookableIdA) {
-                continue;
-            }
-
-            $aStart = $this->parseTimeToCarbon($a['date'], (string) $a['start_time'], (string) $a['timezone']);
-            $aEnd = $this->parseTimeToCarbon($a['date'], (string) $a['end_time'], (string) $a['timezone']);
-
-            for ($j = $i + 1; $j < $count; $j++) {
-                $b = $segments[$j];
-                $bookableTypeB = $b['bookable_type'] ?? null;
-                $bookableIdB = (int) ($b['bookable_id'] ?? 0);
-
-                if ($bookableTypeA !== $bookableTypeB || $bookableIdA !== $bookableIdB) {
-                    continue;
-                }
-
-                $bStart = $this->parseTimeToCarbon($b['date'], (string) $b['start_time'], (string) $b['timezone']);
-                $bEnd = $this->parseTimeToCarbon($b['date'], (string) $b['end_time'], (string) $b['timezone']);
-
-                if ($aStart < $bEnd && $aEnd > $bStart) {
-                    $this->throwValidation(
-                        [
-                            "services.$i.serviceId" => __('validation.booking.same_service_same_time_not_allowed'),
-                            "services.$j.serviceId" => __('validation.booking.same_service_same_time_not_allowed'),
-                        ],
-                        'validation.failed'
-                    );
-                }
-            }
-        }
-
-        // 2. Check against existing bookings in DB
-        foreach ($segments as $index => $seg) {
-            $bookableType = $seg['bookable_type'] ?? null;
-            $bookableId = (int) ($seg['bookable_id'] ?? 0);
-
-            if (! $bookableType || ! $bookableId) {
-                continue;
-            }
-
-            $hasOverlap = $this->bookingRepository->hasServiceOverlap(
-                bookableType: $bookableType,
-                bookableId: $bookableId,
-                date: $seg['date'],
-                startTime: $seg['start_time'],
-                endTime: $seg['end_time'],
-                excludeBookingId: $excludeBookingId,
-                timezone: $seg['timezone']
-            );
-
-            if ($hasOverlap) {
-                $this->throwValidation(
-                    ["services.$index.serviceId" => __('validation.booking.service_already_booked_at_time')],
-                    'validation.failed'
-                );
-            }
-        }
-    }
-
-    /**
-     * Ensure the same master is not double-booked in overlapping time slots.
-     * Checks both within the current request segments AND against existing bookings in the DB.
-     */
-    protected function assertNoMasterOverlap(array $segments, ?int $excludeBookingId = null): void
-    {
-        $count = count($segments);
-
-        // 1. Check within the request itself — same master can't overlap across segments
-        for ($i = 0; $i < $count; $i++) {
-            $a = $segments[$i];
-            $masterA = (int) ($a['master_id'] ?? 0);
-            if (! $masterA) {
-                continue;
-            }
-
-            $aStart = $this->parseTimeToCarbon($a['date'], (string) $a['start_time'], (string) $a['timezone']);
-            $aEnd = $this->parseTimeToCarbon($a['date'], (string) $a['end_time'], (string) $a['timezone']);
-
-            for ($j = $i + 1; $j < $count; $j++) {
-                $b = $segments[$j];
-                $masterB = (int) ($b['master_id'] ?? 0);
-                if ($masterA !== $masterB) {
-                    continue;
-                }
-
-                $bStart = $this->parseTimeToCarbon($b['date'], (string) $b['start_time'], (string) $b['timezone']);
-                $bEnd = $this->parseTimeToCarbon($b['date'], (string) $b['end_time'], (string) $b['timezone']);
-
-                if ($aStart < $bEnd && $aEnd > $bStart) {
-                    $this->throwValidation(
-                        [
-                            "services.$i.masterId" => __('validation.booking.master_overlap_same_timeslot'),
-                            "services.$j.masterId" => __('validation.booking.master_overlap_same_timeslot'),
-                        ],
-                        'validation.failed'
-                    );
-                }
-            }
-        }
-
-        // 2. Check against existing bookings in DB
-        foreach ($segments as $index => $seg) {
-            $masterId = (int) ($seg['master_id'] ?? 0);
-            if (! $masterId) {
-                continue;
-            }
-
-            $hasOverlap = $this->bookingRepository->hasOverlap(
-                masterId: $masterId,
-                date: $seg['date'],
-                startTime: $seg['start_time'],
-                endTime: $seg['end_time'],
-                excludeBookingId: $excludeBookingId,
-                timezone: $seg['timezone']
-            );
-
-            if ($hasOverlap) {
-                $this->throwValidation(
-                    ["services.$index.masterId" => __('validation.booking.master_already_booked_at_time')],
-                    'validation.failed'
-                );
-            }
-        }
-    }
-
     private function isMasterOffOnDate(int $masterId, string $date, string $tz): bool
     {
         $day = CarbonImmutable::createFromFormat('Y-m-d', $date, $tz);
@@ -1454,8 +1275,6 @@ class BookingService
         );
 
         $segments = $this->buildServiceSegmentsFromRequest($date, $rawServices, $tz);
-        $this->assertNoServiceOverlap($segments);
-        $this->assertNoMasterOverlap($segments);
 
         $pricing = $this->buildPricingData([
             ...$data,
