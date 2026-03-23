@@ -33,6 +33,9 @@ class SubServicesController
                 'duration_unit',
                 'show_duration',
                 'vat_enabled',
+                'discount',
+                'discount_type',
+                'discount_amount',
             ]),
             $request->input('items')
         );
@@ -62,6 +65,9 @@ class SubServicesController
                 'duration_unit',
                 'show_duration',
                 'vat_enabled',
+                'discount',
+                'discount_type',
+                'discount_amount',
             ]),
             $request->input('items')
         );
