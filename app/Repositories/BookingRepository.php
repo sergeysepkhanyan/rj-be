@@ -59,9 +59,11 @@ class BookingRepository implements BookingRepositoryInterface
             return null;
         }
 
-        // Normalize date if it's a Carbon instance
+        // Normalize date to Y-m-d format
         if ($date instanceof \DateTimeInterface) {
             $date = $date->format('Y-m-d');
+        } elseif (is_string($date) && strlen($date) > 10) {
+            $date = substr($date, 0, 10);
         }
 
         return "{$masterId}_{$date}_" . substr((string) $startTime, 0, 5) . "_" . substr((string) $endTime, 0, 5);
