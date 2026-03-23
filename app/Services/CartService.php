@@ -597,7 +597,7 @@ class CartService
             ];
         }
 
-        $required = ['name', 'mobile', 'address', 'city', 'country_id', 'zip_code'];
+        $required = ['name', 'mobile', 'address', 'city', 'country_id'];
         foreach ($required as $field) {
             if (empty($addressData[$field])) {
                 $this->throwValidation(['address' => __('validation.cart.address_required')]);
