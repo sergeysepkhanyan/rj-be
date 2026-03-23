@@ -333,6 +333,7 @@ return [
         'same_service_same_time_not_allowed' => 'The same service cannot be booked twice in overlapping time slots.',
         'master_overlap_same_timeslot' => 'The same master cannot be assigned to overlapping time slots, even for different services.',
         'service_already_booked_at_time' => 'This service is already booked at the selected time. Please choose a different time.',
+        'master_already_booked_at_time' => 'This master is already booked at the selected time. Please choose a different time or master.',
     ],
 
     'contact' => [

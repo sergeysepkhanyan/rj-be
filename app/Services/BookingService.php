@@ -468,9 +468,8 @@ class BookingService
 
         $segments = $this->buildServiceSegmentsFromRequest($date, $rawServices, $tz);
 
-        $this->validateSegmentsBasic($segments, $tz);
-        $this->assertNoDuplicateSegments($segments);
-        $this->assertServiceNotAlreadyBooked($segments);
+        $this->assertNoServiceOverlap($segments);
+        $this->assertNoMasterOverlap($segments);
         $this->validateRootTimeMatchesSegments($data, $segments);
 
         $pricing = $this->buildPricingData([
@@ -644,9 +643,8 @@ class BookingService
 
         $segments = $this->buildServiceSegmentsFromRequest($date, $rawServices, $tz);
 
-        $this->validateSegmentsBasic($segments, $tz);
-        $this->assertNoDuplicateSegments($segments);
-        $this->assertServiceNotAlreadyBooked($segments, $booking->id);
+        $this->assertNoServiceOverlap($segments, $booking->id);
+        $this->assertNoMasterOverlap($segments, $booking->id);
         $this->validateRootTimeMatchesSegments($data, $segments);
 
         $pricing = $this->buildPricingData([
@@ -1239,120 +1237,15 @@ class BookingService
         return $booking->fresh()->load(['services.bookable', 'services.master', 'master', 'order.latestPayment']);
     }
 
-    protected function validateSegmentsBasic(array $segments, string $tz): void
-    {
-        $now = Carbon::now($tz);
-
-        foreach ($segments as $seg) {
-            $date = $seg['date'];
-
-            $hours = $this->getWorkingHours($date, $tz);
-            if ($hours['is_closed']) {
-                $this->throwValidation(
-                    ['date' => __('validation.booking.closed_day')],
-                    'validation.failed'
-                );
-            }
-
-            $masterId = (int) ($seg['master_id'] ?? 0);
-            if ($masterId && $this->isMasterOffOnDate($masterId, $date, $tz)) {
-                $this->throwValidation(
-                    ['masterId' => __('validation.booking.master_day_off')],
-                    'validation.failed'
-                );
-            }
-
-            $start = $this->parseTimeToCarbon($date, $seg['start_time'], $tz);
-            $end = $this->parseTimeToCarbon($date, $seg['end_time'], $tz);
-
-            if ($start->lte($now)) {
-                $this->throwValidation(
-                    ['startTime' => __('validation.booking.start_must_be_future')],
-                    'validation.failed'
-                );
-            }
-
-            $dayStart = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$hours['start']}", $tz);
-            $dayEnd = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$hours['end']}", $tz);
-            if ($hours['end'] === '00:00') {
-                $dayEnd->addDay();
-            }
-
-            if ($start->lt($dayStart) || $end->gt($dayEnd)) {
-                $this->throwValidation(
-                    ['workingHours' => __('validation.booking.within_working_hours', [
-                        'start' => $hours['start'],
-                        'end' => $hours['end'],
-                    ])],
-                    'validation.failed'
-                );
-            }
-
-            if (($start->minute % 5) !== 0 || ($end->minute % 5) !== 0) {
-                $this->throwValidation(
-                    ['grid' => __('validation.booking.time_grid_5min')],
-                    'validation.failed'
-                );
-            }
-
-            if (! empty($hours['break_start']) && ! empty($hours['break_end'])) {
-                $breakStart = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$hours['break_start']}", $tz);
-                $breakEnd = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$hours['break_end']}", $tz);
-
-                if ($start->lt($breakEnd) && $end->gt($breakStart)) {
-                    $this->throwValidation(
-                        ['breakTime' => __('validation.booking.overlaps_break', [
-                            'start' => $hours['break_start'],
-                            'end' => $hours['break_end'],
-                        ])],
-                        'validation.failed'
-                    );
-                }
-            }
-        }
-    }
-
-    protected function assertNoDuplicateSegments(array $segments): void
+    /**
+     * Ensure the same service (bookable) is not booked more than once in an overlapping time slot.
+     * Checks both within the current request segments AND against existing bookings in the DB.
+     */
+    protected function assertNoServiceOverlap(array $segments, ?int $excludeBookingId = null): void
     {
         $count = count($segments);
 
-        for ($i = 0; $i < $count; $i++) {
-            $a = $segments[$i];
-            $masterA = (int) ($a['master_id'] ?? 0);
-            if (! $masterA) {
-                continue;
-            }
-
-            $aStart = $this->parseTimeToCarbon($a['date'], (string) $a['start_time'], (string) $a['timezone']);
-            $aEnd = $this->parseTimeToCarbon($a['date'], (string) $a['end_time'], (string) $a['timezone']);
-
-            for ($j = $i + 1; $j < $count; $j++) {
-                $b = $segments[$j];
-                $masterB = (int) ($b['master_id'] ?? 0);
-                if ($masterA !== $masterB) {
-                    continue;
-                }
-
-                $bStart = $this->parseTimeToCarbon($b['date'], (string) $b['start_time'], (string) $b['timezone']);
-                $bEnd = $this->parseTimeToCarbon($b['date'], (string) $b['end_time'], (string) $b['timezone']);
-
-                if ($aStart < $bEnd && $aEnd > $bStart) {
-                    $this->throwValidation(
-                        [
-                            "services.$i.masterId" => __('validation.booking.master_overlap_same_timeslot'),
-                            "services.$j.masterId" => __('validation.booking.master_overlap_same_timeslot'),
-                        ],
-                        'validation.failed'
-                    );
-                }
-            }
-        }
-    }
-
-    protected function assertServiceNotAlreadyBooked(array $segments, ?int $excludeBookingId = null): void
-    {
-        $count = count($segments);
-
+        // 1. Check within the request itself — same service can't appear twice in overlapping slots
         for ($i = 0; $i < $count; $i++) {
             $a = $segments[$i];
             $bookableTypeA = $a['bookable_type'] ?? null;
@@ -1389,13 +1282,10 @@ class BookingService
             }
         }
 
+        // 2. Check against existing bookings in DB
         foreach ($segments as $index => $seg) {
             $bookableType = $seg['bookable_type'] ?? null;
             $bookableId = (int) ($seg['bookable_id'] ?? 0);
-            $date = $seg['date'];
-            $startTime = $seg['start_time'];
-            $endTime = $seg['end_time'];
-            $tz = $seg['timezone'];
 
             if (! $bookableType || ! $bookableId) {
                 continue;
@@ -1404,16 +1294,82 @@ class BookingService
             $hasOverlap = $this->bookingRepository->hasServiceOverlap(
                 bookableType: $bookableType,
                 bookableId: $bookableId,
-                date: $date,
-                startTime: $startTime,
-                endTime: $endTime,
+                date: $seg['date'],
+                startTime: $seg['start_time'],
+                endTime: $seg['end_time'],
                 excludeBookingId: $excludeBookingId,
-                timezone: $tz
+                timezone: $seg['timezone']
             );
 
             if ($hasOverlap) {
                 $this->throwValidation(
                     ["services.$index.serviceId" => __('validation.booking.service_already_booked_at_time')],
+                    'validation.failed'
+                );
+            }
+        }
+    }
+
+    /**
+     * Ensure the same master is not double-booked in overlapping time slots.
+     * Checks both within the current request segments AND against existing bookings in the DB.
+     */
+    protected function assertNoMasterOverlap(array $segments, ?int $excludeBookingId = null): void
+    {
+        $count = count($segments);
+
+        // 1. Check within the request itself — same master can't overlap across segments
+        for ($i = 0; $i < $count; $i++) {
+            $a = $segments[$i];
+            $masterA = (int) ($a['master_id'] ?? 0);
+            if (! $masterA) {
+                continue;
+            }
+
+            $aStart = $this->parseTimeToCarbon($a['date'], (string) $a['start_time'], (string) $a['timezone']);
+            $aEnd = $this->parseTimeToCarbon($a['date'], (string) $a['end_time'], (string) $a['timezone']);
+
+            for ($j = $i + 1; $j < $count; $j++) {
+                $b = $segments[$j];
+                $masterB = (int) ($b['master_id'] ?? 0);
+                if ($masterA !== $masterB) {
+                    continue;
+                }
+
+                $bStart = $this->parseTimeToCarbon($b['date'], (string) $b['start_time'], (string) $b['timezone']);
+                $bEnd = $this->parseTimeToCarbon($b['date'], (string) $b['end_time'], (string) $b['timezone']);
+
+                if ($aStart < $bEnd && $aEnd > $bStart) {
+                    $this->throwValidation(
+                        [
+                            "services.$i.masterId" => __('validation.booking.master_overlap_same_timeslot'),
+                            "services.$j.masterId" => __('validation.booking.master_overlap_same_timeslot'),
+                        ],
+                        'validation.failed'
+                    );
+                }
+            }
+        }
+
+        // 2. Check against existing bookings in DB
+        foreach ($segments as $index => $seg) {
+            $masterId = (int) ($seg['master_id'] ?? 0);
+            if (! $masterId) {
+                continue;
+            }
+
+            $hasOverlap = $this->bookingRepository->hasOverlap(
+                masterId: $masterId,
+                date: $seg['date'],
+                startTime: $seg['start_time'],
+                endTime: $seg['end_time'],
+                excludeBookingId: $excludeBookingId,
+                timezone: $seg['timezone']
+            );
+
+            if ($hasOverlap) {
+                $this->throwValidation(
+                    ["services.$index.masterId" => __('validation.booking.master_already_booked_at_time')],
                     'validation.failed'
                 );
             }
@@ -1484,9 +1440,8 @@ class BookingService
         );
 
         $segments = $this->buildServiceSegmentsFromRequest($date, $rawServices, $tz);
-        $this->validateSegmentsBasic($segments, $tz);
-        $this->assertNoDuplicateSegments($segments);
-        $this->assertServiceNotAlreadyBooked($segments);
+        $this->assertNoServiceOverlap($segments);
+        $this->assertNoMasterOverlap($segments);
 
         $pricing = $this->buildPricingData([
             ...$data,

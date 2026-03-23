@@ -14,6 +14,18 @@ interface BookingRepositoryInterface
     public function delete(Booking $booking);
 
     /**
+     * Check if a master has any overlapping bookings or breaks at the given time.
+     */
+    public function hasOverlap(
+        int $masterId,
+        string $date,
+        string $startTime,
+        string $endTime,
+        ?int $excludeBookingId = null,
+        ?string $timezone = null
+    ): bool;
+
+    /**
      * Check if a specific service is already booked at overlapping times.
      *
      * @param bool $withLock When true, acquires a pessimistic FOR UPDATE lock.
