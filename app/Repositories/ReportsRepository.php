@@ -82,8 +82,11 @@ class ReportsRepository implements ReportsRepositoryInterface
                 'currency' => $service['currency'],
             ];
         })
-            ->sortByDesc('totalQuantity')
-            ->sortByDesc('totalAmount')
+            ->filter(fn ($item) => $item['totalQuantity'] > 0)
+            ->sortBy([
+                ['totalAmount', 'desc'],
+                ['totalQuantity', 'desc'],
+            ])
             ->values();
 
         return $ranked->take($limit);
@@ -127,8 +130,11 @@ class ReportsRepository implements ReportsRepositoryInterface
                     'currency' => $row->currency ?? config('payment.default_currency', 'AED'),
                 ];
             })
-            ->sortByDesc('totalQuantity')
-            ->sortByDesc('totalAmount')
+            ->filter(fn ($item) => $item['totalQuantity'] > 0)
+            ->sortBy([
+                ['totalAmount', 'desc'],
+                ['totalQuantity', 'desc'],
+            ])
             ->values();
 
         return $products->take($limit);
