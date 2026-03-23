@@ -620,6 +620,14 @@ class BookingService
                 // Complete referral for pay_later bookings (immediately confirmed)
                 $this->referralRewardService->completeReferral($booking);
 
+                // Check loyalty tier upgrade
+                if ($booking->user_id) {
+                    $loyaltyUser = User::find($booking->user_id);
+                    if ($loyaltyUser) {
+                        $this->loyaltyService->checkAndUpgradeUser($loyaltyUser);
+                    }
+                }
+
                 return $booking->fresh()->load(['services.bookable', 'order.latestPayment', 'bookingReferral.referrer']);
             }
             $provider = $data['payment_provider'] ?? $data['paymentProvider'] ?? 'stripe';
@@ -1215,6 +1223,14 @@ class BookingService
                     'paid_at' => now(),
                     'idempotency_key' => (string) \Illuminate\Support\Str::uuid(),
                 ]);
+            }
+        }
+
+        // Check loyalty tier upgrade after marking paid
+        if ($booking->user_id) {
+            $user = User::find($booking->user_id);
+            if ($user) {
+                $this->loyaltyService->checkAndUpgradeUser($user);
             }
         }
 

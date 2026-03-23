@@ -229,6 +229,7 @@ class OrderService
             $customerName = $data['customer_name'];
             $customerEmail = $data['customer_email'] ?? null;
             $customerPhone = $data['customer_phone'] ?? null;
+            $clientUserId = $data['client_user_id'] ?? null;
             $items = $data['items'];
             $total = (float) $data['total'];
             $currency = $data['currency'] ?? 'AED';
@@ -251,7 +252,7 @@ class OrderService
             }
 
             $order = $this->orderRepository->create([
-                'user_id' => null,
+                'user_id' => $clientUserId,
                 'type' => OrderType::Ecommerce,
                 'orderable_type' => null,
                 'orderable_id' => null,
@@ -335,6 +336,14 @@ class OrderService
 
             if ($sendEmail && $customerEmail) {
                 $this->sendOrderConfirmation($order);
+            }
+
+            // Upgrade product discount tier for the client
+            if ($clientUserId) {
+                $clientUser = \App\Models\User::find($clientUserId);
+                if ($clientUser) {
+                    app(\App\Services\ProductDiscountTierService::class)->checkAndUpgradeUser($clientUser);
+                }
             }
 
             return $order->load(['items.product']);

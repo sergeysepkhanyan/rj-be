@@ -16,6 +16,7 @@ class StoreInStoreOrderRequest extends BaseFormRequest
         'discountAmount' => 'discount_amount',
         'giftCardCode' => 'gift_card_code',
         'giftCardAmount' => 'gift_card_amount',
+        'clientUserId' => 'client_user_id',
     ];
 
     public function rules(): array
@@ -43,6 +44,7 @@ class StoreInStoreOrderRequest extends BaseFormRequest
             'sendEmail' => ['sometimes', 'boolean'],
             'giftCardCode' => ['nullable', 'string', 'max:255'],
             'giftCardAmount' => ['nullable', 'numeric', 'min:0'],
+            'clientUserId' => ['nullable', 'integer', 'exists:users,id'],
         ];
     }
 }
