@@ -35,7 +35,7 @@ class LoyaltyTierDowngradedMail extends Mailable implements ShouldQueue
                 'hasTier' => $this->tier !== null,
                 'firstTierName' => $this->firstTier?->name,
                 'firstTierThreshold' => $this->firstTier?->visit_threshold,
-                'bookingUrl' => config('app.frontend_url', 'https://uaedevelop.pro') . '/en/booking',
+                'bookingUrl' => config('app.frontend_url', 'https://uaedevelop.pro') . '/en/booking-appointment',
             ]);
     }
 }

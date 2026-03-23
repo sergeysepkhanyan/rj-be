@@ -27,7 +27,7 @@ class DiscountTierChangedMail extends Mailable implements ShouldQueue
                 'userName' => $this->user->name ?? 'there',
                 'tierName' => $this->tier->name,
                 'tierValue' => $this->tier->value,
-                'bookingUrl' => config('app.frontend_url', 'https://uaedevelop.pro') . '/en/booking',
+                'bookingUrl' => config('app.frontend_url', 'https://uaedevelop.pro') . '/en/booking-appointment',
             ]);
     }
 }

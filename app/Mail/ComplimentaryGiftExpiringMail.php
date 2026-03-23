@@ -30,7 +30,7 @@ class ComplimentaryGiftExpiringMail extends Mailable implements ShouldQueue
                 'userName' => $this->user->name ?? 'there',
                 'serviceName' => $serviceName,
                 'expiresAt' => $this->reward->expires_at?->format('F j, Y'),
-                'bookingUrl' => config('app.frontend_url', 'https://uaedevelop.pro') . '/en/booking',
+                'bookingUrl' => config('app.frontend_url', 'https://uaedevelop.pro') . '/en/booking-appointment',
             ]);
     }
 }
