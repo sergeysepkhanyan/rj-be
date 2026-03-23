@@ -1225,11 +1225,25 @@ class BookingService
         if ($booking->order) {
             $this->orderService->markPaid($booking->order, ['marked_paid_manually' => true]);
 
-            if ($booking->order->latestPayment) {
-                $payment = $booking->order->latestPayment;
+            $payment = $booking->order->latestPayment;
+
+            if ($payment) {
                 $this->paymentRepository->update($payment, [
                     'status' => 'paid',
                     'paid_at' => now(),
+                ]);
+            } else {
+                // No Payment record exists (e.g. pay_later bookings). Create one
+                // so the turnover dashboard and reports can track this revenue.
+                $this->paymentRepository->create([
+                    'order_id' => $booking->order->id,
+                    'provider' => $paymentDetails['paid_payment_method'] ?? 'manual',
+                    'flow' => 'manual',
+                    'amount' => $booking->order->amount,
+                    'currency' => $booking->order->currency ?? 'AED',
+                    'status' => 'paid',
+                    'paid_at' => now(),
+                    'idempotency_key' => (string) \Illuminate\Support\Str::uuid(),
                 ]);
             }
         }
