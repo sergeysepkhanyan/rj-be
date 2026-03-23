@@ -3,7 +3,7 @@
     $vat = $b['vat'] ?? null;
     $fmt = fn($n) => is_numeric($n) ? number_format((float)$n, 2, '.', '') : $n;
     $frontendUrl = config('app.frontend_url', 'https://rjbeautylounge.com');
-    $bookingUrl = $frontendUrl . '/en/booking';
+    $bookingUrl = $frontendUrl . '/en/booking-appointment';
 
     // Check if this is a multi-date booking
     $serviceDates = collect($services)->pluck('date')->filter()->unique()->values();
