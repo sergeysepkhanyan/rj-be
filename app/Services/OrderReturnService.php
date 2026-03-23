@@ -142,6 +142,9 @@ class OrderReturnService
             // Now refund the order (this also restores stock for ecommerce orders)
             $this->orderService->refund($order, ['return_approved' => true]);
 
+            // Update delivery status to canceled
+            $order->update(['delivery_status' => 'canceled']);
+
             // Notify customer
             $this->sendReturnApprovedNotification($order, $orderReturn);
 
