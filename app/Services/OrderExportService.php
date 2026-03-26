@@ -192,6 +192,15 @@ class OrderExportService
             $pdf->Cell(30, 7, '-' . number_format($data['discount'], 2) . ' ' . $currency, 0, 1, 'R');
         }
 
+        // Gift Card
+        if (isset($data['giftCardAmount']) && $data['giftCardAmount'] > 0) {
+            $pdf->SetX($totalsX);
+            $pdf->SetTextColor(45, 95, 63); // Green for gift card
+            $giftCardLabel = $data['giftCardCode'] ? "Gift Card ({$data['giftCardCode']}):" : 'Gift Card:';
+            $pdf->Cell(40, 7, $giftCardLabel, 0, 0, 'L');
+            $pdf->Cell(30, 7, '-' . number_format($data['giftCardAmount'], 2) . ' ' . $currency, 0, 1, 'R');
+        }
+
         // Tip
         if (isset($data['tipAmount']) && $data['tipAmount'] > 0) {
             $pdf->SetX($totalsX);
@@ -267,6 +276,18 @@ class OrderExportService
         $row++;
         $sheet->setCellValue("C{$row}", 'Tax:');
         $sheet->setCellValue("D{$row}", $data['tax']);
+        if (isset($data['discount']) && $data['discount'] > 0) {
+            $row++;
+            $discountLabel = $data['discountLabel'] ? "Discount ({$data['discountLabel']}):" : 'Discount:';
+            $sheet->setCellValue("C{$row}", $discountLabel);
+            $sheet->setCellValue("D{$row}", -$data['discount']);
+        }
+        if (isset($data['giftCardAmount']) && $data['giftCardAmount'] > 0) {
+            $row++;
+            $giftCardLabel = $data['giftCardCode'] ? "Gift Card ({$data['giftCardCode']}):" : 'Gift Card:';
+            $sheet->setCellValue("C{$row}", $giftCardLabel);
+            $sheet->setCellValue("D{$row}", -$data['giftCardAmount']);
+        }
         if (isset($data['tipAmount']) && $data['tipAmount'] > 0) {
             $row++;
             $sheet->setCellValue("C{$row}", 'Tip:');
@@ -435,6 +456,14 @@ class OrderExportService
                 $discountLabel = $data['discountLabel'] ? "Discount ({$data['discountLabel']}):" : 'Discount:';
                 $pdf->Cell(40, 7, $discountLabel, 0, 0, 'L');
                 $pdf->Cell(30, 7, '-' . number_format($data['discount'], 2) . ' ' . $currency, 0, 1, 'R');
+            }
+
+            if (isset($data['giftCardAmount']) && $data['giftCardAmount'] > 0) {
+                $pdf->SetX($totalsX);
+                $pdf->SetTextColor(45, 95, 63);
+                $giftCardLabel = $data['giftCardCode'] ? "Gift Card ({$data['giftCardCode']}):" : 'Gift Card:';
+                $pdf->Cell(40, 7, $giftCardLabel, 0, 0, 'L');
+                $pdf->Cell(30, 7, '-' . number_format($data['giftCardAmount'], 2) . ' ' . $currency, 0, 1, 'R');
             }
 
             if (isset($data['tipAmount']) && $data['tipAmount'] > 0) {
@@ -634,6 +663,12 @@ class OrderExportService
             $paymentMethod = 'Card';
         }
 
+        // Gift card
+        $giftCardCode = $order->meta['gift_card_code'] ?? null;
+        $giftCardAmount = (float) ($order->meta['gift_card_amount'] ?? 0);
+
+        $computedTotal = $subtotal + $tax - $discount - $giftCardAmount + $tipAmount;
+
         return [
             'order' => $order,
             'customerName' => $customerName,
@@ -644,7 +679,9 @@ class OrderExportService
             'discount' => $discount,
             'discountLabel' => $discountLabel,
             'tipAmount' => $tipAmount,
-            'total' => (float) $total + $tipAmount,
+            'giftCardCode' => $giftCardCode,
+            'giftCardAmount' => $giftCardAmount,
+            'total' => $computedTotal,
             'paymentMethod' => $paymentMethod,
             'reference' => $order->reference ?? "#{$order->id}",
         ];

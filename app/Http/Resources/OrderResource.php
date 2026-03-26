@@ -363,7 +363,9 @@ class OrderResource extends JsonResource
             'price' => (string) round($subtotal, 2),
             'subtotal' => (string) round($subtotal, 2),
             'tax' => (string) round($tax, 2),
-            'total' => (string) $this->amount,
+            'total' => (string) round($subtotal + $tax - ($orderDiscountAmount ?? 0) - (float) ($this->meta['gift_card_amount'] ?? 0), 2),
+            'giftCardCode' => $this->meta['gift_card_code'] ?? null,
+            'giftCardAmount' => $this->meta['gift_card_amount'] ? (float) $this->meta['gift_card_amount'] : null,
             'deliveryStatuses' => $deliveryStatuses,
             'latestPayment' => $this->whenLoaded('latestPayment', function () {
                 $clientSecret = null;
