@@ -4,7 +4,10 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Integrations\Stripe\StripeClient;
+use App\Mail\GiftCardBalanceDeductedMail;
 use App\Models\Booking;
+use App\Models\GiftCardPurchase;
+use App\Models\GiftCardUsage;
 use App\Services\ApiResponse;
 use App\Services\BookingService;
 use App\Services\OrderService;
@@ -12,6 +15,7 @@ use App\Services\PaymentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 
 class BookingPaymentController extends Controller
 {
@@ -233,6 +237,201 @@ class BookingPaymentController extends Controller
                 __('messages.payment.confirmation_failed'),
                 500
             );
+        }
+    }
+
+    /**
+     * Pay for a booking entirely with a gift card
+     */
+    public function payWithGiftCard(Request $request, Booking $booking): JsonResponse
+    {
+        $user = auth()->user();
+
+        if (!$user?->isAdmin() && (int) $booking->user_id !== (int) $user?->id) {
+            return ApiResponse::error(null, __('messages.booking.unauthorized'), 403);
+        }
+
+        if ($booking->payment_status === 'paid') {
+            return ApiResponse::error(['paymentStatus' => 'Booking has already been paid'], __('messages.booking.already_paid'), 422);
+        }
+
+        $giftCardCode = $request->input('gift_card_code');
+        if (!$giftCardCode) {
+            return ApiResponse::error(['gift_card_code' => 'Gift card code is required'], __('validation.required', ['attribute' => 'gift card code']), 422);
+        }
+
+        try {
+            $result = DB::transaction(function () use ($booking, $giftCardCode, $user) {
+                $purchase = GiftCardPurchase::where('code', $giftCardCode)
+                    ->where('status', 'active')
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$purchase || $purchase->isExpired() || $purchase->balance <= 0) {
+                    throw new \Exception('Gift card is not valid or has no balance.');
+                }
+
+                $order = $booking->order;
+                if (!$order) {
+                    $order = $this->orderService->createForBooking($booking, 'pay_now');
+                    $booking->refresh();
+                    $order = $booking->order;
+                }
+
+                $total = (float) $order->amount;
+
+                if ((float) $purchase->balance < $total) {
+                    throw new \Exception('Gift card balance is insufficient to cover the full amount.');
+                }
+
+                $newBalance = max(0, (float) $purchase->balance - $total);
+                $purchase->update([
+                    'balance' => $newBalance,
+                    ...($newBalance <= 0 ? ['status' => 'used'] : []),
+                ]);
+
+                GiftCardUsage::create([
+                    'gift_card_purchase_id' => $purchase->id,
+                    'amount_used' => $total,
+                    'used_for_type' => 'booking',
+                    'used_for_id' => $booking->id,
+                    'used_for_name' => $booking->service?->name ?? 'Booking #' . $booking->id,
+                    'used_for' => 'booking',
+                    'notes' => 'Full payment via gift card at online checkout',
+                    'verified_by' => $user?->id,
+                ]);
+
+                $order->update([
+                    'status' => 'paid',
+                    'paid_at' => now(),
+                    'meta' => array_merge($order->meta ?? [], [
+                        'gift_card_code' => $giftCardCode,
+                        'gift_card_amount' => $total,
+                    ]),
+                ]);
+
+                $booking->update([
+                    'status' => 'confirmed',
+                    'payment_status' => 'paid',
+                    'payment_mode' => 'pay_now',
+                ]);
+
+                if ($booking->batch_id) {
+                    $this->bookingService->markBatchBookingsPaid($booking->batch_id);
+                }
+
+                $this->bookingService->sendBookingConfirmation($booking);
+
+                if ($purchase->buyer_email) {
+                    Mail::to($purchase->buyer_email)->queue(new GiftCardBalanceDeductedMail($purchase, $total));
+                }
+
+                return ['booking_id' => $booking->id, 'payment_status' => 'paid'];
+            });
+
+            return ApiResponse::success($result, __('messages.payment.confirmed'));
+        } catch (\Throwable $e) {
+            \Log::error('BookingPaymentController::payWithGiftCard error', [
+                'booking_id' => $booking->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return ApiResponse::error(null, $e->getMessage(), 422);
+        }
+    }
+
+    /**
+     * Apply a gift card to partially cover a booking payment (remaining paid via Stripe)
+     */
+    public function applyGiftCard(Request $request, Booking $booking): JsonResponse
+    {
+        $user = auth()->user();
+
+        if (!$user?->isAdmin() && (int) $booking->user_id !== (int) $user?->id) {
+            return ApiResponse::error(null, __('messages.booking.unauthorized'), 403);
+        }
+
+        if ($booking->payment_status === 'paid') {
+            return ApiResponse::error(['paymentStatus' => 'Booking has already been paid'], __('messages.booking.already_paid'), 422);
+        }
+
+        $giftCardCode = $request->input('gift_card_code');
+        if (!$giftCardCode) {
+            return ApiResponse::error(['gift_card_code' => 'Gift card code is required'], __('validation.required', ['attribute' => 'gift card code']), 422);
+        }
+
+        try {
+            $result = DB::transaction(function () use ($booking, $giftCardCode, $user) {
+                $purchase = GiftCardPurchase::where('code', $giftCardCode)
+                    ->where('status', 'active')
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$purchase || $purchase->isExpired() || $purchase->balance <= 0) {
+                    throw new \Exception('Gift card is not valid or has no balance.');
+                }
+
+                $order = $booking->order;
+                if (!$order) {
+                    throw new \Exception('No order found for this booking.');
+                }
+
+                $total = (float) $order->amount;
+                $giftCardAmountApplied = min((float) $purchase->balance, $total);
+                $remainingAmount = $total - $giftCardAmountApplied;
+
+                $newBalance = max(0, (float) $purchase->balance - $giftCardAmountApplied);
+                $purchase->update([
+                    'balance' => $newBalance,
+                    ...($newBalance <= 0 ? ['status' => 'used'] : []),
+                ]);
+
+                GiftCardUsage::create([
+                    'gift_card_purchase_id' => $purchase->id,
+                    'amount_used' => $giftCardAmountApplied,
+                    'used_for_type' => 'booking',
+                    'used_for_id' => $booking->id,
+                    'used_for_name' => $booking->service?->name ?? 'Booking #' . $booking->id,
+                    'used_for' => 'booking',
+                    'notes' => 'Partial payment via gift card at online checkout',
+                    'verified_by' => $user?->id,
+                ]);
+
+                $order->update([
+                    'amount' => $remainingAmount,
+                    'meta' => array_merge($order->meta ?? [], [
+                        'gift_card_code' => $giftCardCode,
+                        'gift_card_amount' => $giftCardAmountApplied,
+                        'original_amount' => $total,
+                    ]),
+                ]);
+
+                // Update Stripe payment intent with new amount
+                $payment = $order->latestPayment;
+                if ($payment && $payment->external_id) {
+                    $this->stripeClient->updatePaymentIntent($payment->external_id, [
+                        'amount' => (int) round($remainingAmount * 100),
+                    ]);
+                }
+
+                if ($purchase->buyer_email) {
+                    Mail::to($purchase->buyer_email)->queue(new GiftCardBalanceDeductedMail($purchase, $giftCardAmountApplied));
+                }
+
+                return [
+                    'gift_card_applied' => $giftCardAmountApplied,
+                    'remaining_amount' => $remainingAmount,
+                ];
+            });
+
+            return ApiResponse::success($result, 'Gift card applied successfully.');
+        } catch (\Throwable $e) {
+            \Log::error('BookingPaymentController::applyGiftCard error', [
+                'booking_id' => $booking->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return ApiResponse::error(null, $e->getMessage(), 422);
         }
     }
 }

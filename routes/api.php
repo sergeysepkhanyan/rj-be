@@ -81,6 +81,7 @@ Route::middleware(['set.locale'])->group(function () {
     Route::get('/gift-cards', [\App\Http\Controllers\API\GiftCardController::class, 'index']);
     Route::post('/gift-cards/purchase', [\App\Http\Controllers\API\GiftCardPurchaseController::class, 'store']);
     Route::post('/gift-cards/confirm', [\App\Http\Controllers\API\GiftCardPurchaseController::class, 'confirm']);
+    Route::post('/gift-cards/validate', [\App\Http\Controllers\API\GiftCardController::class, 'validate']);
 
     // Service Packages (public)
     Route::get('/service-packages', [\App\Http\Controllers\API\ServicePackageController::class, 'index']);
@@ -160,6 +161,10 @@ Route::middleware(['set.locale'])->group(function () {
         Route::post('/bookings/{booking}/pay', [BookingPaymentController::class, 'initiatePayment'])
             ->middleware('throttle:payment');
         Route::post('/bookings/{booking}/confirm-payment', [BookingPaymentController::class, 'confirmPayment'])
+            ->middleware('throttle:payment');
+        Route::post('/bookings/{booking}/pay-with-gift-card', [BookingPaymentController::class, 'payWithGiftCard'])
+            ->middleware('throttle:payment');
+        Route::post('/bookings/{booking}/apply-gift-card', [BookingPaymentController::class, 'applyGiftCard'])
             ->middleware('throttle:payment');
 
         Route::get('/orders', [OrdersController::class, 'index']);

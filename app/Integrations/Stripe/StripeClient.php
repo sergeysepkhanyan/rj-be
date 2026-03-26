@@ -124,6 +124,19 @@ class StripeClient
         });
     }
 
+    public function updatePaymentIntent(string $paymentIntentId, array $payload): array
+    {
+        return ExternalRequestLogger::log('stripe', 'update_payment_intent', $payload, function () use ($paymentIntentId, $payload) {
+            return Http::baseUrl(config('stripe.base_url'))
+                ->acceptJson()
+                ->withToken(config('stripe.secret_key'))
+                ->asForm()
+                ->post("/v1/payment_intents/{$paymentIntentId}", $payload)
+                ->throw()
+                ->json();
+        });
+    }
+
     public function detachPaymentMethod(string $paymentMethodId): array
     {
         $request = ['payment_method_id' => $paymentMethodId];
