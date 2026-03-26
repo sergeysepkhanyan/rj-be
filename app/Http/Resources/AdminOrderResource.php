@@ -51,7 +51,7 @@ class AdminOrderResource extends JsonResource
             'price' => (string) $subtotal,
             'subtotal' => (string) $subtotal,
             'tax' => (string) $tax,
-            'total' => (string) round($subtotal + $tax - ($discountAmount ?? 0) - (float) ($this->meta['gift_card_amount'] ?? 0) + $this->resolveTipAmount(), 2),
+            'total' => (string) round($subtotal + $tax - ($discountAmount ?? 0) - (float) ($this->resolveGiftCardAmount() ?? 0), 2),
             'amount' => (string) $this->amount,
             'quantity' => $quantity,
             'address' => $address,
@@ -72,12 +72,12 @@ class AdminOrderResource extends JsonResource
             // Booking payment details (tip, gift card, payment method)
             'tipAmount' => $this->type === 'booking' && $this->relationLoaded('orderable') && $this->orderable instanceof \App\Models\Booking
                 ? (float) ($this->orderable->tip_amount ?? 0) : 0,
-            'paidPaymentMethod' => $this->type === 'booking' && $this->relationLoaded('orderable') && $this->orderable instanceof \App\Models\Booking
-                ? $this->orderable->paid_payment_method : null,
-            'giftCardCode' => $this->type === 'booking' && $this->relationLoaded('orderable') && $this->orderable instanceof \App\Models\Booking
-                ? $this->orderable->gift_card_code
-                : ($this->meta['gift_card_code'] ?? null),
-            'giftCardAmount' => $this->meta['gift_card_amount'] ?? null,
+            'paidPaymentMethod' => $this->resolvePaidPaymentMethod(),
+            'giftCardCode' => $this->meta['gift_card_code']
+                ?? ($this->type === 'booking' && $this->relationLoaded('orderable') && $this->orderable instanceof \App\Models\Booking
+                    ? $this->orderable->gift_card_code
+                    : null),
+            'giftCardAmount' => $this->resolveGiftCardAmount(),
             'isPackageBooking' => (bool) ($this->meta['is_package_booking'] ?? (
                 $this->type === 'booking' && $this->relationLoaded('orderable') && $this->orderable instanceof \App\Models\Booking
                     ? $this->orderable->is_package_booking
@@ -425,5 +425,55 @@ class AdminOrderResource extends JsonResource
             return (float) ($this->orderable->tip_amount ?? 0);
         }
         return 0.0;
+    }
+
+    protected function resolveGiftCardAmount(): ?float
+    {
+        // First check order meta (set by online checkout flows)
+        if (!empty($this->meta['gift_card_amount'])) {
+            return (float) $this->meta['gift_card_amount'];
+        }
+
+        // For booking orders, look up from GiftCardUsage if booking has a gift card code
+        if ($this->type === 'booking' && $this->relationLoaded('orderable') && $this->orderable instanceof Booking) {
+            $giftCardCode = $this->orderable->gift_card_code;
+            if ($giftCardCode) {
+                $usage = \App\Models\GiftCardUsage::where('used_for_type', 'booking')
+                    ->where('used_for_id', $this->orderable->id)
+                    ->first();
+                if ($usage) {
+                    return (float) $usage->amount_used;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    protected function resolvePaidPaymentMethod(): ?string
+    {
+        $method = null;
+
+        if ($this->type === 'booking' && $this->relationLoaded('orderable') && $this->orderable instanceof Booking) {
+            $method = $this->orderable->paid_payment_method;
+        }
+
+        // If method is already set (e.g. "gift_card,cash"), return as-is
+        if ($method) {
+            return $method;
+        }
+
+        // Fallback for online-paid bookings: if gift card fully covers the order, show "gift_card"
+        $giftCardAmount = $this->resolveGiftCardAmount();
+        if ($giftCardAmount && $giftCardAmount > 0) {
+            [$subtotal, $tax] = $this->calculateSubtotalAndTax();
+            [$discountType, $discountValue, $discountLabel, $discountAmount] = $this->calculateDiscount($subtotal, $tax);
+            $expectedTotal = $subtotal + $tax - ($discountAmount ?? 0);
+            if ($giftCardAmount >= $expectedTotal) {
+                return 'gift_card';
+            }
+        }
+
+        return $method;
     }
 }

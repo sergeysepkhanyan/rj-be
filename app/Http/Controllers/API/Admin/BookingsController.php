@@ -106,14 +106,23 @@ class BookingsController extends Controller
         $giftCardCode = $request->input('giftCardCode', $request->input('gift_card_code'));
         $tipAmount = (float) ($request->input('tipAmount', $request->input('tip_amount', 0)));
 
-        // Validate payment method (gift_card is now an optional add-on, not a standalone method)
-        $allowedMethods = ['cash', 'card', 'bank_transfer'];
-        if ($paymentMethod && !in_array($paymentMethod, $allowedMethods)) {
-            return ApiResponse::error(
-                ['paymentMethod' => 'Invalid payment method. Allowed: ' . implode(', ', $allowedMethods)],
-                __('validation.failed'),
-                422
-            );
+        // Validate payment methods (supports comma-separated for multiple, e.g. "gift_card,cash")
+        $allowedMethods = ['cash', 'card', 'bank_transfer', 'gift_card'];
+        if ($paymentMethod) {
+            $methods = array_map('trim', explode(',', $paymentMethod));
+            foreach ($methods as $method) {
+                if (!in_array($method, $allowedMethods)) {
+                    return ApiResponse::error(
+                        ['paymentMethod' => 'Invalid payment method: ' . $method . '. Allowed: ' . implode(', ', $allowedMethods)],
+                        __('validation.failed'),
+                        422
+                    );
+                }
+            }
+            // Extract gift card code from payment methods if included
+            if (in_array('gift_card', $methods) && empty($giftCardCode)) {
+                // gift_card method selected but no code — will be validated below
+            }
         }
 
         // Gift card is optional — can be combined with any payment method

@@ -76,8 +76,15 @@ class OrderFilter
         // Apply mapping if exists
         $dbStatus = $statusMap[$status] ?? $status;
 
-        $allowed = ['pending', 'pending_payment', 'processing', 'shipped', 'paid', 'refunded', 'cancelled', 'fulfilled'];
-        if (in_array($dbStatus, $allowed, true)) {
+        $allowed = ['pending', 'pending_payment', 'processing', 'shipped', 'paid', 'refunded', 'cancelled', 'fulfilled', 'return_requested', 'return_approved', 'return_rejected'];
+
+        // Support comma-separated statuses (e.g. "paid,refunded,return_approved")
+        if (str_contains($dbStatus, ',')) {
+            $statuses = array_filter(array_map('trim', explode(',', $dbStatus)), fn($s) => in_array($s, $allowed, true));
+            if (!empty($statuses)) {
+                $this->query->whereIn('status', $statuses);
+            }
+        } elseif (in_array($dbStatus, $allowed, true)) {
             $this->query->where('status', $dbStatus);
         }
     }

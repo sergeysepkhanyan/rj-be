@@ -18,7 +18,7 @@ class OrderStateMachine
         'paid'              => ['refunded', 'fulfilled', 'processing', 'shipped', 'return_requested'],
         'cancelled'         => [],
         'refunded'          => [],
-        'fulfilled'         => ['return_requested'],
+        'fulfilled'         => ['return_requested', 'refunded'],
         'gift'              => [],
         'return_requested'  => ['return_approved', 'return_rejected'],
         'return_approved'   => ['refunded'],

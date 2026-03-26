@@ -91,6 +91,14 @@ class OrderExportService
         $pdf->SetTextColor(100, 100, 100);
         $pdf->Cell(0, 6, '#' . ($data['reference'] ?? 'N/A'), 0, 1, 'C');
 
+        // Refunded stamp
+        if (!empty($data['isRefunded'])) {
+            $pdf->Ln(2);
+            $pdf->SetFont('helvetica', 'B', 12);
+            $pdf->SetTextColor(220, 38, 38);
+            $pdf->Cell(0, 8, 'REFUNDED', 0, 1, 'C');
+        }
+
         // === CUSTOMER INFO & DATE ===
         $pdf->SetY(60);
         $pdf->SetFont('helvetica', '', 10);
@@ -196,7 +204,7 @@ class OrderExportService
         if (isset($data['giftCardAmount']) && $data['giftCardAmount'] > 0) {
             $pdf->SetX($totalsX);
             $pdf->SetTextColor(45, 95, 63); // Green for gift card
-            $giftCardLabel = $data['giftCardCode'] ? "Gift Card ({$data['giftCardCode']}):" : 'Gift Card:';
+            $giftCardLabel = 'Gift Card:';
             $pdf->Cell(40, 7, $giftCardLabel, 0, 0, 'L');
             $pdf->Cell(30, 7, '-' . number_format($data['giftCardAmount'], 2) . ' ' . $currency, 0, 1, 'R');
         }
@@ -284,7 +292,7 @@ class OrderExportService
         }
         if (isset($data['giftCardAmount']) && $data['giftCardAmount'] > 0) {
             $row++;
-            $giftCardLabel = $data['giftCardCode'] ? "Gift Card ({$data['giftCardCode']}):" : 'Gift Card:';
+            $giftCardLabel = 'Gift Card:';
             $sheet->setCellValue("C{$row}", $giftCardLabel);
             $sheet->setCellValue("D{$row}", -$data['giftCardAmount']);
         }
@@ -380,6 +388,14 @@ class OrderExportService
             $pdf->SetTextColor(100, 100, 100);
             $pdf->Cell(0, 6, '#' . ($data['reference'] ?? 'N/A'), 0, 1, 'C');
 
+            // Refunded stamp
+            if (!empty($data['isRefunded'])) {
+                $pdf->Ln(2);
+                $pdf->SetFont('helvetica', 'B', 12);
+                $pdf->SetTextColor(220, 38, 38);
+                $pdf->Cell(0, 8, 'REFUNDED', 0, 1, 'C');
+            }
+
             // === CUSTOMER INFO ===
             $pdf->SetY(60);
             $pdf->SetTextColor(136, 136, 136);
@@ -461,7 +477,7 @@ class OrderExportService
             if (isset($data['giftCardAmount']) && $data['giftCardAmount'] > 0) {
                 $pdf->SetX($totalsX);
                 $pdf->SetTextColor(45, 95, 63);
-                $giftCardLabel = $data['giftCardCode'] ? "Gift Card ({$data['giftCardCode']}):" : 'Gift Card:';
+                $giftCardLabel = 'Gift Card:';
                 $pdf->Cell(40, 7, $giftCardLabel, 0, 0, 'L');
                 $pdf->Cell(30, 7, '-' . number_format($data['giftCardAmount'], 2) . ' ' . $currency, 0, 1, 'R');
             }
@@ -517,6 +533,7 @@ class OrderExportService
         $sheet->setCellValue('C1', 'Payment Method');
         $sheet->setCellValue('D1', 'Amount');
         $sheet->setCellValue('E1', 'Date');
+        $sheet->setCellValue('F1', 'Status');
 
         $row = 2;
         foreach ($orders as $order) {
@@ -540,15 +557,18 @@ class OrderExportService
                 $paymentMethod = 'Card';
             }
 
+            $isRefunded = in_array($order->status, ['refunded', 'return_approved']);
+
             $sheet->setCellValue("A{$row}", $paymentId);
             $sheet->setCellValue("B{$row}", $productName);
             $sheet->setCellValue("C{$row}", $paymentMethod);
             $sheet->setCellValue("D{$row}", $order->amount . ' ' . ($order->currency ?? 'AED'));
             $sheet->setCellValue("E{$row}", $order->created_at->format('d. M Y'));
+            $sheet->setCellValue("F{$row}", $isRefunded ? 'Refunded' : 'Paid');
             $row++;
         }
 
-        foreach (range('A', 'E') as $col) {
+        foreach (range('A', 'F') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
 
@@ -655,7 +675,8 @@ class OrderExportService
 
         $paymentMethod = null;
         if ($order->type === 'booking' && $order->orderable instanceof Booking && $order->orderable->paid_payment_method) {
-            $paymentMethod = ucfirst(str_replace('_', ' ', $order->orderable->paid_payment_method));
+            $methods = array_map('trim', explode(',', $order->orderable->paid_payment_method));
+            $paymentMethod = implode(' + ', array_map(fn($m) => ucfirst(str_replace('_', ' ', $m)), $methods));
         } elseif ($order->latestPayment?->paymentMethod) {
             $pm = $order->latestPayment->paymentMethod;
             $paymentMethod = ($pm->brand ? ucfirst($pm->brand) : 'Card') . ' ...' . $pm->last4;
@@ -667,7 +688,26 @@ class OrderExportService
         $giftCardCode = $order->meta['gift_card_code'] ?? null;
         $giftCardAmount = (float) ($order->meta['gift_card_amount'] ?? 0);
 
-        $computedTotal = $subtotal + $tax - $discount - $giftCardAmount + $tipAmount;
+        // For booking orders, also check booking model and GiftCardUsage
+        if (!$giftCardCode && $order->type === 'booking' && $order->orderable instanceof Booking) {
+            $giftCardCode = $order->orderable->gift_card_code;
+        }
+        if ($giftCardCode && $giftCardAmount <= 0 && $order->type === 'booking' && $order->orderable instanceof Booking) {
+            $usage = \App\Models\GiftCardUsage::where('used_for_type', 'booking')
+                ->where('used_for_id', $order->orderable->id)
+                ->first();
+            if ($usage) {
+                $giftCardAmount = (float) $usage->amount_used;
+            }
+        }
+
+        // If gift card fully covers the order, show "Gift Card" as payment method
+        $expectedTotal = $subtotal + $tax - $discount;
+        if ($giftCardAmount > 0 && $giftCardAmount >= $expectedTotal) {
+            $paymentMethod = 'Gift Card';
+        }
+
+        $computedTotal = $expectedTotal - $giftCardAmount;
 
         return [
             'order' => $order,
@@ -684,6 +724,7 @@ class OrderExportService
             'total' => $computedTotal,
             'paymentMethod' => $paymentMethod,
             'reference' => $order->reference ?? "#{$order->id}",
+            'isRefunded' => in_array($order->status, ['refunded', 'return_approved']),
         ];
     }
 }

@@ -15,6 +15,7 @@ use App\Models\Order;
 use App\Services\ApiResponse;
 use App\Services\OrderExportService;
 use App\Services\OrderService;
+use App\Services\PaymentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -22,7 +23,8 @@ class OrdersController extends Controller
 {
     public function __construct(
         protected OrderService $orderService,
-        protected OrderExportService $orderExportService
+        protected OrderExportService $orderExportService,
+        protected PaymentService $paymentService
     ) {}
 
     public function store(StoreOrderRequest $request): JsonResponse
@@ -114,6 +116,71 @@ class OrdersController extends Controller
         return ApiResponse::success([
             'order' => new OrderResource($order),
         ], __('success.order.updated'));
+    }
+
+    public function refund(Request $request, Order $order): JsonResponse
+    {
+        $currentStatus = $order->status;
+
+        if (in_array($currentStatus, ['refunded', 'cancelled', 'pending', 'pending_payment'])) {
+            return ApiResponse::error(
+                ['status' => "Cannot refund an order with status: {$currentStatus}"],
+                'Cannot refund this order.',
+                422
+            );
+        }
+
+        try {
+            \Illuminate\Support\Facades\DB::transaction(function () use ($order, $request) {
+                // Attempt Stripe refund if there's a payment
+                if ($order->latestPayment && $order->latestPayment->provider === 'stripe' && $order->latestPayment->external_id) {
+                    try {
+                        $this->paymentService->refundOrderPayment($order, [
+                            'reason' => $request->input('reason', 'Admin initiated refund'),
+                        ]);
+                    } catch (\Throwable $e) {
+                        \Log::warning('Stripe refund failed, proceeding with manual refund', [
+                            'order_id' => $order->id,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
+
+                // Update booking status if it's a booking order
+                if ($order->type === 'booking' && $order->orderable instanceof Booking) {
+                    $booking = $order->orderable;
+                    $booking->update([
+                        'payment_status' => 'refunded',
+                    ]);
+
+                    // Also update all batch bookings
+                    if ($booking->batch_id) {
+                        Booking::where('batch_id', $booking->batch_id)
+                            ->where('id', '!=', $booking->id)
+                            ->update(['payment_status' => 'refunded']);
+                    }
+                }
+
+                $this->orderService->refund($order, [
+                    'refunded_by' => auth()->id(),
+                    'refund_reason' => $request->input('reason', 'Admin initiated refund'),
+                ]);
+            });
+
+            $order->refresh();
+            $this->loadOrderForDetail($order);
+
+            return ApiResponse::success([
+                'order' => new AdminOrderResource($order),
+            ], 'Order refunded successfully.');
+        } catch (\Throwable $e) {
+            \Log::error('OrdersController::refund error', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return ApiResponse::error(null, $e->getMessage(), 422);
+        }
     }
 
     protected function loadOrderForDetail(Order $order): void

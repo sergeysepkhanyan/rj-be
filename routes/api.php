@@ -366,6 +366,8 @@ Route::middleware(['set.locale'])->group(function () {
         Route::get('/admin/orders/{order}', [AdminOrdersController::class, 'show']);
         Route::patch('/admin/orders/{order}/delivery-status', [AdminOrdersController::class, 'updateDeliveryStatus']);
         Route::patch('/admin/orders/{order}/status', [AdminOrdersController::class, 'updateStatus']);
+        Route::post('/admin/orders/{order}/refund', [AdminOrdersController::class, 'refund'])
+            ->middleware('role:superadmin');
         Route::get('/admin/orders/{order}/invoice/pdf', [AdminOrdersController::class, 'downloadInvoicePdf']);
         Route::get('/admin/orders/{order}/invoice/xlsx', [AdminOrdersController::class, 'downloadInvoiceXlsx']);
         Route::get('/admin/orders/export/pdf', [AdminOrdersController::class, 'exportOrdersPdf']);
@@ -374,8 +376,10 @@ Route::middleware(['set.locale'])->group(function () {
         // Order Returns management
         Route::get('/admin/order-returns/pending-count', [AdminOrderReturnController::class, 'pendingCount']);
         Route::get('/admin/order-returns', [AdminOrderReturnController::class, 'index']);
-        Route::patch('/admin/order-returns/{orderReturn}/approve', [AdminOrderReturnController::class, 'approve']);
-        Route::patch('/admin/order-returns/{orderReturn}/reject', [AdminOrderReturnController::class, 'reject']);
+        Route::patch('/admin/order-returns/{orderReturn}/approve', [AdminOrderReturnController::class, 'approve'])
+            ->middleware('role:superadmin');
+        Route::patch('/admin/order-returns/{orderReturn}/reject', [AdminOrderReturnController::class, 'reject'])
+            ->middleware('role:superadmin');
         Route::get('/admin/return-policy', [AdminOrderReturnController::class, 'policy']);
         Route::put('/admin/return-policy', [AdminOrderReturnController::class, 'updatePolicy']);
 
