@@ -51,7 +51,7 @@ class AdminOrderResource extends JsonResource
             'price' => (string) $subtotal,
             'subtotal' => (string) $subtotal,
             'tax' => (string) $tax,
-            'total' => (string) round($subtotal + $tax - ($discountAmount ?? 0) + $this->resolveTipAmount(), 2),
+            'total' => (string) round($subtotal + $tax - ($discountAmount ?? 0) - (float) ($this->meta['gift_card_amount'] ?? 0) + $this->resolveTipAmount(), 2),
             'amount' => (string) $this->amount,
             'quantity' => $quantity,
             'address' => $address,
