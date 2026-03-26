@@ -73,7 +73,7 @@ class AdminOrderResource extends JsonResource
             'tipAmount' => $this->type === 'booking' && $this->relationLoaded('orderable') && $this->orderable instanceof \App\Models\Booking
                 ? (float) ($this->orderable->tip_amount ?? 0) : 0,
             'paidPaymentMethod' => $this->resolvePaidPaymentMethod(),
-            'giftCardCode' => $this->meta['gift_card_code']
+            'giftCardCode' => ($this->meta['gift_card_code'] ?? null)
                 ?? ($this->type === 'booking' && $this->relationLoaded('orderable') && $this->orderable instanceof \App\Models\Booking
                     ? $this->orderable->gift_card_code
                     : null),
@@ -430,7 +430,7 @@ class AdminOrderResource extends JsonResource
     protected function resolveGiftCardAmount(): ?float
     {
         // First check order meta (set by online checkout flows)
-        if (!empty($this->meta['gift_card_amount'])) {
+        if (!empty($this->meta) && !empty($this->meta['gift_card_amount'])) {
             return (float) $this->meta['gift_card_amount'];
         }
 

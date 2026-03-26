@@ -685,8 +685,9 @@ class OrderExportService
         }
 
         // Gift card
-        $giftCardCode = $order->meta['gift_card_code'] ?? null;
-        $giftCardAmount = (float) ($order->meta['gift_card_amount'] ?? 0);
+        $meta = $order->meta ?? [];
+        $giftCardCode = $meta['gift_card_code'] ?? null;
+        $giftCardAmount = (float) ($meta['gift_card_amount'] ?? 0);
 
         // For booking orders, also check booking model and GiftCardUsage
         if (!$giftCardCode && $order->type === 'booking' && $order->orderable instanceof Booking) {
