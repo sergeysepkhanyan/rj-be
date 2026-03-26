@@ -81,7 +81,7 @@ Route::middleware(['set.locale'])->group(function () {
     Route::get('/gift-cards', [\App\Http\Controllers\API\GiftCardController::class, 'index']);
     Route::post('/gift-cards/purchase', [\App\Http\Controllers\API\GiftCardPurchaseController::class, 'store']);
     Route::post('/gift-cards/confirm', [\App\Http\Controllers\API\GiftCardPurchaseController::class, 'confirm']);
-    Route::post('/gift-cards/validate', [\App\Http\Controllers\API\GiftCardController::class, 'validate']);
+    Route::post('/gift-cards/validate', [\App\Http\Controllers\API\GiftCardController::class, 'validateCode']);
 
     // Service Packages (public)
     Route::get('/service-packages', [\App\Http\Controllers\API\ServicePackageController::class, 'index']);

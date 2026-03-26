@@ -34,7 +34,7 @@ class GiftCardController extends Controller
         return ApiResponse::success(['giftCards' => $items]);
     }
 
-    public function validate(Request $request): JsonResponse
+    public function validateCode(Request $request): JsonResponse
     {
         $code = $request->input('code', '');
 

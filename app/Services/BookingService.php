@@ -630,6 +630,85 @@ class BookingService
 
                 return $booking->fresh()->load(['services.bookable', 'order.latestPayment', 'bookingReferral.referrer']);
             }
+
+            // Handle gift card for pay_now bookings
+            $giftCardCode = $data['gift_card_code'] ?? $data['giftCardCode'] ?? null;
+            if ($giftCardCode) {
+                $purchase = \App\Models\GiftCardPurchase::where('code', $giftCardCode)
+                    ->where('status', 'active')
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($purchase && !$purchase->isExpired() && $purchase->balance > 0) {
+                    $total = (float) $order->amount;
+                    $giftCardAmountApplied = min((float) $purchase->balance, $total);
+                    $newBalance = max(0, (float) $purchase->balance - $giftCardAmountApplied);
+
+                    $purchase->update([
+                        'balance' => $newBalance,
+                        ...($newBalance <= 0 ? ['status' => 'used'] : []),
+                    ]);
+
+                    \App\Models\GiftCardUsage::create([
+                        'gift_card_purchase_id' => $purchase->id,
+                        'amount_used' => $giftCardAmountApplied,
+                        'used_for_type' => 'booking',
+                        'used_for_id' => $booking->id,
+                        'used_for_name' => $booking->services->first()?->bookable?->name ?? 'Booking #' . $booking->id,
+                        'used_for' => 'booking',
+                        'notes' => 'Applied at online booking checkout',
+                        'verified_by' => $user?->id,
+                    ]);
+
+                    $order->update([
+                        'meta' => array_merge($order->meta ?? [], [
+                            'gift_card_code' => $giftCardCode,
+                            'gift_card_amount' => $giftCardAmountApplied,
+                        ]),
+                    ]);
+
+                    if ($purchase->buyer_email) {
+                        \Illuminate\Support\Facades\Mail::to($purchase->buyer_email)
+                            ->queue(new \App\Mail\GiftCardBalanceDeductedMail($purchase, $giftCardAmountApplied));
+                    }
+
+                    // If gift card fully covers the booking
+                    if ($giftCardAmountApplied >= $total) {
+                        $order->update([
+                            'status' => 'paid',
+                            'paid_at' => now(),
+                            'amount' => 0,
+                        ]);
+
+                        $booking->update([
+                            'status' => 'confirmed',
+                            'payment_status' => 'paid',
+                            'expires_at' => null,
+                        ]);
+
+                        if ($booking->batch_id) {
+                            $this->markBatchBookingsPaid($booking->batch_id);
+                        }
+
+                        $this->sendBookingConfirmation($booking);
+                        $this->referralRewardService->completeReferral($booking);
+
+                        if ($booking->user_id) {
+                            $loyaltyUser = User::find($booking->user_id);
+                            if ($loyaltyUser) {
+                                $this->loyaltyService->checkAndUpgradeUser($loyaltyUser);
+                            }
+                        }
+
+                        return $booking->fresh()->load(['services.bookable', 'order.latestPayment', 'bookingReferral.referrer']);
+                    }
+
+                    // Partial coverage - reduce order amount
+                    $remainingAmount = $total - $giftCardAmountApplied;
+                    $order->update(['amount' => $remainingAmount]);
+                }
+            }
+
             $provider = $data['payment_provider'] ?? $data['paymentProvider'] ?? 'stripe';
             $this->paymentService->startStripePaymentIntent($order, $booking);
 
@@ -1387,6 +1466,76 @@ class BookingService
                     'order' => $order,
                     'batchId' => $batchId,
                 ];
+            }
+
+            // Handle gift card for pay_now batch bookings
+            $giftCardCode = $data['gift_card_code'] ?? $data['giftCardCode'] ?? null;
+            if ($giftCardCode) {
+                $purchase = \App\Models\GiftCardPurchase::where('code', $giftCardCode)
+                    ->where('status', 'active')
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($purchase && !$purchase->isExpired() && $purchase->balance > 0) {
+                    $total = (float) $order->amount;
+                    $giftCardAmountApplied = min((float) $purchase->balance, $total);
+                    $newBalance = max(0, (float) $purchase->balance - $giftCardAmountApplied);
+
+                    $purchase->update([
+                        'balance' => $newBalance,
+                        ...($newBalance <= 0 ? ['status' => 'used'] : []),
+                    ]);
+
+                    \App\Models\GiftCardUsage::create([
+                        'gift_card_purchase_id' => $purchase->id,
+                        'amount_used' => $giftCardAmountApplied,
+                        'used_for_type' => 'booking',
+                        'used_for_id' => $primaryBooking->id,
+                        'used_for_name' => 'Batch Booking #' . $batchId,
+                        'used_for' => 'booking',
+                        'notes' => 'Applied at online booking checkout (batch)',
+                        'verified_by' => $user?->id,
+                    ]);
+
+                    $order->update([
+                        'meta' => array_merge($order->meta ?? [], [
+                            'gift_card_code' => $giftCardCode,
+                            'gift_card_amount' => $giftCardAmountApplied,
+                        ]),
+                    ]);
+
+                    if ($purchase->buyer_email) {
+                        \Illuminate\Support\Facades\Mail::to($purchase->buyer_email)
+                            ->queue(new \App\Mail\GiftCardBalanceDeductedMail($purchase, $giftCardAmountApplied));
+                    }
+
+                    if ($giftCardAmountApplied >= $total) {
+                        $order->update([
+                            'status' => 'paid',
+                            'paid_at' => now(),
+                            'amount' => 0,
+                        ]);
+
+                        $this->markBatchBookingsPaid($batchId);
+
+                        foreach ($bookings as $booking) {
+                            $this->sendBookingConfirmation($booking);
+                        }
+
+                        foreach ($bookings as $booking) {
+                            $booking->refresh()->load(['services.bookable', 'services.master', 'master']);
+                        }
+
+                        return [
+                            'bookings' => $bookings,
+                            'order' => $order->fresh(['latestPayment']),
+                            'batchId' => $batchId,
+                        ];
+                    }
+
+                    $remainingAmount = $total - $giftCardAmountApplied;
+                    $order->update(['amount' => $remainingAmount]);
+                }
             }
 
             $this->paymentService->startStripePaymentIntent($order, $primaryBooking);
