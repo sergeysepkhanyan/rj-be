@@ -16,8 +16,7 @@ class OrderItemResource extends JsonResource
         $itemQuantity = (int) $this->quantity;
 
         $vatRate = 0.05;
-        $itemBasePrice = $itemSubtotal / (1 + $vatRate);
-        $itemTax = $itemSubtotal - $itemBasePrice;
+        $itemTax = $itemSubtotal * $vatRate;
 
         $mainImage = null;
         $images = [];

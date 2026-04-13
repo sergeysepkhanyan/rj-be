@@ -43,7 +43,7 @@ class ProductService
                 $this->productDetailRepository->createForProduct($product, $detail);
             }
 
-            SyncProductToZohoJob::dispatch($product);
+            SyncProductToZohoJob::dispatchAfterResponse($product);
 
             return $product->load('details', 'files', 'productCategory', 'supplier');
         });
@@ -93,7 +93,7 @@ class ProductService
                     }
                 }
             }
-            SyncProductToZohoJob::dispatch($product);
+            SyncProductToZohoJob::dispatchAfterResponse($product);
 
             return $product->load('details', 'files', 'productCategory', 'supplier');
         });

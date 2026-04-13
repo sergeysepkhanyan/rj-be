@@ -50,6 +50,7 @@ class Product extends Model
         'cost_price' => 'decimal:2',
         'price' => 'decimal:2',
         'discount_amount' => 'decimal:2',
+        'discount' => 'decimal:2',
     ];
 
     public function files(): MorphMany
@@ -102,31 +103,78 @@ class Product extends Model
     }
 
     /**
-     * Get the final price after applying discount.
+     * Get the final price after applying the product-level discount.
+     *
+     * Both `discount` and `discount_amount` are legacy decimal columns.
+     * We cast each to float and compare against 0 EXPLICITLY — never use
+     * PHP string truthiness, because "0.00" is truthy in PHP and that's
+     * exactly what produced the previous "discount applied while the
+     * toggle was off" bug.
      */
     public function getFinalPrice(): float
     {
         $price = (float) $this->price;
+        $amount = (float) $this->discount_amount;
+        $flag = (float) $this->discount;
 
-        if (!$this->discount || !$this->discount_amount || $this->discount_amount <= 0) {
-            return $price;
+        if ($flag <= 0 || $amount <= 0) {
+            return round($price, 2);
         }
 
         if ($this->discount_type === 'percentage' || $this->discount_type === 'percent') {
-            $discountAmount = $price * ((float) $this->discount_amount / 100);
-            return max(0, $price - $discountAmount);
+            $discountAmount = $price * ($amount / 100);
+            return round(max(0, $price - $discountAmount), 2);
         }
 
         // Fixed amount discount
-        return max(0, $price - (float) $this->discount_amount);
+        return round(max(0, $price - $amount), 2);
     }
 
     /**
-     * Check if product has an active discount.
+     * Check if the product has an active product-level discount.
+     * Same rule as getFinalPrice() — numeric `> 0` on BOTH columns.
      */
     public function hasDiscount(): bool
     {
-        return $this->discount && $this->discount_amount && $this->discount_amount > 0;
+        return ((float) $this->discount) > 0 && ((float) $this->discount_amount) > 0;
+    }
+
+    /**
+     * Get the price that a specific user should see, applying BOTH the
+     * product-level discount (if active) AND that user's Product Discount
+     * Tier percentage (if any). The tier discount compounds on top of the
+     * product-level final price. Passing `null` returns the public final
+     * price (tier not applied), so anonymous visitors and the public
+     * storefront always see the same value.
+     */
+    public function getFinalPriceForUser(?\App\Models\User $user = null): float
+    {
+        $final = $this->getFinalPrice();
+        $tierPercent = $this->getTierDiscountPercentForUser($user);
+
+        if ($tierPercent > 0) {
+            $final = $final * (1 - $tierPercent / 100);
+        }
+
+        return round(max(0, $final), 2);
+    }
+
+    /**
+     * Returns the tier discount percentage for a user, or 0 if none. Kept
+     * on the model so every resource / service can share one implementation
+     * without dragging the tier service around.
+     */
+    public function getTierDiscountPercentForUser(?\App\Models\User $user): float
+    {
+        if (!$user) {
+            return 0.0;
+        }
+        $user->loadMissing('productDiscountTier');
+        $tier = $user->productDiscountTier;
+        if (!$tier || !$tier->enabled) {
+            return 0.0;
+        }
+        return (float) $tier->discount_percentage;
     }
 
     protected static function boot()

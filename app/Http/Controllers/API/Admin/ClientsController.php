@@ -24,6 +24,99 @@ class ClientsController extends Controller
 {
     public function __construct(protected UserService $userService) {}
 
+    public function store(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'firstName' => ['required', 'string', 'min:2', 'max:255', 'regex:/^(?=.*\pL)[\pL\pM\s\'\-.]+$/u'],
+            'lastName'  => ['nullable', 'string', 'max:255'],
+            'email'     => ['required', 'email:rfc', 'max:255', 'unique:users,email,NULL,id,deleted_at,NULL'],
+            'mobile'    => ['required', 'string', 'max:20', 'regex:/^\+[1-9]\d{6,18}$/'],
+            'source'    => ['nullable', 'string', 'in:online,walk_in,offline,booking,manual'],
+            'notes'     => ['nullable', 'string', 'max:1000'],
+        ], [
+            'firstName.regex' => 'First name must contain letters.',
+            'mobile.regex' => 'Mobile must include a country code and at least 7 digits.',
+        ]);
+
+        $clientRoleId = \App\Models\UserRole::query()->where('slug', 'client')->value('id');
+
+        $user = User::create([
+            'user_role_id' => $clientRoleId,
+            'name' => trim($validated['firstName'] . ' ' . ($validated['lastName'] ?? '')) ?: null,
+            'first_name' => $validated['firstName'],
+            'last_name' => $validated['lastName'] ?? null,
+            'email' => $validated['email'],
+            'mobile' => $validated['mobile'],
+            'status' => 'active',
+            'email_verified_at' => now(),
+            'registration_source' => $validated['source'] ?? 'manual',
+        ]);
+
+        // Link any pre-existing Lead with matching contact details.
+        Lead::query()
+            ->whereNull('converted_user_id')
+            ->where(function ($q) use ($user) {
+                $q->where('email', $user->email)
+                  ->orWhere('phone', $user->mobile);
+            })
+            ->update([
+                'converted_user_id' => $user->id,
+                'converted_at' => now(),
+                'status' => 'converted',
+            ]);
+
+        if (!empty($validated['notes'])) {
+            ClientNote::create([
+                'client_id' => $user->id,
+                'created_by' => auth()->id(),
+                'content' => $validated['notes'],
+            ]);
+        }
+
+        return ApiResponse::success([
+            'user' => new ClientResource($user->fresh()->load('referral')),
+        ], 'Client created successfully');
+    }
+
+    /**
+     * Edit an existing client's contact details from the CRM tab.
+     */
+    public function update(Request $request, User $user): JsonResponse
+    {
+        $validated = $request->validate([
+            'firstName' => ['sometimes', 'string', 'min:2', 'max:255', 'regex:/^(?=.*\pL)[\pL\pM\s\'\-.]+$/u'],
+            'lastName'  => ['nullable', 'string', 'max:255'],
+            'email'     => ['sometimes', 'email:rfc', 'max:255', 'unique:users,email,' . $user->id . ',id,deleted_at,NULL'],
+            'mobile'    => ['sometimes', 'string', 'max:20', 'regex:/^\+[1-9]\d{6,18}$/'],
+            'source'    => ['nullable', 'string', 'in:online,walk_in,offline,booking,manual'],
+        ], [
+            'firstName.regex' => 'First name must contain letters.',
+            'mobile.regex' => 'Mobile must include a country code and at least 7 digits.',
+        ]);
+
+        $update = [];
+        if (array_key_exists('firstName', $validated)) $update['first_name'] = $validated['firstName'];
+        if (array_key_exists('lastName', $validated))  $update['last_name']  = $validated['lastName'];
+        if (array_key_exists('email', $validated))     $update['email']      = $validated['email'];
+        if (array_key_exists('mobile', $validated))    $update['mobile']     = $validated['mobile'];
+        if (array_key_exists('source', $validated))    $update['registration_source'] = $validated['source'];
+
+        // Keep the `name` column in sync so ClientDetailResource (which
+        // prefers `name` over first_name/last_name) always shows the
+        // latest value.
+        if (array_key_exists('first_name', $update) || array_key_exists('last_name', $update)) {
+            $firstName = $update['first_name'] ?? $user->first_name ?? '';
+            $lastName  = $update['last_name']  ?? $user->last_name  ?? '';
+            $update['name'] = trim($firstName . ' ' . $lastName) ?: null;
+        }
+
+        $user->update($update);
+
+        return ApiResponse::success([
+            'user' => new ClientResource($user->fresh()->load('referral')),
+        ], 'Client updated successfully');
+    }
+
     public function index(Request $request): JsonResponse
     {
         $perPage = (int) $request->get('per_page', 10);

@@ -790,6 +790,32 @@ class BookingService
                 $this->attachServiceToBookingWithSegment($booking, $seg, $i + 1);
             }
 
+            $existingOrder = $booking->order()->first();
+            if (
+                $existingOrder
+                && $existingOrder->status !== 'paid'
+                && $existingOrder->status !== 'refunded'
+                && (float) $existingOrder->amount !== (float) $pricing['final_price']
+            ) {
+                $existingOrder->update([
+                    'amount' => $pricing['final_price'],
+                    'meta' => array_merge($existingOrder->meta ?? [], [
+                        'amount_resynced_at' => now()->toIso8601String(),
+                        'amount_resync_reason' => 'booking_services_changed',
+                    ]),
+                ]);
+
+                $pendingPayment = $existingOrder->payments()
+                    ->whereNotIn('status', ['paid', 'refunded'])
+                    ->latest('id')
+                    ->first();
+                if ($pendingPayment) {
+                    $this->paymentRepository->update($pendingPayment, [
+                        'amount' => $pricing['final_price'],
+                    ]);
+                }
+            }
+
             return $booking->load(['services.bookable', 'services.master', 'bookingReferral.referrer']);
         });
     }
@@ -1304,6 +1330,8 @@ class BookingService
                 ]);
             }
         }
+
+        $this->referralRewardService->completeReferral($booking->fresh());
 
         // Check loyalty tier upgrade after marking paid
         if ($booking->user_id) {

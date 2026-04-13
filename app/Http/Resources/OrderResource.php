@@ -276,6 +276,25 @@ class OrderResource extends JsonResource
                         'recipientName' => $recipientName,
                     ]];
                 }
+
+                if ($this->type === 'service_package' || $this->type === 'service package') {
+                    $packageName = $this->meta['service_package_name'] ?? null;
+                    $packageId = $this->meta['service_package_id'] ?? null;
+                    if (!$packageName && $this->relationLoaded('orderable') && $this->orderable) {
+                        $packageName = $this->orderable->name ?? null;
+                        $packageId = $packageId ?? ($this->orderable->id ?? null);
+                    }
+                    return [[
+                        'id' => $packageId ?? 0,
+                        'name' => $packageName ?? 'Service Package',
+                        'quantity' => 1,
+                        'unitPrice' => (string) $this->amount,
+                        'subtotal' => (string) $this->amount,
+                        'finalPrice' => (string) $this->amount,
+                        'tax' => '0',
+                        'type' => 'service_package',
+                    ]];
+                }
                 if ($this->type === 'booking' && $this->relationLoaded('orderable')) {
                     // Get all bookings (including batch bookings)
                     $allBookings = $this->resource->getAllBookings();
@@ -296,10 +315,31 @@ class OrderResource extends JsonResource
                                     $serviceImage = asset('storage/' . $bookable->image);
                                 }
 
+                                $resolvedName = $bookable?->name ?? 'Unknown Service';
+                                if ($bookable instanceof \App\Models\SubServiceItem) {
+                                    $bookable->loadMissing('subService');
+                                    $parentName = $bookable->subService?->name;
+                                    if ($parentName) {
+                                        $resolvedName = $parentName . ' — ' . $bookable->name;
+                                    }
+                                } elseif ($bookable instanceof \App\Models\SubServiceItemVariant) {
+                                    $bookable->loadMissing('subServiceItem.subService');
+                                    $variantParent = $bookable->subServiceItem;
+                                    $grandparent = $variantParent?->subService;
+                                    $parts = array_filter([
+                                        $grandparent?->name,
+                                        $variantParent?->name,
+                                        $bookable->name,
+                                    ]);
+                                    if (count($parts) > 0) {
+                                        $resolvedName = implode(' — ', $parts);
+                                    }
+                                }
+
                                 $allServices->push([
                                     'id' => $service->id,
                                     'productId' => $service->bookable_id ?? $service->id,
-                                    'name' => $bookable?->name ?? 'Unknown Service',
+                                    'name' => $resolvedName,
                                     'image' => $serviceImage,
                                     'quantity' => 1,
                                     'unitPrice' => (string) $servicePrice,

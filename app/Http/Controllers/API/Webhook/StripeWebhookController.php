@@ -88,8 +88,21 @@ class StripeWebhookController extends Controller
 
         switch ($type) {
             case 'payment_intent.succeeded':
-                $paymentUpdate['status'] = 'paid';
+                $capturedMinor = (int) (data_get($object, 'amount_received') ?? data_get($object, 'amount') ?? 0);
+                $expectedMinor = (int) round(((float) $order->amount) * 100);
+                $amountsMatch = $capturedMinor > 0 && $capturedMinor >= $expectedMinor;
+
+                $paymentUpdate['status'] = $amountsMatch ? 'paid' : 'partially_paid';
                 $paymentUpdate['paid_at'] = now();
+                $paymentUpdate['amount'] = $capturedMinor / 100;
+                if (!$amountsMatch) {
+                    \Log::warning('[stripe][webhook] Captured amount does not match order total', [
+                        'order_id' => $order->id,
+                        'order_amount_minor' => $expectedMinor,
+                        'captured_minor' => $capturedMinor,
+                        'payment_intent_id' => $paymentIntentId,
+                    ]);
+                }
 
                 try {
                     DB::beginTransaction();
@@ -102,8 +115,10 @@ class StripeWebhookController extends Controller
 
                     $wasAlreadyPaid = $previousOrderStatus === OrderStatus::Paid->value;
 
-                    $order = $this->orderService->markPaid($order, ['stripe_payment_intent_id' => $paymentIntentId]);
-                    $order->refresh();
+                    if ($amountsMatch) {
+                        $order = $this->orderService->markPaid($order, ['stripe_payment_intent_id' => $paymentIntentId]);
+                        $order->refresh();
+                    }
 
                     if ($order->user_id) {
                         $paymentMethodId = (string) data_get($object, 'payment_method');
@@ -124,7 +139,7 @@ class StripeWebhookController extends Controller
                         }
                     }
 
-                    if ($order->orderable && $order->getTypeValue() === 'booking') {
+                    if ($amountsMatch && $order->orderable && $order->getTypeValue() === 'booking') {
                         $booking = $order->orderable;
 
                         // Re-validate slot availability before confirming the booking

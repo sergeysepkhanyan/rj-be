@@ -28,6 +28,7 @@ class GiftCardPurchaseController extends Controller
             'buyerPhone' => 'nullable|string|max:50',
             'recipientName' => 'required|string|max:255',
             'recipientEmail' => 'nullable|email|max:255',
+            'personalMessage' => 'nullable|string|max:500',
         ]);
 
         $giftCard = GiftCard::where('id', $request->giftCardId)
@@ -50,6 +51,10 @@ class GiftCardPurchaseController extends Controller
             'metadata[buyer_phone]' => $request->buyerPhone ?? '',
             'metadata[recipient_name]' => $request->recipientName,
             'metadata[recipient_email]' => $request->recipientEmail ?? '',
+            // Carry the personal message through Stripe metadata so
+            // the confirm step can persist it on the order/purchase. Stripe
+            // metadata values cap at 500 chars, which matches the FE limit.
+            'metadata[personal_message]' => mb_substr((string) ($request->personalMessage ?? ''), 0, 500),
             'metadata[user_id]' => (string) (auth()->id() ?? ''),
         ];
 
@@ -114,6 +119,7 @@ class GiftCardPurchaseController extends Controller
                     'customer_phone' => $metadata['buyer_phone'] ?? null,
                     'recipient_name' => $metadata['recipient_name'] ?? '',
                     'recipient_email' => $metadata['recipient_email'] ?? null,
+                    'personal_message' => $metadata['personal_message'] ?? null,
                     'gift_card_id' => $giftCard->id,
                     'gift_card_name' => $giftCard->name,
                 ],

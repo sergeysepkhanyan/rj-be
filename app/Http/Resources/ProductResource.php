@@ -22,6 +22,13 @@ class ProductResource extends BaseResource
         $availability = $currentQuantity > 0 ? 'On Stock' : 'Out';
         $isLowStock = $currentQuantity > 0 && $currentQuantity <= $reorderPoint;
 
+        $authUser = auth()->user();
+        $productFinal = $this->resource->getFinalPrice();
+        $userFinal = $this->resource->getFinalPriceForUser($authUser);
+        $tierPercent = $this->resource->getTierDiscountPercentForUser($authUser);
+        $tierApplied = $tierPercent > 0 && $userFinal < $productFinal;
+        $hasDiscount = $this->resource->hasDiscount() || $tierApplied;
+
         return [
             'id' => $data['id'] ?? null,
             'name' => $data['name'] ?? null,
@@ -51,14 +58,27 @@ class ProductResource extends BaseResource
             'availability' => $availability,
             'isLowStock' => $isLowStock,
             'price' => (float) ($data['price'] ?? 0),
-            'finalPrice' => $this->resource->getFinalPrice(),
-            'hasDiscount' => $this->resource->hasDiscount(),
+            'finalPrice' => $productFinal,
+            // Tier-aware price. FE should prefer this for the authenticated
+            // storefront/cart/checkout display so the shown number always
+            // matches the amount we'll charge for this user.
+            'userFinalPrice' => $userFinal,
+            'tierDiscountPercent' => $tierPercent,
+            'tierDiscountApplied' => $tierApplied,
+            'hasDiscount' => $hasDiscount,
+            // Product-level flag stays available for admin UIs that still
+            // need to differentiate "product is on sale" from "user has a tier".
+            'hasProductDiscount' => $this->resource->hasDiscount(),
             'costPrice' => isset($data['cost_price']) && $data['cost_price'] ? (float) $data['cost_price'] : null,
             'profitMargin' => $this->resource->getProfitMargin(),
             'currency' => $data['currency'] ?? 'AED',
             'mainImage' => $this->main_image ? asset('storage/' . $this->main_image) : null,
             'referralId' => $data['referral_id'] ?? null,
-            'discount' => $data['discount'] ?? null,
+            // The `discount` column stays a legacy decimal for storage
+            // compatibility, but we return it to the FE as a real boolean
+            // so the cart / store / admin UIs can rely on a predictable
+            // shape. A value of 0 / null / "0.00" all map to false.
+            'discount' => ((float) ($data['discount'] ?? 0)) > 0,
             'discountType' => $data['discount_type'] ?? null,
             'discountAmount' => isset($data['discount_amount']) && $data['discount_amount'] ? (float) $data['discount_amount'] : null,
             'status' => $data['status'] ?? 'draft',

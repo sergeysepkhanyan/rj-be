@@ -8,6 +8,7 @@ use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\SignupRequest;
 use App\Http\Resources\UserResource;
 use App\Mail\VerifyEmailMail;
+use App\Models\Lead;
 use App\Models\User;
 use App\Models\UserRole;
 use App\Services\ApiResponse;
@@ -37,6 +38,18 @@ class AuthController extends Controller
             'date_of_birth' => $data['date_of_birth'] ?? null,
             'password' => Hash::make($data['password']),
         ]);
+
+        Lead::query()
+            ->whereNull('converted_user_id')
+            ->where(function ($q) use ($user) {
+                $q->where('email', $user->email)
+                  ->orWhere('phone', $user->mobile);
+            })
+            ->update([
+                'converted_user_id' => $user->id,
+                'converted_at' => now(),
+                'status' => 'converted',
+            ]);
 
         $redirectTo = $data['redirect_to'] ?? null;
         Mail::to($user->email)->queue(new VerifyEmailMail($user, $redirectTo));

@@ -19,12 +19,10 @@ class ReferralRewardService
      */
     public function getConfig(): ?ReferralRewardsConfig
     {
-        return ReferralRewardsConfig::with('services.subService')->first();
+        return ReferralRewardsConfig::with(['services.subService', 'services.subServiceItem'])->first();
     }
 
-    /**
-     * Create or update the referral rewards configuration and sync service IDs.
-     */
+
     public function updateConfig(array $data): ReferralRewardsConfig
     {
         return DB::transaction(function () use ($data) {
@@ -42,37 +40,74 @@ class ReferralRewardService
                 ]);
             }
 
-            if (isset($data['service_ids']) && is_array($data['service_ids'])) {
+            if (isset($data['services']) && is_array($data['services'])) {
+                $config->services()->delete();
+
+                foreach ($data['services'] as $entry) {
+                    if (!is_array($entry) || empty($entry['id'])) {
+                        continue;
+                    }
+                    $type = $entry['type'] ?? 'subservice';
+                    if ($type === 'item') {
+                        $config->services()->create([
+                            'sub_service_id' => null,
+                            'sub_service_item_id' => (int) $entry['id'],
+                        ]);
+                    } else {
+                        $config->services()->create([
+                            'sub_service_id' => (int) $entry['id'],
+                            'sub_service_item_id' => null,
+                        ]);
+                    }
+                }
+            } elseif (isset($data['service_ids']) && is_array($data['service_ids'])) {
+                // Legacy callers — treat every id as a subservice id.
                 $config->services()->delete();
 
                 foreach ($data['service_ids'] as $subServiceId) {
                     $config->services()->create([
-                        'sub_service_id' => $subServiceId,
+                        'sub_service_id' => (int) $subServiceId,
+                        'sub_service_item_id' => null,
                     ]);
                 }
             }
 
-            return $config->load('services.subService');
+            return $config->load(['services.subService', 'services.subServiceItem']);
         });
     }
 
-    /**
-     * Assign a referrer to a booking by creating a BookingReferral record.
-     */
+
     public function assignReferrer(Booking $booking, int $referrerUserId): ?BookingReferral
     {
-        // Don't allow self-referral
+        // Don't allow self-referral by user id
         if ($booking->user_id && (int) $booking->user_id === $referrerUserId) {
+            return null;
+        }
+
+        // Don't allow self-referral by email / phone match (guest checkout)
+        $referrer = User::find($referrerUserId);
+        if (!$referrer) {
+            return null;
+        }
+        if (
+            ($booking->customer_email && $referrer->email && strcasecmp($booking->customer_email, $referrer->email) === 0)
+            || ($booking->customer_phone && $referrer->mobile && $booking->customer_phone === $referrer->mobile)
+        ) {
+            return null;
+        }
+
+        // Don't credit referrals for non-revenue bookings (gift / package).
+        if (
+            $booking->is_complimentary
+            || $booking->is_package_booking
+            || $booking->payment_status === 'gift'
+            || $booking->payment_status === 'package'
+        ) {
             return null;
         }
 
         // Don't create duplicate referrals for the same booking
         if (BookingReferral::where('booking_id', $booking->id)->exists()) {
-            return null;
-        }
-
-        // Verify referrer exists
-        if (!User::where('id', $referrerUserId)->exists()) {
             return null;
         }
 
@@ -83,11 +118,23 @@ class ReferralRewardService
         ]);
     }
 
-    /**
-     * Mark a booking's referral as completed and check for reward threshold.
-     */
     public function completeReferral(Booking $booking): void
     {
+        // Defensive: never credit a referral for a non-revenue booking.
+        if (
+            $booking->is_complimentary
+            || $booking->is_package_booking
+            || $booking->payment_status === 'gift'
+            || $booking->payment_status === 'package'
+        ) {
+            return;
+        }
+
+        // Defensive: never credit a referral until the booking is actually paid.
+        if ($booking->payment_status !== 'paid') {
+            return;
+        }
+
         $referral = BookingReferral::where('booking_id', $booking->id)->first();
 
         if (!$referral || $referral->status !== 'pending') {

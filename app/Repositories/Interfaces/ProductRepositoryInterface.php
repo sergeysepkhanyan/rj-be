@@ -13,4 +13,5 @@ interface ProductRepositoryInterface
     public function update(Product $product, array $data): Product;
     public function delete(Product $product);
     public function allForExport(?array $ids = null);
+    public function paginateProducts(?\App\Filters\ProductFilter $filter = null, int $perPage = 10, int $page = 1): \Illuminate\Contracts\Pagination\LengthAwarePaginator;
 }

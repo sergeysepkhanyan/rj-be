@@ -57,6 +57,8 @@ class User extends Authenticatable implements JWTSubject, CanResetPasswordContra
         'timezone',
         'email_verified_at',
         'status',
+        // tracks how a client was acquired (online | walk_in | offline | booking | manual).
+        'registration_source',
         'product_discount_tier_id',
     ];
 

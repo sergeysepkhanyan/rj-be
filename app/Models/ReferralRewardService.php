@@ -10,6 +10,8 @@ class ReferralRewardService extends Model
     protected $fillable = [
         'referral_rewards_config_id',
         'sub_service_id',
+
+        'sub_service_item_id',
     ];
 
     public function config(): BelongsTo
@@ -20,5 +22,10 @@ class ReferralRewardService extends Model
     public function subService(): BelongsTo
     {
         return $this->belongsTo(SubService::class);
+    }
+
+    public function subServiceItem(): BelongsTo
+    {
+        return $this->belongsTo(SubServiceItem::class);
     }
 }

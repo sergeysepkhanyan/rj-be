@@ -3,6 +3,7 @@
 namespace App\Repositories;
 
 use App\Models\BookingService;
+use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Models\Product;
@@ -19,7 +20,7 @@ class ReportsRepository implements ReportsRepositoryInterface
     {
         $targetDate = $date ? Carbon::parse($date) : Carbon::today();
 
-        return Payment::query()
+        return Order::query()
             ->where('status', 'paid')
             ->whereDate('paid_at', $targetDate)
             ->selectRaw('currency, SUM(amount) as total')
@@ -42,10 +43,7 @@ class ReportsRepository implements ReportsRepositoryInterface
                 DB::raw('SUM(COALESCE(final_price, price, 0)) as total_amount'),
             ])
             ->whereHas('booking.order', function ($q) {
-                $q->whereIn('status', ['paid', 'fulfilled'])
-                    ->whereHas('payments', function ($p) {
-                        $p->where('status', 'paid');
-                    });
+                $q->whereIn('status', ['paid', 'fulfilled']);
             })
             ->groupBy('bookable_type', 'bookable_id')
             ->get()
@@ -101,10 +99,7 @@ class ReportsRepository implements ReportsRepositoryInterface
                 DB::raw('SUM(subtotal) as total_amount'),
             ])
             ->whereHas('order', function ($q) {
-                $q->whereIn('status', ['paid', 'fulfilled'])
-                    ->whereHas('payments', function ($p) {
-                        $p->where('status', 'paid');
-                    });
+                $q->whereIn('status', ['paid', 'fulfilled']);
             })
             ->groupBy('product_id')
             ->get()

@@ -31,7 +31,7 @@ class CreatePostRequest extends BaseFormRequest
             'previewText'     => ['required', 'string'],
             'content'         => ['required', 'string'],
             'featureImage'    => ['nullable', 'string'],
-            'publishDate'     => ['nullable', 'date', 'before_or_equal:today'],
+            'publishDate'     => ['nullable', 'date', 'before_or_equal:tomorrow'],
             'showAuthorName'  => ['nullable', 'boolean'],
             'status'          => ['required', 'in:Draft,Published,Archived'],
             'authorName'      => ['nullable', 'string', 'max:255'],

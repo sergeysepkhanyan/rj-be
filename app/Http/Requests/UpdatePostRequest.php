@@ -41,7 +41,7 @@ class UpdatePostRequest extends BaseFormRequest
             'featureImage'     => ['nullable', 'string'],
             'showAuthorName'   => ['nullable', 'boolean'],
             'status'           => ['sometimes', 'required', 'in:Draft,Published,Archived'],
-            'publishDate'      => ['nullable', 'date', 'before_or_equal:today'],
+            'publishDate'      => ['nullable', 'date', 'before_or_equal:tomorrow'],
         ];
     }
 }

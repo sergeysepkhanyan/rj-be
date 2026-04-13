@@ -37,7 +37,7 @@ class UpdateUserDetailsRequest extends BaseFormRequest
                     ->ignore($userId)
                     ->whereNull('deleted_at'),
             ],
-            'date_of_birth' => 'sometimes|nullable|date|date_format:Y-m-d|before_or_equal:' . now()->subYears(18)->toDateString(),
+            'date_of_birth' => 'sometimes|nullable|date|date_format:Y-m-d|after_or_equal:1900-01-01|before_or_equal:' . now()->subYears(18)->toDateString(),
         ];
     }
 
@@ -62,6 +62,7 @@ class UpdateUserDetailsRequest extends BaseFormRequest
 
             'date_of_birth.date'     => __('validation.profile.dateOfBirth.date'),
             'date_of_birth.date_format' => __('validation.profile.dateOfBirth.date_format'),
+            'date_of_birth.after_or_equal'  => 'Please enter a valid year of birth.',
             'date_of_birth.before_or_equal' => __('validation.profile.dateOfBirth.min_age'),
         ];
     }

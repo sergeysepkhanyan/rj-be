@@ -16,7 +16,7 @@ class LeadsController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = Lead::with('referral');
+        $query = Lead::with('referral')->whereNull('converted_user_id');
 
         // Search
         if ($search = $request->input('search')) {
@@ -65,24 +65,42 @@ class LeadsController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => ['required', 'string', 'min:2', 'max:255', 'regex:/^(?=.*\pL)[\pL\pM\s\'\-.]+$/u'],
             'nameAr' => 'nullable|string|max:255',
-            'phone' => 'required|string|max:20|unique:leads,phone',
-            'email' => 'nullable|email|max:255',
+            'phone' => ['required', 'string', 'max:20', 'regex:/^\+[1-9]\d{6,18}$/', 'unique:leads,phone'],
+            'email' => ['nullable', 'email:rfc', 'max:255', 'regex:/^[^\s@]+@[^\s@]+\.[A-Za-z]{2,}$/'],
             'source' => 'sometimes|in:manual,booking,order,inquiry',
             'status' => 'sometimes|in:new,contacted,qualified,converted,lost',
             'notes' => 'nullable|string',
             'referralId' => 'nullable|exists:referrals,id',
+        ], [
+            'name.regex' => 'Name must contain letters.',
+            'phone.regex' => 'Phone must include a country code and at least 7 digits.',
+            'email.regex' => 'Please enter a valid email address.',
         ]);
 
-        // Check if user already exists with this phone
-        $existingUser = User::where('mobile', $validated['phone'])->first();
+        $existingUserQuery = User::query()->where('mobile', $validated['phone']);
+        if (!empty($validated['email'])) {
+            $existingUserQuery->orWhere('email', $validated['email']);
+        }
+        $existingUser = $existingUserQuery->first();
         if ($existingUser) {
             return response()->json([
                 'success' => false,
-                'message' => 'A user with this phone number already exists',
+                'message' => 'Existing user with this email/mobile',
                 'data' => ['userId' => $existingUser->id],
             ], 422);
+        }
+
+        if (!empty($validated['email'])) {
+            $existingLead = Lead::where('email', $validated['email'])->first();
+            if ($existingLead) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Existing user with this email/mobile',
+                    'data' => ['leadId' => $existingLead->id],
+                ], 422);
+            }
         }
 
         $lead = Lead::create([
@@ -124,14 +142,35 @@ class LeadsController extends Controller
     public function update(Request $request, Lead $lead): JsonResponse
     {
         $validated = $request->validate([
-            'name' => 'sometimes|string|max:255',
+            'name' => ['sometimes', 'string', 'min:2', 'max:255', 'regex:/^(?=.*\pL)[\pL\pM\s\'\-.]+$/u'],
             'nameAr' => 'nullable|string|max:255',
-            'phone' => 'sometimes|string|max:20|unique:leads,phone,' . $lead->id,
-            'email' => 'nullable|email|max:255',
+            'phone' => ['sometimes', 'string', 'max:20', 'regex:/^\+[1-9]\d{6,18}$/', 'unique:leads,phone,' . $lead->id],
+            'email' => ['nullable', 'email:rfc', 'max:255', 'regex:/^[^\s@]+@[^\s@]+\.[A-Za-z]{2,}$/'],
             'status' => 'sometimes|in:new,contacted,qualified,converted,lost',
             'notes' => 'nullable|string',
             'referralId' => 'nullable|exists:referrals,id',
+        ], [
+            'name.regex' => 'Name must contain letters.',
+            'phone.regex' => 'Phone must include a country code and at least 7 digits.',
+            'email.regex' => 'Please enter a valid email address.',
         ]);
+
+        // Cross-table uniqueness on update (skip rows belonging to this lead).
+        if (!empty($validated['phone']) || !empty($validated['email'])) {
+            $existingUserQuery = User::query();
+            if (!empty($validated['phone'])) {
+                $existingUserQuery->where('mobile', $validated['phone']);
+            }
+            if (!empty($validated['email'])) {
+                $existingUserQuery->orWhere('email', $validated['email']);
+            }
+            if ($existingUserQuery->exists()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Existing user with this email/mobile',
+                ], 422);
+            }
+        }
 
         $lead->update([
             'name' => $validated['name'] ?? $lead->name,

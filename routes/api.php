@@ -237,6 +237,8 @@ Route::middleware(['set.locale'])->group(function () {
         Route::get('/admin/reports/today-turnover', [AdminReportsController::class, 'todaysTurnover']);
         Route::get('/admin/reports/top-services', [AdminReportsController::class, 'topServices']);
         Route::get('/admin/reports/top-products', [AdminReportsController::class, 'topProducts']);
+        // notification bell action queue counts
+        Route::get('/admin/notifications/action-queue', [AdminReportsController::class, 'actionQueueCounts']);
     });
 
     Route::middleware(['jwt.custom', 'verified', 'role:superadmin,admin,marketer'])->group(function () {
@@ -322,6 +324,9 @@ Route::middleware(['set.locale'])->group(function () {
 
         Route::patch('/admin/clients/{user}/add-referral', [ClientsController::class, 'addReferral']);
         Route::get('/admin/clients', [ClientsController::class, 'index']);
+        // admin can now create + edit client records directly.
+        Route::post('/admin/clients', [ClientsController::class, 'store']);
+        Route::patch('/admin/clients/{user}', [ClientsController::class, 'update']);
         Route::get('/admin/clients/search', [ClientsController::class, 'search']);
         Route::get('/admin/clients/{user}', [ClientsController::class, 'show']);
         Route::get('/admin/clients/{user}/bookings', [ClientsController::class, 'bookings']);

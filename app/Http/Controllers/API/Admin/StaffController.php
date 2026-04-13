@@ -77,7 +77,7 @@ class StaffController extends Controller
         ], __('success.staff.updated'));
     }
 
-    public function destroy(User $user): JsonResponse
+    public function destroy(User $user, Request $request): JsonResponse
     {
         // Cannot deactivate superadmins or clients
         if (in_array($user->role->slug, ['superadmin', 'client'], true)) {
@@ -95,6 +95,56 @@ class StaffController extends Controller
                 __('errors.common.forbidden'),
                 403
             );
+        }
+
+        $forceParam = $request->query('force', $request->input('force'));
+        $force = filter_var($forceParam, FILTER_VALIDATE_BOOLEAN);
+
+        if (!$force) {
+            $now = now();
+            $upcomingBookings = \App\Models\Booking::query()
+                ->where(function ($q) use ($user) {
+                    $q->where('master_id', $user->id)
+                      ->orWhereHas('services', function ($qs) use ($user) {
+                          $qs->where('master_id', $user->id);
+                      });
+                })
+                ->whereNotIn('status', ['cancelled', 'completed', 'no_show'])
+                ->where(function ($q) use ($now) {
+                    $q->where('date', '>', $now->toDateString())
+                      ->orWhere(function ($qq) use ($now) {
+                          $qq->where('date', '=', $now->toDateString())
+                             ->where('start_time', '>=', $now->format('H:i:s'));
+                      });
+                })
+                ->orderBy('date')
+                ->orderBy('start_time')
+                ->limit(50)
+                ->get(['id', 'date', 'start_time', 'end_time', 'customer_name', 'status']);
+
+            if ($upcomingBookings->count() > 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Staff member has upcoming bookings.',
+                    'errors' => [
+                        'upcoming_bookings_count' => $upcomingBookings->count(),
+                    ],
+                    'data' => [
+                        'upcomingBookingsCount' => $upcomingBookings->count(),
+                        'upcomingBookings' => $upcomingBookings->map(function ($b) {
+                            return [
+                                'id' => $b->id,
+                                'date' => $b->date instanceof \Carbon\Carbon ? $b->date->toDateString() : $b->date,
+                                'startTime' => (string) $b->start_time,
+                                'endTime' => (string) $b->end_time,
+                                'customerName' => $b->customer_name,
+                                'status' => $b->status,
+                            ];
+                        })->values(),
+                    ],
+                    'requiresConfirmation' => true,
+                ], 409);
+            }
         }
 
         $this->userService->deleteUser($user);

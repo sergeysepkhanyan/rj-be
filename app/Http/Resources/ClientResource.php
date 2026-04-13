@@ -42,6 +42,8 @@ class ClientResource extends BaseResource
             'mobile' => $data['mobile'] ?? null,
             'dateOfBirth' => $data['date_of_birth'] ?? null,
             'role' => $this->role->name ?? null,
+
+            'registrationSource' => $data['registration_source'] ?? null,
             'bookingsCount' => $this->clientBookings->count(),
             'ordersCount' => 0,
             'referralCount' => BookingReferral::where('referrer_user_id', $data['id'])->where('status', 'completed')->count(),

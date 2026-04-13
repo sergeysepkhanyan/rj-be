@@ -203,8 +203,15 @@ class CartService
                 ->get()
                 ->keyBy('id');
 
+            $user = $userId ? User::query()->with('productDiscountTier')->find($userId) : null;
+            $tierPercent = $user
+                ? $this->productDiscountTierService->getDiscountForUser($user)
+                : 0.0;
+
             $currency = null;
-            $subtotal = 0.0;
+            $rawSubtotal = 0.0;            // sum(product.price * qty) — pre any discount
+            $productFinalSubtotal = 0.0;   // sum(getFinalPrice * qty)  — product-level discount only
+            $subtotal = 0.0;               // sum(getFinalPriceForUser * qty) — product + tier
 
             foreach ($items as $item) {
                 // Use the locked product instance for accurate stock check
@@ -223,7 +230,10 @@ class CartService
                 }
                 $currency = $itemCurrency;
 
-                $subtotal += (float) $product->getFinalPrice() * (int) $item->quantity;
+                $qty = (int) $item->quantity;
+                $rawSubtotal += (float) $product->price * $qty;
+                $productFinalSubtotal += (float) $product->getFinalPrice() * $qty;
+                $subtotal += (float) $product->getFinalPriceForUser($user) * $qty;
             }
 
             // Decrement stock immediately within this transaction to prevent overselling
@@ -234,20 +244,9 @@ class CartService
                 }
             }
 
-            $user = $userId ? User::query()->find($userId) : null;
-
-            // Apply product discount tier if user has one
-            $productDiscountPercentage = 0.0;
-            $productDiscountAmount = 0.0;
-            $subtotalBeforeDiscount = $subtotal;
-            if ($user) {
-                $user->load('productDiscountTier');
-                $productDiscountPercentage = $this->productDiscountTierService->getDiscountForUser($user);
-                if ($productDiscountPercentage > 0) {
-                    $productDiscountAmount = round($subtotal * ($productDiscountPercentage / 100), 2);
-                    $subtotal -= $productDiscountAmount;
-                }
-            }
+            $productDiscountPercentage = $tierPercent;
+            $productDiscountAmount = round(max(0, $productFinalSubtotal - $subtotal), 2);
+            $subtotalBeforeDiscount = round($productFinalSubtotal, 2);
 
             $vatRate = 0.05;
             $tax = $subtotal * $vatRate;
@@ -313,24 +312,31 @@ class CartService
                 $billingAddress
             );
 
+
             foreach ($items as $item) {
-                $product = $item->product;
-                $unit = (float) $product->getFinalPrice();
-                $lineSubtotal = $unit * (int) $item->quantity;
+                $product = $lockedProducts->get($item->product_id) ?? $item->product;
+                $unit = (float) $product->getFinalPriceForUser($user);
+                $qty = (int) $item->quantity;
+                $lineSubtotal = round($unit * $qty, 2);
+                $rawPrice = (float) $product->price;
+                $productHadDiscount = $product->hasDiscount();
+                $tierApplied = $tierPercent > 0 && $unit < (float) $product->getFinalPrice();
+                $anyDiscount = $productHadDiscount || $tierApplied;
+
                 OrderItem::create([
                     'order_id' => $order->id,
                     'product_id' => $product->id,
-                    'quantity' => (int) $item->quantity,
+                    'quantity' => $qty,
                     'unit_price' => $unit,
                     'subtotal' => $lineSubtotal,
                     'currency' => $product->currency ?: 'AED',
-                    'original_price' => $product->hasDiscount() ? (float) $product->price : null,
-                    'discount_type' => $product->hasDiscount() ? $product->discount_type : null,
-                    'discount_amount' => $product->hasDiscount() ? (float) $product->discount_amount : null,
+                    'original_price' => $anyDiscount ? $rawPrice : null,
+                    'discount_type' => $productHadDiscount ? $product->discount_type : null,
+                    'discount_amount' => $productHadDiscount ? (float) $product->discount_amount : null,
                 ]);
             }
 
-            $this->assertCheckoutOrderIntegrity($order, $items->count(), $subtotalBeforeDiscount, $vatRate, $total, $productDiscountAmount);
+            $this->assertCheckoutOrderIntegrity($order, $items->count(), $subtotal, $vatRate, $total, 0.0);
 
             // Handle gift card if provided
             $giftCardAmountApplied = 0;
