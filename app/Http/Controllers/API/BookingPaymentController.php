@@ -178,11 +178,17 @@ class BookingPaymentController extends Controller
             }
 
             // Payment succeeded - update booking and order
-            DB::transaction(function () use ($booking) {
+            DB::transaction(function () use ($booking, $paymentIntentId) {
                 $order = $booking->order;
 
                 if ($order) {
-                    $order->update(['status' => 'paid']);
+                    // markPaid sets status='paid' AND paid_at=now() so the
+                    // turnover dashboard can see this revenue. A raw
+                    // ->update(['status'=>'paid']) leaves paid_at NULL and
+                    // hides the order from getTodaysTurnover().
+                    $this->orderService->markPaid($order, [
+                        'stripe_payment_intent_id' => $paymentIntentId,
+                    ]);
 
                     // Update payment record if exists
                     $payment = $order->payment;

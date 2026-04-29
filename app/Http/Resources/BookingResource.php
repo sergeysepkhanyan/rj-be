@@ -141,11 +141,25 @@ class BookingResource extends BaseResource
                 $vatAmount  = (float) ($bs->vat_amount ?? 0);
                 $finalPrice = (float) ($bs->final_price ?? $bs->price ?? 0);
 
+                // For variants, show "Parent - Variant" so receipts/calendars
+                // identify the booked service, not just the variant label.
+                $displayName = $bookable?->name;
+                $parentName = null;
+                if ($bookable instanceof SubServiceItem) {
+                    $bookable->loadMissing('subService');
+                    $parentName = $bookable->subService?->name;
+                    if ($parentName) {
+                        $displayName = $parentName . ' - ' . $bookable->name;
+                    }
+                }
+
                 return [
                     'id'          => $bs->id,
                     'serviceType' => $serviceType,
                     'serviceId'   => $bookable?->id,
-                    'name'        => $bookable?->name,
+                    'name'        => $displayName,
+                    'parentName'  => $parentName,
+                    'variantName' => $bookable instanceof SubServiceItem ? $bookable->name : null,
                     'pricing' => [
                         'basePrice'  => round($basePrice, 2),
                         'vatEnabled' => $vatEnabled,

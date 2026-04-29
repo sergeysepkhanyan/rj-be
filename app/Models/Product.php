@@ -177,6 +177,21 @@ class Product extends Model
         return (float) $tier->discount_percentage;
     }
 
+    /**
+     * `discount` is a legacy decimal column used as a 0/non-zero toggle.
+     * The frontend sends a boolean, so coerce here to keep the decimal cast
+     * happy and avoid "Unable to cast value to a decimal."
+     */
+    public function setDiscountAttribute($value): void
+    {
+        if (is_bool($value)) {
+            $value = $value ? '1.00' : '0.00';
+        } elseif ($value === '' || $value === null) {
+            $value = null;
+        }
+        $this->attributes['discount'] = $value;
+    }
+
     protected static function boot()
     {
         parent::boot();

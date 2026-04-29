@@ -21,6 +21,19 @@ use Illuminate\Http\Resources\Json\JsonResource;
  */
 class PostResource extends JsonResource
 {
+    /**
+     * Defensive read for legacy rows whose `image` already contains one or
+     * more "http(s)://host/storage/" prefixes (from before the Post model
+     * mutator existed). Always returns a plain relative path.
+     */
+    private static function stripStorageUrl(string $value): string
+    {
+        while (preg_match('#^https?://[^/]+/storage/(.+)$#i', $value, $m)) {
+            $value = $m[1];
+        }
+        return $value;
+    }
+
     public function toArray($request): array
     {
         return [
@@ -33,7 +46,7 @@ class PostResource extends JsonResource
             'slug'             => $this->slug,
             'preview'          => $this->preview ?? null,
             'content'          => $this->content,
-            'image'            => $this->image ? asset('storage/' . $this->image) : null,
+            'image'            => $this->image ? asset('storage/' . self::stripStorageUrl($this->image)) : null,
             'showAuthor'      => (bool) $this->show_author,
             'status'           => $this->status,
             'publishDate'     => $this->publish_date

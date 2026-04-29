@@ -20,8 +20,13 @@ class ReportsRepository implements ReportsRepositoryInterface
     {
         $targetDate = $date ? Carbon::parse($date) : Carbon::today();
 
+        // Money received and not refunded. Includes every status reachable
+        // after 'paid' except 'refunded' / 'return_approved' (about to refund),
+        // 'cancelled' / 'pending*' (never paid), and 'gift' (no real revenue).
+        $countedStatuses = ['paid', 'processing', 'shipped', 'fulfilled', 'return_requested', 'return_rejected'];
+
         return Order::query()
-            ->where('status', 'paid')
+            ->whereIn('status', $countedStatuses)
             ->whereDate('paid_at', $targetDate)
             ->selectRaw('currency, SUM(amount) as total')
             ->groupBy('currency')

@@ -380,8 +380,17 @@ class OrderService
     {
         $currentStatus = $order->status;
 
-        // Idempotent: already paid, just return
+        // Idempotent: already paid, just return — but backfill paid_at if a
+        // prior code path set status='paid' without it. A NULL paid_at hides
+        // the order from getTodaysTurnover() since that query filters by
+        // whereDate('paid_at', $date).
         if ($currentStatus === OrderStatus::Paid->value) {
+            if ($order->paid_at === null) {
+                $payment = $order->latestPayment;
+                $backfillPaidAt = $payment?->paid_at ?? $order->updated_at ?? now();
+                $order->update(['paid_at' => $backfillPaidAt]);
+                $order->refresh();
+            }
             return $order;
         }
 
