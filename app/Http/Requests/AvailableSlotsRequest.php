@@ -10,6 +10,24 @@ class AvailableSlotsRequest extends BaseFormRequest
         'subServiceItemId' => 'sub_service_item_id',
     ];
 
+    /**
+     * Coerce `anyMaster` to a real boolean before validation. Axios serializes
+     * the JS boolean `true` to the query string "true", which Laravel's
+     * `boolean` rule rejects (it only accepts true|false|1|0|"1"|"0").
+     */
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('anyMaster')) {
+            $this->merge([
+                'anyMaster' => filter_var(
+                    $this->input('anyMaster'),
+                    FILTER_VALIDATE_BOOLEAN,
+                    FILTER_NULL_ON_FAILURE
+                ) ?? false,
+            ]);
+        }
+    }
+
     public function rules(): array
     {
         return [
