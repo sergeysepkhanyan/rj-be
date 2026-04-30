@@ -38,7 +38,8 @@ class OrderExportService
 
         $data = $this->prepareInvoiceData($order);
 
-        $filename = 'invoice-' . ($order->reference ?? $order->id) . '.pdf';
+        $reference = $order->reference ?? "ORD-{$order->id}";
+        $filename = 'Invoice-' . $reference . '.pdf';
 
         // Generate PDF using letterhead template
         $pdfContent = $this->generateInvoiceWithLetterhead($data);
@@ -309,7 +310,8 @@ class OrderExportService
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
 
-        $filename = 'invoice-' . ($order->reference ?? $order->id) . '.xlsx';
+        $reference = $order->reference ?? "ORD-{$order->id}";
+        $filename = 'Invoice-' . $reference . '.xlsx';
 
         $writer = new Xlsx($spreadsheet);
 
@@ -338,7 +340,7 @@ class OrderExportService
             'latestPayment.paymentMethod',
         ])->orderByDesc('created_at')->get();
 
-        $filename = 'orders-invoice-' . now()->format('Y-m-d') . '.pdf';
+        $filename = 'Payments-Export-' . now()->format('Y-m-d') . '.pdf';
 
         // Generate bulk PDF using letterhead template
         $pdfContent = $this->generateBulkInvoiceWithLetterhead($orders);
@@ -572,7 +574,7 @@ class OrderExportService
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
 
-        $filename = 'orders-export-' . now()->format('Y-m-d') . '.xlsx';
+        $filename = 'Payments-Export-' . now()->format('Y-m-d') . '.xlsx';
 
         $writer = new Xlsx($spreadsheet);
 

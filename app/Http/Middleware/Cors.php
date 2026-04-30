@@ -56,6 +56,7 @@ class Cors
                      'Access-Control-Allow-Credentials',
                      'Access-Control-Allow-Methods',
                      'Access-Control-Allow-Headers',
+                     'Access-Control-Expose-Headers',
                      'Access-Control-Max-Age',
                  ] as $header) {
             $response->headers->remove($header);
@@ -74,6 +75,13 @@ class Cors
         $response->headers->set(
             'Access-Control-Allow-Methods',
             'GET, POST, PUT, PATCH, DELETE, OPTIONS'
+        );
+
+        // Expose Content-Disposition so cross-origin XHR/fetch can read the
+        // server-provided filename for file downloads (invoices, exports, etc.).
+        $response->headers->set(
+            'Access-Control-Expose-Headers',
+            'Content-Disposition, Content-Length, Content-Type'
         );
 
         $response->headers->set('Access-Control-Max-Age', '86400');

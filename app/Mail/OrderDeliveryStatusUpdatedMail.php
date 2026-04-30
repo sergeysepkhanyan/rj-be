@@ -67,7 +67,7 @@ class OrderDeliveryStatusUpdatedMail extends Mailable implements ShouldQueue
     {
         return match($status) {
             'ordered' => 'Ordered',
-            'out_of_delivery' => 'Out of Delivery',
+            'out_of_delivery' => 'Out for Delivery',
             'delivered' => 'Delivered',
             'canceled' => 'Canceled',
             default => ucfirst(str_replace('_', ' ', $status)),

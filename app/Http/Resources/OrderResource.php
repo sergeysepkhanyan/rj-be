@@ -163,7 +163,7 @@ class OrderResource extends JsonResource
                 ],
                 [
                     'status' => 'out_of_delivery',
-                    'label' => 'Out of Delivery',
+                    'label' => 'Out for Delivery',
                     'date' => $statuses['out_of_delivery']?->format('D, d F Y'),
                     'checked' => $statuses['out_of_delivery'] !== null,
                 ],
