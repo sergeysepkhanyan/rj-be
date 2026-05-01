@@ -343,6 +343,11 @@ Route::middleware(['set.locale'])->group(function () {
         Route::get('/admin/leads/{lead}', [LeadsController::class, 'show']);
         Route::put('/admin/leads/{lead}', [LeadsController::class, 'update']);
         Route::delete('/admin/leads/{lead}', [LeadsController::class, 'destroy']);
+        // Lead detail page (mirrors the client detail endpoints — match by
+        // customer_phone / customer_email since leads have no user_id).
+        Route::get('/admin/leads/{lead}/profile', [LeadsController::class, 'profile']);
+        Route::get('/admin/leads/{lead}/bookings', [LeadsController::class, 'bookings']);
+        Route::get('/admin/leads/{lead}/orders', [LeadsController::class, 'orders']);
 
         // Gift Cards management
         Route::get('/admin/gift-cards', [\App\Http\Controllers\API\Admin\GiftCardController::class, 'index']);

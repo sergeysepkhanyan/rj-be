@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\BookingReferral;
+use App\Models\Order;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
@@ -45,7 +46,22 @@ class ClientResource extends BaseResource
 
             'registrationSource' => $data['registration_source'] ?? null,
             'bookingsCount' => $this->clientBookings->count(),
-            'ordersCount' => 0,
+            // Mirrors ClientsController::show() so the list count matches the
+            // detail page's "Confirmed Orders" stat. Counts ecommerce orders
+            // in any post-payment state (paid through refunded).
+            'ordersCount' => Order::where('user_id', $data['id'])
+                ->where('type', 'ecommerce')
+                ->whereIn('status', [
+                    'paid',
+                    'fulfilled',
+                    'processing',
+                    'shipped',
+                    'return_requested',
+                    'return_approved',
+                    'return_rejected',
+                    'refunded',
+                ])
+                ->count(),
             'referralCount' => BookingReferral::where('referrer_user_id', $data['id'])->where('status', 'completed')->count(),
             'referral' => $this->referral ? new ReferralResource($this->referral) : null,
             'manualReferral' => $this->whenLoaded('manualReferral', function () {

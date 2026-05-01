@@ -54,10 +54,20 @@ class ReferralRewardsConfigController extends Controller
             'isActive' => $config->is_active,
             'services' => $config->services->map(function ($row) {
                 if ($row->sub_service_item_id && $row->subServiceItem) {
+                    // Compose the parent SubService name so reload matches what
+                    // the admin saw when they picked the variant ("Basic Trim -
+                    // Long Hair") instead of just the bare variant name
+                    // ("Long Hair").
+                    $row->subServiceItem->loadMissing('subService');
+                    $parentName = $row->subServiceItem->subService?->name;
+                    $itemName = $row->subServiceItem->name;
+                    $composedName = $parentName
+                        ? trim($parentName) . ' - ' . trim($itemName)
+                        : $itemName;
                     return [
                         'id' => $row->subServiceItem->id,
                         'type' => 'item',
-                        'name' => $row->subServiceItem->name,
+                        'name' => $composedName,
                         'rowId' => $row->id,
                     ];
                 }

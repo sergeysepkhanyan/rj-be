@@ -32,16 +32,46 @@ class OrderConfirmedMail extends Mailable implements ShouldQueue
         $payload = (new OrderResource($order))->resolve();
         $payload = $this->stripMissingValues($payload);
 
-        $items = $payload['items'] ?? [];
-        $items = is_array($items) ? $items : (method_exists($items, 'all') ? $items->all() : []);
-        if (!empty($items)) {
-            $items = array_map(function ($item) {
-                $row = is_array($item) ? $item : (method_exists($item, 'toArray') ? $item->toArray() : []);
-                if (isset($row['name']) && !isset($row['productName'])) {
-                    $row['productName'] = $row['name'];
-                }
-                return $row;
-            }, $items);
+        // Build the items list directly from the loaded order for ecommerce
+        // orders. The previous implementation relied on the OrderResource's
+        // nested resource being auto-resolved into arrays, which under some
+        // conditions left the items as JsonResource instances — calling
+        // toArray() without a Request silently fell back to the model's raw
+        // toArray, which produced snake_case keys missing the joined product
+        // name. Result: the email rendered "Product" with "0.00 AED" unit
+        // price even though the subtotal was correct.
+        if ($order->type === 'ecommerce' && $order->relationLoaded('items')) {
+            $items = $order->items->map(function ($item) {
+                $product = $item->relationLoaded('product') ? $item->product : null;
+                $name = $product?->name ?: 'Product';
+                $mainImage = $product?->main_image
+                    ? asset('storage/' . $product->main_image)
+                    : null;
+
+                return [
+                    'id' => $item->id,
+                    'productId' => $item->product_id,
+                    'name' => $name,
+                    'productName' => $name,
+                    'skuId' => $product?->sku_id,
+                    'image' => $mainImage,
+                    'quantity' => (int) $item->quantity,
+                    'unitPrice' => (float) $item->unit_price,
+                    'subtotal' => (float) $item->subtotal,
+                ];
+            })->all();
+        } else {
+            $items = $payload['items'] ?? [];
+            $items = is_array($items) ? $items : (method_exists($items, 'all') ? $items->all() : []);
+            if (!empty($items)) {
+                $items = array_map(function ($item) {
+                    $row = is_array($item) ? $item : (method_exists($item, 'toArray') ? $item->toArray() : []);
+                    if (isset($row['name']) && !isset($row['productName'])) {
+                        $row['productName'] = $row['name'];
+                    }
+                    return $row;
+                }, $items);
+            }
         }
         $payload['items'] = $items;
 
