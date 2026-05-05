@@ -8,6 +8,7 @@ class AvailableSlotsRequest extends BaseFormRequest
         'masterId' => 'master_id',
         'subServiceId' => 'sub_service_id',
         'subServiceItemId' => 'sub_service_item_id',
+        'excludeBookingId' => 'exclude_booking_id',
     ];
 
     /**
@@ -36,6 +37,7 @@ class AvailableSlotsRequest extends BaseFormRequest
             'date' => ['required', 'date_format:Y-m-d'],
             'subServiceId' => ['nullable', 'integer', 'exists:sub_services,id', 'required_without:subServiceItemId'],
             'subServiceItemId' => ['nullable', 'integer', 'exists:sub_service_items,id', 'required_without:subServiceId'],
+            'excludeBookingId' => ['nullable', 'integer', 'exists:bookings,id'],
         ];
     }
 }

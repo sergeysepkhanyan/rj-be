@@ -13,6 +13,7 @@ use App\Http\Resources\OrderResource;
 use App\Models\Booking;
 use App\Models\Order;
 use App\Services\ApiResponse;
+use App\Services\LoyaltyService;
 use App\Services\OrderExportService;
 use App\Services\OrderService;
 use App\Services\PaymentService;
@@ -24,7 +25,8 @@ class OrdersController extends Controller
     public function __construct(
         protected OrderService $orderService,
         protected OrderExportService $orderExportService,
-        protected PaymentService $paymentService
+        protected PaymentService $paymentService,
+        protected LoyaltyService $loyaltyService
     ) {}
 
     public function store(StoreOrderRequest $request): JsonResponse
@@ -168,6 +170,30 @@ class OrdersController extends Controller
             });
 
             $order->refresh();
+
+            // Refunded bookings stop counting toward loyalty thresholds — re-run
+            // the tier evaluation so the user's referral_id (and the "Your
+            // Discount" panel) reflects their new qualifying visit count.
+            if ($order->type === 'booking' && $order->orderable instanceof Booking) {
+                $booking = $order->orderable->fresh();
+                $userIds = collect();
+                if ($booking && $booking->user_id) {
+                    $userIds->push($booking->user_id);
+                }
+                if ($booking && $booking->batch_id) {
+                    Booking::where('batch_id', $booking->batch_id)
+                        ->whereNotNull('user_id')
+                        ->pluck('user_id')
+                        ->each(fn($id) => $userIds->push($id));
+                }
+                $userIds->unique()->each(function ($userId) {
+                    $u = \App\Models\User::find($userId);
+                    if ($u) {
+                        $this->loyaltyService->checkAndUpgradeUser($u);
+                    }
+                });
+            }
+
             $this->loadOrderForDetail($order);
 
             return ApiResponse::success([

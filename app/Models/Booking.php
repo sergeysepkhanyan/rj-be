@@ -86,6 +86,44 @@ class Booking extends Model
         'is_package_booking' => 'boolean',
     ];
 
+    protected static function booted(): void
+    {
+        static::saving(function (Booking $booking) {
+            $isHistorical =
+                $booking->status === 'cancelled' ||
+                $booking->payment_status === 'refunded';
+
+            if ($isHistorical) {
+                $booking->active_slot_key = null;
+                return;
+            }
+
+            $masterId = $booking->master_id;
+            $date = $booking->date;
+            $startTime = $booking->start_time;
+            $endTime = $booking->end_time;
+
+            if (!$masterId || !$date || !$startTime || !$endTime) {
+                $booking->active_slot_key = null;
+                return;
+            }
+
+            if ($date instanceof \DateTimeInterface) {
+                $date = $date->format('Y-m-d');
+            } elseif (is_string($date) && strlen($date) > 10) {
+                $date = substr($date, 0, 10);
+            }
+
+            $booking->active_slot_key = sprintf(
+                '%s_%s_%s_%s',
+                $masterId,
+                $date,
+                substr((string) $startTime, 0, 5),
+                substr((string) $endTime, 0, 5)
+            );
+        });
+    }
+
     public function client(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');

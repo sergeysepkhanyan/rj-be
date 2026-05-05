@@ -187,6 +187,43 @@ class User extends Authenticatable implements JWTSubject, CanResetPasswordContra
         return $this->hasMany(BookingReferral::class, 'referrer_user_id');
     }
 
+    public function getActiveTierDiscount(): ?array
+    {
+        $this->loadMissing(['manualReferral', 'referral']);
+
+        $referral = null;
+        $bypassVisitCheck = false;
+
+        if ($this->manual_referral_id && $this->manualReferral) {
+            $referral = $this->manualReferral;
+            $bypassVisitCheck = true;
+        } elseif ($this->referral_id && $this->referral) {
+            $referral = $this->referral;
+        }
+
+        if (!$referral || !$referral->enabled || $referral->type !== 'percentage' || $referral->value <= 0) {
+            return null;
+        }
+
+        if (!$bypassVisitCheck && $referral->visit_threshold !== null) {
+            $visitCount = Booking::where('user_id', $this->id)
+                ->where('type', 'booking')
+                ->where('status', '!=', 'cancelled')
+                ->whereIn('payment_status', ['paid', 'gift'])
+                ->count();
+
+            if ($visitCount < $referral->visit_threshold) {
+                return null;
+            }
+        }
+
+        return [
+            'value' => (float) $referral->value,
+            'label' => $referral->name . ' Tier Discount',
+            'name' => $referral->name,
+        ];
+    }
+
     public function complimentaryRewards(): HasMany
     {
         return $this->hasMany(ComplimentaryReward::class);

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Booking;
 use App\Models\Lead;
+use App\Models\LeadNote;
 use App\Models\Order;
 use App\Models\User;
 use App\Http\Resources\LeadResource;
@@ -231,7 +232,7 @@ class LeadsController extends Controller
      */
     public function profile(Lead $lead): JsonResponse
     {
-        $lead->load(['referral', 'convertedUser']);
+        $lead->load(['referral', 'convertedUser', 'leadNotes.createdBy']);
         $match = $this->leadMatchClause($lead);
 
         $bookingsBase = Booking::query()->where('type', 'booking');
@@ -319,10 +320,23 @@ class LeadsController extends Controller
         $ordersCount = $confirmedOrders->count();
         $ordersTotal = (float) $confirmedOrders->sum('amount');
 
+        $notes = $lead->leadNotes->map(function (LeadNote $note) {
+            return [
+                'id' => $note->id,
+                'content' => $note->content,
+                'createdAt' => $note->created_at,
+                'createdBy' => $note->createdBy ? [
+                    'id' => $note->createdBy->id,
+                    'name' => trim(($note->createdBy->first_name ?? '') . ' ' . ($note->createdBy->last_name ?? '')) ?: ($note->createdBy->name ?? $note->createdBy->email),
+                ] : null,
+            ];
+        });
+
         return response()->json([
             'success' => true,
             'data' => [
                 'lead' => new LeadResource($lead),
+                'notes' => $notes,
                 'stats' => [
                     'bookings_count' => $bookingsCount,
                     'bookings_total' => $bookingsTotal,
@@ -335,6 +349,48 @@ class LeadsController extends Controller
                 ],
             ],
         ]);
+    }
+
+    public function addNote(Lead $lead, Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'content' => ['required', 'string', 'max:5000'],
+        ]);
+
+        $note = LeadNote::create([
+            'lead_id' => $lead->id,
+            'created_by' => auth()->id(),
+            'content' => $validated['content'],
+        ])->load('createdBy');
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'note' => [
+                    'id' => $note->id,
+                    'content' => $note->content,
+                    'createdAt' => $note->created_at,
+                    'createdBy' => $note->createdBy ? [
+                        'id' => $note->createdBy->id,
+                        'name' => trim(($note->createdBy->first_name ?? '') . ' ' . ($note->createdBy->last_name ?? '')) ?: ($note->createdBy->name ?? $note->createdBy->email),
+                    ] : null,
+                ],
+            ],
+        ]);
+    }
+
+    public function deleteNote(Lead $lead, LeadNote $note): JsonResponse
+    {
+        if ((int) $note->lead_id !== (int) $lead->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Note does not belong to this lead',
+            ], 404);
+        }
+
+        $note->delete();
+
+        return response()->json(['success' => true]);
     }
 
     /**

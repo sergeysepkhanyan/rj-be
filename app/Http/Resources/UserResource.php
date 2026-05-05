@@ -35,6 +35,7 @@ class UserResource extends BaseResource
             'bookingsCount' => $this->client_bookings_count ?? ($this->relationLoaded('clientBookings') ? $this->clientBookings->count() : 0),
             'ordersCount' => 0,
             'referral' => $this->referral ? new ReferralResource($this->referral) : null,
+            'tierDiscount' => $this->resource instanceof \App\Models\User ? $this->resource->getActiveTierDiscount() : null,
             'productDiscountTier' => $this->productDiscountTier ? [
                 'id' => $this->productDiscountTier->id,
                 'name' => $this->productDiscountTier->name,

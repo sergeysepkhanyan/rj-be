@@ -195,6 +195,8 @@ class BookingService
         $date = trim($data['date'] ?? '');
         $subserviceId = $data['sub_service_id'] ?? null;
         $subserviceItemId = $data['sub_service_item_id'] ?? null;
+        $excludeBookingId = $data['exclude_booking_id'] ?? $data['excludeBookingId'] ?? null;
+        $excludeBookingId = $excludeBookingId ? (int) $excludeBookingId : null;
 
         if (! $date) {
             $this->throwValidation(
@@ -237,13 +239,15 @@ class BookingService
                 $serviceBusy = $this->bookingRepository->getBusyForServiceOnDate(
                     'App\\Models\\SubService',
                     $subserviceId,
-                    $date
+                    $date,
+                    $excludeBookingId
                 );
             } elseif ($subserviceItemId) {
                 $serviceBusy = $this->bookingRepository->getBusyForServiceOnDate(
                     'App\\Models\\SubServiceItem',
                     $subserviceItemId,
-                    $date
+                    $date,
+                    $excludeBookingId
                 );
             }
 
@@ -259,7 +263,7 @@ class BookingService
                     continue;
                 }
 
-                $masterBusy = $this->bookingRepository->getBusyForMasterOnDate((int) $mid, $date);
+                $masterBusy = $this->bookingRepository->getBusyForMasterOnDate((int) $mid, $date, $excludeBookingId);
                 $busy = $masterBusy->merge($serviceBusy);
 
                 $slots = $this->buildSlots($date, $workStart, $workEnd, $busy, $durationMinutes, $tz);
@@ -294,20 +298,22 @@ class BookingService
         $workStart = $hours['start'];
         $workEnd = $hours['end'];
 
-        $masterBusy = $this->bookingRepository->getBusyForMasterOnDate($masterId, $date);
+        $masterBusy = $this->bookingRepository->getBusyForMasterOnDate($masterId, $date, $excludeBookingId);
 
         $serviceBusy = collect();
         if ($subserviceId) {
             $serviceBusy = $this->bookingRepository->getBusyForServiceOnDate(
                 'App\\Models\\SubService',
                 $subserviceId,
-                $date
+                $date,
+                $excludeBookingId
             );
         } elseif ($subserviceItemId) {
             $serviceBusy = $this->bookingRepository->getBusyForServiceOnDate(
                 'App\\Models\\SubServiceItem',
                 $subserviceItemId,
-                $date
+                $date,
+                $excludeBookingId
             );
         }
 

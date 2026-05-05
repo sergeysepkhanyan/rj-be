@@ -88,13 +88,15 @@ class BookingRepository implements BookingRepositoryInterface
         return $query->paginate($perPage, ['*'], 'page', $page);
     }
 
-    public function getBusyForMasterOnDate(int $masterId, string $date): Collection
+    public function getBusyForMasterOnDate(int $masterId, string $date, ?int $excludeBookingId = null): Collection
     {
         $breaks = Booking::query()
             ->where('master_id', $masterId)
             ->whereDate('date', $date)
             ->where('status', '!=', 'cancelled')
+            ->where('payment_status', '!=', 'refunded')
             ->where('type', 'break')
+            ->when($excludeBookingId, fn($q) => $q->where('id', '!=', $excludeBookingId))
             ->get([
                 'date',
                 'start_time',
@@ -109,7 +111,9 @@ class BookingRepository implements BookingRepositoryInterface
             ->where('bs.master_id', $masterId)
             ->whereDate('bs.date', $date)
             ->where('b.status', '!=', 'cancelled')
+            ->where('b.payment_status', '!=', 'refunded')
             ->where('b.type', 'booking')
+            ->when($excludeBookingId, fn($q) => $q->where('b.id', '!=', $excludeBookingId))
             ->get([
                 DB::raw('bs.date as date'),
                 DB::raw('bs.start_time as start_time'),
@@ -151,6 +155,7 @@ class BookingRepository implements BookingRepositoryInterface
             ->where('master_id', $masterId)
             ->whereIn('date', $dateRange)
             ->where('status', '!=', 'cancelled')
+            ->where('payment_status', '!=', 'refunded')
             ->where('type', 'break')
             ->get(['date', 'start_time', 'end_time', 'timezone']);
 
@@ -174,6 +179,7 @@ class BookingRepository implements BookingRepositoryInterface
             ->where('master_id', $masterId)
             ->whereIn('date', $dateRange)
             ->where('status', '!=', 'cancelled')
+            ->where('payment_status', '!=', 'refunded')
             ->where('type', 'booking')
             ->when($excludeBookingId, function ($q) use ($excludeBookingId) {
                 $q->where('id', '!=', $excludeBookingId);
@@ -201,6 +207,7 @@ class BookingRepository implements BookingRepositoryInterface
             ->where('bs.master_id', $masterId)
             ->whereIn('bs.date', $dateRange)
             ->where('b.status', '!=', 'cancelled')
+            ->where('b.payment_status', '!=', 'refunded')
             ->where('b.type', 'booking')
             ->when($excludeBookingId, function ($q) use ($excludeBookingId) {
                 $q->where('b.id', '!=', $excludeBookingId);
@@ -271,6 +278,7 @@ class BookingRepository implements BookingRepositoryInterface
             Booking::query()
                 ->whereIn('date', $dateRange)
                 ->where('status', '!=', 'cancelled')
+                ->where('payment_status', '!=', 'refunded')
                 ->where('type', 'booking')
                 ->lockForUpdate()
                 ->get(['id']);
@@ -283,6 +291,7 @@ class BookingRepository implements BookingRepositoryInterface
             ->where('bs.bookable_id', $bookableId)
             ->whereIn('bs.date', $dateRange)
             ->where('b.status', '!=', 'cancelled')
+            ->where('b.payment_status', '!=', 'refunded')
             ->where('b.type', 'booking')
             ->when($excludeBookingId, function ($q) use ($excludeBookingId) {
                 $q->where('b.id', '!=', $excludeBookingId);
@@ -320,7 +329,8 @@ class BookingRepository implements BookingRepositoryInterface
     public function getBusyForServiceOnDate(
         string $bookableType,
         int $bookableId,
-        string $date
+        string $date,
+        ?int $excludeBookingId = null
     ): Collection {
         return DB::table('booking_services as bs')
             ->join('bookings as b', 'b.id', '=', 'bs.booking_id')
@@ -328,7 +338,9 @@ class BookingRepository implements BookingRepositoryInterface
             ->where('bs.bookable_id', $bookableId)
             ->whereDate('bs.date', $date)
             ->where('b.status', '!=', 'cancelled')
+            ->where('b.payment_status', '!=', 'refunded')
             ->where('b.type', 'booking')
+            ->when($excludeBookingId, fn($q) => $q->where('b.id', '!=', $excludeBookingId))
             ->get([
                 DB::raw('bs.date as date'),
                 DB::raw('bs.start_time as start_time'),

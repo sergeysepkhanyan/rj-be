@@ -348,6 +348,8 @@ Route::middleware(['set.locale'])->group(function () {
         Route::get('/admin/leads/{lead}/profile', [LeadsController::class, 'profile']);
         Route::get('/admin/leads/{lead}/bookings', [LeadsController::class, 'bookings']);
         Route::get('/admin/leads/{lead}/orders', [LeadsController::class, 'orders']);
+        Route::post('/admin/leads/{lead}/notes', [LeadsController::class, 'addNote']);
+        Route::delete('/admin/leads/{lead}/notes/{note}', [LeadsController::class, 'deleteNote']);
 
         // Gift Cards management
         Route::get('/admin/gift-cards', [\App\Http\Controllers\API\Admin\GiftCardController::class, 'index']);
