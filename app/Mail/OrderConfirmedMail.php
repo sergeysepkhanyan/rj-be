@@ -118,4 +118,16 @@ class OrderConfirmedMail extends Mailable implements ShouldQueue
             ->text('emails.order-confirmed-text')
             ->with(['order' => $payload]);
     }
+
+    /**
+     * Mailable auto-passes public properties to the view, which would
+     * overwrite the `order` key we explicitly pass via `->with()` with the
+     * raw Eloquent model. The blade template expects the resolved payload
+     * array (with productName, createdAt, etc.), so we suppress the
+     * auto-pass and only expose what we explicitly set.
+     */
+    public function buildViewData(): array
+    {
+        return $this->viewData;
+    }
 }

@@ -84,4 +84,15 @@ class OrderDeliveryStatusUpdatedMail extends Mailable implements ShouldQueue
             default => ucfirst(str_replace('_', ' ', $status)),
         };
     }
+
+    /**
+     * Mailable auto-passes public properties to the view, which would
+     * overwrite the `order` key we set via `->with()` with the raw Order
+     * model. The blade template expects the resolved payload array
+     * (deliveryStatusLabel, mapped items), so we suppress the auto-pass.
+     */
+    public function buildViewData(): array
+    {
+        return $this->viewData;
+    }
 }

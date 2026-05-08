@@ -82,4 +82,15 @@ class NewOrderAdminNotificationMail extends Mailable implements ShouldQueue
             ->text('emails.new-order-admin-text')
             ->with(['order' => $orderData]);
     }
+
+    /**
+     * Mailable auto-passes public properties to the view, which would
+     * overwrite the `order` key we set via `->with()` with the raw Order
+     * model. The blade template expects the resolved payload array, so
+     * we suppress the auto-pass.
+     */
+    public function buildViewData(): array
+    {
+        return $this->viewData;
+    }
 }
