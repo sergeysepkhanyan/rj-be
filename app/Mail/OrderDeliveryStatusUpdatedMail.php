@@ -21,19 +21,30 @@ class OrderDeliveryStatusUpdatedMail extends Mailable implements ShouldQueue
     public function build(): OrderDeliveryStatusUpdatedMail
     {
         $order = $this->order->load([
-            'items.product',
             'shippingAddress.country',
             'user',
         ]);
 
+        // If the queued status string is empty for any reason, fall back to
+        // whatever is currently on the order. Otherwise the email renders
+        // an empty "Current Status" box.
+        $resolvedStatus = $this->deliveryStatus !== ''
+            ? $this->deliveryStatus
+            : (string) ($order->delivery_status ?? '');
+
+        $rows = \App\Models\OrderItem::with('product')
+            ->where('order_id', $order->id)
+            ->get();
+
         $orderData = [
             'id' => $order->id,
             'reference' => $order->reference,
-            'deliveryStatus' => $this->deliveryStatus,
-            'deliveryStatusLabel' => $this->getDeliveryStatusLabel($this->deliveryStatus),
-            'items' => $order->items->map(function ($item) {
+            'deliveryStatus' => $resolvedStatus,
+            'deliveryStatusLabel' => $this->getDeliveryStatusLabel($resolvedStatus),
+            'items' => $rows->map(function ($item) {
+                $name = $item->product?->name;
                 return [
-                    'productName' => $item->product?->name ?? 'N/A',
+                    'productName' => $name !== null && $name !== '' ? $name : 'Product',
                     'quantity' => (int) $item->quantity,
                 ];
             })->all(),
@@ -49,7 +60,7 @@ class OrderDeliveryStatusUpdatedMail extends Mailable implements ShouldQueue
 
         $orderData = $this->stripMissingValues($orderData);
 
-        $subject = match($this->deliveryStatus) {
+        $subject = match($resolvedStatus) {
             'delivered' => 'Order Delivered #' . ($orderData['reference'] ?? $order->reference ?? $order->id),
             'out_of_delivery' => 'Your Order is Out for Delivery #' . ($orderData['reference'] ?? $order->reference ?? $order->id),
             'canceled' => 'Order Canceled #' . ($orderData['reference'] ?? $order->reference ?? $order->id),

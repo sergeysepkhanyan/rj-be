@@ -32,18 +32,21 @@ class OrderConfirmedMail extends Mailable implements ShouldQueue
         $payload = (new OrderResource($order))->resolve();
         $payload = $this->stripMissingValues($payload);
 
-        // Build the items list directly from the loaded order for ecommerce
-        // orders. The previous implementation relied on the OrderResource's
-        // nested resource being auto-resolved into arrays, which under some
-        // conditions left the items as JsonResource instances — calling
-        // toArray() without a Request silently fell back to the model's raw
-        // toArray, which produced snake_case keys missing the joined product
-        // name. Result: the email rendered "Product" with "0.00 AED" unit
-        // price even though the subtotal was correct.
-        if ($order->type === 'ecommerce' && $order->relationLoaded('items')) {
-            $items = $order->items->map(function ($item) {
-                $product = $item->relationLoaded('product') ? $item->product : null;
+        $typeValue = method_exists($order, 'getTypeValue') ? $order->getTypeValue() : (string) $order->type;
+        if ($typeValue === 'ecommerce') {
+            $rows = \App\Models\OrderItem::with('product')
+                ->where('order_id', $order->id)
+                ->get();
+
+            $items = $rows->map(function ($item) {
+                $product = $item->product;
                 $name = $product?->name ?: 'Product';
+                $unit = (float) $item->unit_price;
+                $sub = (float) $item->subtotal;
+                $qty = max(1, (int) $item->quantity);
+                if ($unit <= 0 && $sub > 0) {
+                    $unit = round($sub / $qty, 2);
+                }
                 $mainImage = $product?->main_image
                     ? asset('storage/' . $product->main_image)
                     : null;
@@ -55,9 +58,9 @@ class OrderConfirmedMail extends Mailable implements ShouldQueue
                     'productName' => $name,
                     'skuId' => $product?->sku_id,
                     'image' => $mainImage,
-                    'quantity' => (int) $item->quantity,
-                    'unitPrice' => (float) $item->unit_price,
-                    'subtotal' => (float) $item->subtotal,
+                    'quantity' => $qty,
+                    'unitPrice' => $unit,
+                    'subtotal' => $sub,
                 ];
             })->all();
         } else {

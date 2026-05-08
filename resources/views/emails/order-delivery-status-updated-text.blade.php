@@ -29,8 +29,12 @@ Current Status: {{ $deliveryStatusLabel }}
 @if(count($items) > 0)
 Order Items:
 @foreach($items as $item)
-    - {{ $item['productName'] ?? 'Product' }}
-      Quantity: {{ $item['quantity'] ?? 1 }}
+    @php
+        $itemName = $item['productName'] ?? $item['name'] ?? 'Product';
+        $itemQty  = $item['quantity']    ?? 1;
+    @endphp
+    - {{ $itemName }}
+      Quantity: {{ $itemQty }}
 @endforeach
 @endif
 

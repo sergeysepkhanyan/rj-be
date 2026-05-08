@@ -55,17 +55,28 @@
 
                         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:separate; border-spacing:0 8px;">
                             @foreach($items as $item)
+                                @php
+                                    $itemName = $item['productName'] ?? $item['name'] ?? 'Product';
+                                    $itemQty  = $item['quantity']    ?? 1;
+                                    $itemUnit = $item['unitPrice']   ?? $item['unit_price'] ?? null;
+                                    $itemSub  = $item['subtotal']    ?? $item['sub_total']  ?? 0;
+                                    if (!is_numeric($itemUnit) || (float)$itemUnit <= 0) {
+                                        $itemUnit = ((int)$itemQty > 0 && (float)$itemSub > 0)
+                                            ? round((float)$itemSub / max(1, (int)$itemQty), 2)
+                                            : 0;
+                                    }
+                                @endphp
                                 <tr>
                                     <td style="background:#f6f7fb; border-radius:10px; padding:12px;">
                                         <div style="display:flex; justify-content:space-between;">
                                             <div>
-                                                <div style="font-size:14px; font-weight:600; color:#111;">{{ $item['productName'] ?? 'Product' }}</div>
+                                                <div style="font-size:14px; font-weight:600; color:#111;">{{ $itemName }}</div>
                                                 <div style="font-size:12px; color:#666; margin-top:4px;">
-                                                    Qty: {{ $item['quantity'] ?? 1 }} × {{ $fmt($item['unitPrice'] ?? 0) }} {{ $currency }}
+                                                    Qty: {{ $itemQty }} × {{ $fmt($itemUnit) }} {{ $currency }}
                                                 </div>
                                             </div>
                                             <div style="text-align:right;">
-                                                <div style="font-size:14px; font-weight:700; color:#111;">{{ $fmt($item['subtotal'] ?? 0) }} {{ $currency }}</div>
+                                                <div style="font-size:14px; font-weight:700; color:#111;">{{ $fmt($itemSub) }} {{ $currency }}</div>
                                             </div>
                                         </div>
                                     </td>

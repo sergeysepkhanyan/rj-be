@@ -68,11 +68,15 @@
                         <div style="font-size:15px; font-weight:700; margin-bottom:10px;">Order Items</div>
                         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:separate; border-spacing:0 10px;">
                             @foreach($items as $item)
+                                @php
+                                    $itemName = $item['productName'] ?? $item['name'] ?? 'Product';
+                                    $itemQty  = $item['quantity']    ?? 1;
+                                @endphp
                                 <tr>
                                     <td style="background:#f6f7fb; border-radius:12px; padding:14px 14px;">
-                                        <div style="font-size:14px; font-weight:700; color:#111;">{{ $item['productName'] ?? 'Product' }}</div>
+                                        <div style="font-size:14px; font-weight:700; color:#111;">{{ $itemName }}</div>
                                         <div style="font-size:12px; color:#555; margin-top:4px;">
-                                            Quantity: {{ $item['quantity'] ?? 1 }}
+                                            Quantity: {{ $itemQty }}
                                         </div>
                                     </td>
                                 </tr>

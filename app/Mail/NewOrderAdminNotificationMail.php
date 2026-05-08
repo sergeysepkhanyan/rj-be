@@ -20,10 +20,15 @@ class NewOrderAdminNotificationMail extends Mailable implements ShouldQueue
     public function build(): self
     {
         $order = $this->order->load([
-            'items.product',
             'shippingAddress.country',
             'user',
         ]);
+
+        // Re-query items directly from DB; relying on the rehydrated
+        // $order->items relation has been flaky in production.
+        $rows = \App\Models\OrderItem::with('product')
+            ->where('order_id', $order->id)
+            ->get();
 
         $customerName = $order->user?->name ?? ($order->meta['customer_name'] ?? 'Guest');
         $customerEmail = $order->user?->email ?? ($order->meta['customer_email'] ?? 'N/A');
@@ -42,12 +47,19 @@ class NewOrderAdminNotificationMail extends Mailable implements ShouldQueue
                 'email' => $customerEmail,
                 'phone' => $customerPhone,
             ],
-            'items' => $order->items->map(function ($item) {
+            'items' => $rows->map(function ($item) {
+                $name = $item->product?->name;
+                $unit = (float) $item->unit_price;
+                $sub = (float) $item->subtotal;
+                $qty = max(1, (int) $item->quantity);
+                if ($unit <= 0 && $sub > 0) {
+                    $unit = round($sub / $qty, 2);
+                }
                 return [
-                    'productName' => $item->product?->name ?? 'N/A',
-                    'quantity' => (int) $item->quantity,
-                    'unitPrice' => (float) $item->unit_price,
-                    'subtotal' => (float) $item->subtotal,
+                    'productName' => $name !== null && $name !== '' ? $name : 'Product',
+                    'quantity' => $qty,
+                    'unitPrice' => $unit,
+                    'subtotal' => $sub,
                 ];
             })->all(),
             'shippingAddress' => $order->shippingAddress ? [

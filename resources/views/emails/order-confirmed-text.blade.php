@@ -19,13 +19,25 @@ Paid: {{ $order['paidAt'] }}
 
 Items:
 @foreach($items as $item)
-    - {{ $item['productName'] ?? 'Product' }}
-    @if($item['skuId'] ?? null)
-        (SKU: {{ $item['skuId'] }})
+    @php
+        $itemName = $item['productName'] ?? $item['name'] ?? 'Product';
+        $itemQty = $item['quantity'] ?? 1;
+        $itemUnit = $item['unitPrice'] ?? $item['unit_price'] ?? null;
+        $itemSub  = $item['subtotal']  ?? $item['sub_total']  ?? 0;
+        if (!is_numeric($itemUnit) || (float)$itemUnit <= 0) {
+            $itemUnit = ((int)$itemQty > 0 && (float)$itemSub > 0)
+                ? round((float)$itemSub / max(1, (int)$itemQty), 2)
+                : 0;
+        }
+        $itemSku = $item['skuId'] ?? $item['sku_id'] ?? null;
+    @endphp
+    - {{ $itemName }}
+    @if($itemSku)
+        (SKU: {{ $itemSku }})
     @endif
-    Quantity: {{ $item['quantity'] ?? 1 }}
-    Unit Price: {{ $fmt($item['unitPrice'] ?? 0) }} {{ $currency }}
-    Subtotal: {{ $fmt($item['subtotal'] ?? 0) }} {{ $currency }}
+    Quantity: {{ $itemQty }}
+    Unit Price: {{ $fmt($itemUnit) }} {{ $currency }}
+    Subtotal: {{ $fmt($itemSub) }} {{ $currency }}
 @endforeach
 
 TOTAL: {{ $fmt($order['amount'] ?? 0) }} {{ $currency }}

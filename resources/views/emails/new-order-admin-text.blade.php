@@ -20,9 +20,20 @@ Phone: {{ $customer['phone'] ?? 'N/A' }}
 ORDER ITEMS
 -----------
 @foreach($items as $item)
-- {{ $item['productName'] ?? 'Product' }}
-  Qty: {{ $item['quantity'] ?? 1 }} × {{ $fmt($item['unitPrice'] ?? 0) }} {{ $currency }}
-  Subtotal: {{ $fmt($item['subtotal'] ?? 0) }} {{ $currency }}
+@php
+    $itemName = $item['productName'] ?? $item['name'] ?? 'Product';
+    $itemQty  = $item['quantity']    ?? 1;
+    $itemUnit = $item['unitPrice']   ?? $item['unit_price'] ?? null;
+    $itemSub  = $item['subtotal']    ?? $item['sub_total']  ?? 0;
+    if (!is_numeric($itemUnit) || (float)$itemUnit <= 0) {
+        $itemUnit = ((int)$itemQty > 0 && (float)$itemSub > 0)
+            ? round((float)$itemSub / max(1, (int)$itemQty), 2)
+            : 0;
+    }
+@endphp
+- {{ $itemName }}
+  Qty: {{ $itemQty }} × {{ $fmt($itemUnit) }} {{ $currency }}
+  Subtotal: {{ $fmt($itemSub) }} {{ $currency }}
 
 @endforeach
 

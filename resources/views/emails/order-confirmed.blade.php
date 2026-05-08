@@ -48,24 +48,36 @@
 
                         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:separate; border-spacing:0 10px;">
                             @foreach($items as $item)
+                                @php
+                                    $itemName = $item['productName'] ?? $item['name'] ?? 'Product';
+                                    $itemQty = $item['quantity'] ?? 1;
+                                    $itemUnit = $item['unitPrice'] ?? $item['unit_price'] ?? null;
+                                    $itemSub  = $item['subtotal']  ?? $item['sub_total']  ?? 0;
+                                    if (!is_numeric($itemUnit) || (float)$itemUnit <= 0) {
+                                        $itemUnit = ((int)$itemQty > 0 && (float)$itemSub > 0)
+                                            ? round((float)$itemSub / max(1, (int)$itemQty), 2)
+                                            : 0;
+                                    }
+                                    $itemSku = $item['skuId'] ?? $item['sku_id'] ?? null;
+                                @endphp
                                 <tr>
                                     <td style="background:#f6f7fb; border-radius:12px; padding:14px 14px;">
                                         <div style="display:flex; justify-content:space-between; gap:12px;">
                                             <div style="flex:1;">
-                                                <div style="font-size:14px; font-weight:700; color:#111;">{{ $item['productName'] ?? 'Product' }}</div>
-                                                @if($item['skuId'] ?? null)
+                                                <div style="font-size:14px; font-weight:700; color:#111;">{{ $itemName }}</div>
+                                                @if($itemSku)
                                                 <div style="font-size:12px; color:#555; margin-top:4px;">
-                                                    SKU: {{ $item['skuId'] }}
+                                                    SKU: {{ $itemSku }}
                                                 </div>
                                                 @endif
                                                 <div style="font-size:12px; color:#555; margin-top:8px;">
-                                                    Quantity: {{ $item['quantity'] ?? 1 }} × {{ $fmt($item['unitPrice'] ?? 0) }} {{ $currency }}
+                                                    Quantity: {{ $itemQty }} × {{ $fmt($itemUnit) }} {{ $currency }}
                                                 </div>
                                             </div>
 
                                             <div style="text-align:right; min-width:120px;">
                                                 <div style="font-size:12px; color:#666;">Subtotal</div>
-                                                <div style="font-size:16px; font-weight:800; color:#111;">{{ $fmt($item['subtotal'] ?? 0) }} {{ $currency }}</div>
+                                                <div style="font-size:16px; font-weight:800; color:#111;">{{ $fmt($itemSub) }} {{ $currency }}</div>
                                             </div>
                                         </div>
                                     </td>
