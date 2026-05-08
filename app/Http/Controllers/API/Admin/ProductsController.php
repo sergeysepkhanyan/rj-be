@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\BulkDeleteProductsRequest;
+use App\Http\Requests\BulkProductDiscountRequest;
 use App\Http\Requests\BulkUpdateProductStatusRequest;
 use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateProductRequest;
@@ -246,6 +247,26 @@ class ProductsController extends Controller
         return ApiResponse::success([
             'updated' => $updated,
         ], __('success.product.updated'));
+    }
+
+    public function bulkDiscount(BulkProductDiscountRequest $request): JsonResponse
+    {
+        $ids = $request->input('ids', []);
+        $discount = (bool) $request->input('discount');
+
+        if (!is_array($ids) || count($ids) === 0) {
+            return ApiResponse::success(['updated' => 0], __('success.product.updated'));
+        }
+
+        if ($discount) {
+            $type = $request->input('discount_type');
+            $amount = (float) $request->input('discount_amount');
+            $updated = $this->productService->bulkSetDiscount($ids, $type, $amount);
+        } else {
+            $updated = $this->productService->bulkClearDiscount($ids);
+        }
+
+        return ApiResponse::success(['updated' => $updated], __('success.product.updated'));
     }
 }
 

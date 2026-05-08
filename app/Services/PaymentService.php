@@ -406,7 +406,21 @@ class PaymentService
             $payload["metadata[{$key}]"] = (string) $value;
         }
 
-        $refund = $this->stripeClient->createRefund($payload, (string) Str::uuid());
+        try {
+            $refund = $this->stripeClient->createRefund($payload, (string) Str::uuid());
+        } catch (\Illuminate\Http\Client\RequestException $e) {
+            $body = $e->response?->json() ?? [];
+            $errorCode = $body['error']['code'] ?? null;
+            if ($errorCode === 'charge_already_refunded') {
+                \Illuminate\Support\Facades\Log::warning('Stripe charge already refunded; syncing local payment to refunded', [
+                    'payment_id' => $payment->id,
+                    'payment_intent_id' => $paymentIntentId,
+                ]);
+                $refund = $body['error'] ?? ['code' => 'charge_already_refunded', 'synced' => true];
+            } else {
+                throw $e;
+            }
+        }
 
         $raw = $payment->raw ?? [];
         $raw['refund'] = $refund;

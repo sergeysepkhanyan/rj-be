@@ -134,18 +134,13 @@ class OrdersController extends Controller
 
         try {
             \Illuminate\Support\Facades\DB::transaction(function () use ($order, $request) {
-                // Attempt Stripe refund if there's a payment
+                // If a Stripe payment exists, the gateway refund must succeed
+                // before we change any local status — otherwise we'd mark an
+                // order "refunded" while the customer never gets their money.
                 if ($order->latestPayment && $order->latestPayment->provider === 'stripe' && $order->latestPayment->external_id) {
-                    try {
-                        $this->paymentService->refundOrderPayment($order, [
-                            'reason' => $request->input('reason', 'Admin initiated refund'),
-                        ]);
-                    } catch (\Throwable $e) {
-                        \Log::warning('Stripe refund failed, proceeding with manual refund', [
-                            'order_id' => $order->id,
-                            'error' => $e->getMessage(),
-                        ]);
-                    }
+                    $this->paymentService->refundOrderPayment($order, [
+                        'reason' => $request->input('reason', 'Admin initiated refund'),
+                    ]);
                 }
 
                 // Update booking status if it's a booking order

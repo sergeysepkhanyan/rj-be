@@ -272,6 +272,7 @@ Route::middleware(['set.locale'])->group(function () {
         Route::get('/admin/product/download-inventory', [AdminProductsController::class, 'downloadInventory']);
         Route::post('/admin/product/bulk-delete', [AdminProductsController::class, 'bulkDelete']);
         Route::post('/admin/product/bulk-status', [AdminProductsController::class, 'bulkStatus']);
+        Route::post('/admin/product/bulk-discount', [AdminProductsController::class, 'bulkDiscount']);
 
         // Suppliers management
         Route::get('/admin/suppliers', [SuppliersController::class, 'index']);

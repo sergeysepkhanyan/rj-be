@@ -165,4 +165,30 @@ class ProductService
 
         return Product::whereIn('id', $ids)->update($data);
     }
+
+    public function bulkSetDiscount(array $ids, string $discountType, float $discountAmount): int
+    {
+        if (empty($ids) || $discountAmount <= 0) {
+            return 0;
+        }
+
+        return Product::whereIn('id', $ids)->update([
+            'discount' => 1,
+            'discount_type' => $discountType,
+            'discount_amount' => $discountAmount,
+        ]);
+    }
+
+    public function bulkClearDiscount(array $ids): int
+    {
+        if (empty($ids)) {
+            return 0;
+        }
+
+        return Product::whereIn('id', $ids)->update([
+            'discount' => 0,
+            'discount_type' => null,
+            'discount_amount' => null,
+        ]);
+    }
 }

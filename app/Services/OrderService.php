@@ -558,8 +558,18 @@ class OrderService
                 }
             }
 
-            // Restore product stock
-            $this->increaseProductQuantities($order);
+            // Stock is restored exactly once. Skip if the order is already in
+            // a state where stock has already been returned (cancelled,
+            // refunded, return_approved) — otherwise marking delivery
+            // canceled on a previously-cancelled order would double-credit.
+            $alreadyRestored = in_array($order->status, [
+                OrderStatus::Canceled->value,
+                OrderStatus::Refunded->value,
+                OrderStatus::ReturnApproved->value,
+            ], true);
+            if (!$alreadyRestored) {
+                $this->increaseProductQuantities($order);
+            }
         }
 
         $order = $this->orderRepository->update($order, $updateData);
