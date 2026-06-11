@@ -9,6 +9,7 @@ use App\Models\GiftCardUsage;
 use App\Services\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class GiftCardController extends Controller
 {
@@ -198,32 +199,42 @@ class GiftCardController extends Controller
             return ApiResponse::error(null, 'This gift card has expired', 422);
         }
 
-        if ($giftCardPurchase->balance <= 0) {
+        [$newBalance, $status] = DB::transaction(function () use ($request, $giftCardPurchase) {
+            $purchase = GiftCardPurchase::whereKey($giftCardPurchase->id)->lockForUpdate()->first();
+
+            if ((float) $purchase->balance <= 0) {
+                return [null, null];
+            }
+
+            $amount = min((float) $request->amount, (float) $purchase->balance);
+
+            GiftCardUsage::create([
+                'gift_card_purchase_id' => $purchase->id,
+                'amount_used' => $amount,
+                'used_for_type' => $request->usedForType,
+                'used_for_id' => $request->usedForId,
+                'used_for_name' => $request->usedForName,
+                'used_for' => $request->usedForName, // keep backward compat
+                'notes' => $request->notes,
+                'verified_by' => auth()->id(),
+            ]);
+
+            $newBalance = (float) $purchase->balance - $amount;
+            $purchase->update([
+                'balance' => $newBalance,
+                'status' => $newBalance <= 0 ? 'used' : 'active',
+            ]);
+
+            return [$newBalance, $purchase->status];
+        });
+
+        if ($newBalance === null) {
             return ApiResponse::error(null, 'This gift card has no remaining balance', 422);
         }
 
-        $amount = min($request->amount, (float) $giftCardPurchase->balance);
-
-        GiftCardUsage::create([
-            'gift_card_purchase_id' => $giftCardPurchase->id,
-            'amount_used' => $amount,
-            'used_for_type' => $request->usedForType,
-            'used_for_id' => $request->usedForId,
-            'used_for_name' => $request->usedForName,
-            'used_for' => $request->usedForName, // keep backward compat
-            'notes' => $request->notes,
-            'verified_by' => auth()->id(),
-        ]);
-
-        $newBalance = (float) $giftCardPurchase->balance - $amount;
-        $giftCardPurchase->update([
-            'balance' => $newBalance,
-            'status' => $newBalance <= 0 ? 'used' : 'active',
-        ]);
-
         return ApiResponse::success([
             'balance' => $newBalance,
-            'status' => $giftCardPurchase->status,
+            'status' => $status,
         ], 'Usage recorded successfully');
     }
 

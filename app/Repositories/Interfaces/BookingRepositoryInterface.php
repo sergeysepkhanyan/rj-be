@@ -22,7 +22,8 @@ interface BookingRepositoryInterface
         string $startTime,
         string $endTime,
         ?int $excludeBookingId = null,
-        ?string $timezone = null
+        ?string $timezone = null,
+        bool $withLock = false
     ): bool;
 
     /**

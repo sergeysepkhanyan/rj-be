@@ -247,18 +247,12 @@ class OrdersController extends Controller
     /**
      * Get a single order by ID.
      */
-    public function show(int $orderId): JsonResponse
+    public function show(Request $request, int $orderId): JsonResponse
     {
         $order = Order::with(['items.product', 'shippingAddress.country', 'billingAddress.country', 'latestPayment'])
-            ->where(function ($query) {
-                // Allow authenticated users to see their own orders, or guest orders by session
-                if (auth()->check()) {
-                    $query->where('user_id', auth()->id());
-                }
-            })
             ->find($orderId);
 
-        if (!$order) {
+        if (!$order || !$this->canAccessOrder($request, $order)) {
             return ApiResponse::error(
                 ['order' => ['Order not found']],
                 'Not found',
@@ -269,5 +263,27 @@ class OrdersController extends Controller
         return ApiResponse::success([
             'order' => new OrderResource($order),
         ]);
+    }
+
+    /**
+     * An order is visible to its authenticated owner, or to a guest whose
+     * session id matches the one captured on the order at checkout. This
+     * prevents anonymous enumeration of orders by sequential id.
+     */
+    private function canAccessOrder(Request $request, Order $order): bool
+    {
+        if (auth()->check()) {
+            return (int) $order->user_id === (int) auth()->id();
+        }
+
+        $guestSessionId = $request->header('X-Guest-Session-Id')
+            ?? $request->cookie('guest_session_id')
+            ?? $request->input('guest_session_id');
+
+        $orderSessionId = $order->meta['guest_session_id'] ?? null;
+
+        return $guestSessionId !== null
+            && $orderSessionId !== null
+            && hash_equals((string) $orderSessionId, (string) $guestSessionId);
     }
 }

@@ -18,6 +18,12 @@ class Kernel extends ConsoleKernel
             ->withoutOverlapping()
             ->runInBackground();
 
+        // Expire abandoned ecommerce orders, restoring stock and gift-card balance
+        $schedule->command('orders:expire-pending')
+            ->everyFiveMinutes()
+            ->withoutOverlapping()
+            ->runInBackground();
+
         // Send inventory low stock alerts daily
         $schedule->command('inventory:send-alerts')
             ->dailyAt('08:00')

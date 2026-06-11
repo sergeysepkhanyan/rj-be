@@ -101,6 +101,14 @@ class GiftCardPurchaseController extends Controller
             return ApiResponse::error(null, 'Gift card not found', 404);
         }
 
+        // Verify the captured amount actually covers the gift card price, so a
+        // stale/tampered intent can't issue more balance than was paid.
+        $capturedMinor = (int) (($paymentIntent['amount_received'] ?? $paymentIntent['amount'] ?? 0));
+        $expectedMinor = (int) round(((float) $giftCard->price) * 100);
+        if ($capturedMinor < $expectedMinor) {
+            return ApiResponse::error(null, 'Payment amount mismatch', 400);
+        }
+
         $userId = !empty($metadata['user_id']) ? (int) $metadata['user_id'] : null;
 
         $purchase = DB::transaction(function () use ($giftCard, $metadata, $paymentIntent, $request, $userId) {

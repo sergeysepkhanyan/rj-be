@@ -139,7 +139,7 @@ class StripeWebhookController extends Controller
                         }
                     }
 
-                    if ($amountsMatch && $order->orderable && $order->getTypeValue() === 'booking') {
+                    if ($amountsMatch && !$wasAlreadyPaid && $order->orderable && $order->getTypeValue() === 'booking') {
                         $booking = $order->orderable;
 
                         // Re-validate slot availability before confirming the booking

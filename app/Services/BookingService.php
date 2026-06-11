@@ -490,6 +490,11 @@ class BookingService
 
         return DB::transaction(function () use ($data, $user, $tz, $segments, $pricing) {
 
+            // Re-validate availability under a pessimistic lock now that we are
+            // inside the transaction — closes the race between the pre-flight
+            // master-assignment check and the actual insert (double-booking).
+            $this->assertSegmentsAvailable($segments, $tz);
+
             $firstSegment = $segments[0];
             $lastSegment = $segments[count($segments) - 1];
             $bookingStart = substr($firstSegment['start_time'], 0, 5);
@@ -540,6 +545,7 @@ class BookingService
                 $reward = \App\Models\ComplimentaryReward::where('id', $complimentaryRewardId)
                     ->where('user_id', $user->id)
                     ->where('status', 'available')
+                    ->lockForUpdate()
                     ->first();
 
                 if ($reward) {
@@ -566,6 +572,7 @@ class BookingService
                 $packagePurchase = \App\Models\ServicePackagePurchase::where('id', $servicePackagePurchaseId)
                     ->where('user_id', $user->id)
                     ->where('status', 'active')
+                    ->lockForUpdate()
                     ->first();
 
                 if ($packagePurchase) {
@@ -747,6 +754,8 @@ class BookingService
         ]);
 
         return DB::transaction(function () use ($booking, $data, $tz, $segments, $pricing) {
+            $this->assertSegmentsAvailable($segments, $tz, $booking->id);
+
             $firstSegment = $segments[0];
             $lastSegment = $segments[count($segments) - 1];
             $bookingStart = substr($firstSegment['start_time'], 0, 5);
@@ -1421,6 +1430,8 @@ class BookingService
         ]);
 
         return DB::transaction(function () use ($data, $user, $tz, $segments, $pricing) {
+            $this->assertSegmentsAvailable($segments, $tz);
+
             $batchId = $this->makeBatchId();
             $bookings = [];
             $totalPrice = 0;
@@ -1645,6 +1656,33 @@ class BookingService
             'source' => 'booking',
             'status' => 'new',
         ]);
+    }
+
+    protected function assertSegmentsAvailable(array $segments, string $tz, ?int $excludeBookingId = null): void
+    {
+        foreach ($segments as $seg) {
+            $masterId = (int) ($seg['master_id'] ?? 0);
+            if ($masterId <= 0) {
+                continue;
+            }
+
+            $hasOverlap = $this->bookingRepository->hasOverlap(
+                $masterId,
+                (string) $seg['date'],
+                (string) $seg['start_time'],
+                (string) $seg['end_time'],
+                $excludeBookingId,
+                $seg['timezone'] ?? $tz,
+                true
+            );
+
+            if ($hasOverlap) {
+                $this->throwValidation(
+                    ['date' => __('validation.booking.master_unavailable')],
+                    'validation.failed'
+                );
+            }
+        }
     }
 
     protected function throwValidation(array $errors, string $messageKey, array $replace = [], int $status = 422): void

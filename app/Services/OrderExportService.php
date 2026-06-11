@@ -596,8 +596,23 @@ class OrderExportService
             $lastName = $order->user->last_name ?? '';
             $customerName = trim("{$firstName} {$lastName}");
             $customerEmail = $order->user->email;
-        } else {
+        }
+
+        // For booking orders, prefer the booking's customer info over the order's user (which may be the admin)
+        if ($order->type === 'booking' && $order->orderable instanceof Booking) {
+            $booking = $order->orderable;
+            if ($booking->customer_name) {
+                $customerName = $booking->customer_name;
+            }
+            if ($booking->customer_email) {
+                $customerEmail = $booking->customer_email;
+            }
+        }
+
+        if (!$customerName) {
             $customerName = $order->meta['customer_name'] ?? null;
+        }
+        if (!$customerEmail) {
             $customerEmail = $order->meta['customer_email'] ?? null;
         }
 

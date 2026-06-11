@@ -39,7 +39,8 @@ class OrderService
         protected OrderRepositoryInterface $orderRepository,
         protected BookingRepositoryInterface $bookingRepository,
         protected PaymentService $paymentService,
-        protected AddressRepositoryInterface $addressRepository
+        protected AddressRepositoryInterface $addressRepository,
+        protected GiftCardService $giftCardService
     ) {}
 
     public function createManually(array $data, bool $sendEmail = false): Order
@@ -440,11 +441,20 @@ class OrderService
             $this->increaseProductQuantities($order);
         }
 
-        return $this->orderRepository->update($order, [
+        $this->giftCardService->reverseForOrder($order);
+
+        $order = $this->orderRepository->update($order, [
             'status' => OrderStatus::Canceled->value,
             'cancelled_at' => now(),
             'meta'   => array_merge($order->meta ?? [], $meta),
         ]);
+
+        // Re-evaluate the product discount tier now that spend has decreased.
+        if ($order->getTypeValue() === OrderType::Ecommerce->value && $order->user_id) {
+            app(ProductDiscountTierService::class)->checkAndUpgradeUser($order->user);
+        }
+
+        return $order;
     }
 
     public function cancelBookingForOrder(Order $order): void
@@ -454,10 +464,13 @@ class OrderService
         }
         $booking = $order->orderable;
         if ($booking instanceof Booking) {
-            $this->bookingRepository->update($booking, [
-                'status' => 'cancelled',
-                'payment_status' => 'unpaid',
-            ]);
+            $update = ['status' => 'cancelled'];
+            // Only clear payment status for bookings that were never paid; never
+            // overwrite a genuinely paid/refunded booking from a late failure event.
+            if (!in_array($booking->payment_status, ['paid', 'refunded'], true)) {
+                $update['payment_status'] = 'unpaid';
+            }
+            $this->bookingRepository->update($booking, $update);
         }
     }
 
@@ -477,11 +490,18 @@ class OrderService
             $this->increaseProductQuantities($order);
         }
 
+        $this->giftCardService->reverseForOrder($order);
+
         $order = $this->orderRepository->update($order, [
             'status' => OrderStatus::Refunded->value,
             'refunded_at' => now(),
             'meta'   => array_merge($order->meta ?? [], $meta),
         ]);
+
+        // Re-evaluate the product discount tier now that spend has decreased.
+        if ($order->getTypeValue() === OrderType::Ecommerce->value && $order->user_id) {
+            app(ProductDiscountTierService::class)->checkAndUpgradeUser($order->user);
+        }
 
         // Send refund notification email
         $email = $this->resolveOrderEmail($order);

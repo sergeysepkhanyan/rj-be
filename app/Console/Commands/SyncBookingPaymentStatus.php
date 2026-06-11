@@ -45,9 +45,9 @@ class SyncBookingPaymentStatus extends Command
         $bookings = Booking::query()
             ->where('status', 'confirmed')
             ->where('payment_status', 'unpaid')
-            ->where('payment_mode', 'pay_online')
+            ->where('payment_mode', 'pay_now')
             ->whereHas('order', function ($query) {
-                $query->where('payment_status', 'paid');
+                $query->where('status', 'paid');
             })
             ->with('order')
             ->limit($limit)
@@ -72,7 +72,7 @@ class SyncBookingPaymentStatus extends Command
                 }
 
                 // Verify the order is actually paid
-                if ($order->payment_status !== 'paid') {
+                if ($order->status !== 'paid') {
                     continue;
                 }
 
@@ -108,7 +108,7 @@ class SyncBookingPaymentStatus extends Command
             ->whereIn('status', ['confirmed', 'pending'])
             ->where('payment_status', 'paid')
             ->whereHas('order', function ($query) {
-                $query->whereIn('payment_status', ['cancelled', 'refunded']);
+                $query->whereIn('status', ['cancelled', 'refunded']);
             })
             ->with('order')
             ->limit($limit)
@@ -122,14 +122,17 @@ class SyncBookingPaymentStatus extends Command
                     continue;
                 }
 
-                $newStatus = $order->payment_status;
-                $this->line("Booking #{$booking->id} (Order #{$order->id}): paid -> {$newStatus}");
+                // Order status ('cancelled'/'refunded') maps onto the booking's
+                // own vocabulary: refunded orders refund the booking, cancelled
+                // orders cancel it (payment left as-is).
+                $newPaymentStatus = $order->status === 'refunded' ? 'refunded' : $booking->payment_status;
+                $this->line("Booking #{$booking->id} (Order #{$order->id}): paid -> {$order->status}");
 
                 if (!$dryRun) {
-                    DB::transaction(function () use ($booking, $newStatus) {
+                    DB::transaction(function () use ($booking, $newPaymentStatus) {
                         $booking->update([
-                            'payment_status' => $newStatus,
-                            'status' => $newStatus === 'cancelled' ? 'cancelled' : $booking->status,
+                            'payment_status' => $newPaymentStatus,
+                            'status' => 'cancelled',
                         ]);
                     });
 
@@ -137,7 +140,7 @@ class SyncBookingPaymentStatus extends Command
                         'booking_id' => $booking->id,
                         'order_id' => $order->id,
                         'old_status' => 'paid',
-                        'new_status' => $newStatus,
+                        'new_status' => $newPaymentStatus,
                     ]);
                 }
 

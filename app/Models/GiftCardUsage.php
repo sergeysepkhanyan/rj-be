@@ -16,10 +16,12 @@ class GiftCardUsage extends Model
         'used_for',
         'notes',
         'verified_by',
+        'reversed_at',
     ];
 
     protected $casts = [
         'amount_used' => 'decimal:2',
+        'reversed_at' => 'datetime',
     ];
 
     public function purchase(): BelongsTo

@@ -95,6 +95,14 @@ class ServicePackagePurchaseController extends Controller
             return ApiResponse::error(null, 'Service package not found', 404);
         }
 
+        // Verify the captured amount covers the package price (base + VAT), so a
+        // stale/tampered intent can't grant a package for less than it costs.
+        $expectedTotal = round((float) $package->price + round((float) $package->price * 0.05, 2), 2);
+        $capturedMinor = (int) (($paymentIntent['amount_received'] ?? $paymentIntent['amount'] ?? 0));
+        if ($capturedMinor < (int) round($expectedTotal * 100)) {
+            return ApiResponse::error(null, 'Payment amount mismatch', 400);
+        }
+
         $userId = !empty($metadata['user_id']) ? (int) $metadata['user_id'] : auth()->id();
 
         $purchase = DB::transaction(function () use ($package, $metadata, $paymentIntent, $request, $userId) {

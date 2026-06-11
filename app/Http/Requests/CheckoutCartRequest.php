@@ -73,13 +73,16 @@ class CheckoutCartRequest extends BaseFormRequest
 
     public function rules(): array
     {
+        $ownedAddress = \Illuminate\Validation\Rule::exists('addresses', 'id')
+            ->where(fn ($q) => $q->where('user_id', $this->user()?->id));
+
         return [
             'guestSessionId' => ['sometimes', 'string', 'max:64'],
             'customerName' => ['required', 'string', 'max:255'],
             'customerEmail' => ['required', 'email', 'max:255'],
             'customerPhone' => ['required', 'string', 'max:50', 'regex:/^[+\-0-9]+$/'],
-            'shippingAddressId' => ['nullable', 'integer'],
-            'billingAddressId' => ['nullable', 'integer'],
+            'shippingAddressId' => ['nullable', 'integer', $ownedAddress],
+            'billingAddressId' => ['nullable', 'integer', $ownedAddress],
             'billingSameAsShipping' => ['sometimes', 'boolean'],
             'paymentMethodId' => ['nullable'],
             'paymentMethodToken' => ['nullable', 'string'],

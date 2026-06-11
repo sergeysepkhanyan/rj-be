@@ -133,7 +133,8 @@ class BookingRepository implements BookingRepositoryInterface
         string $startTime,
         string $endTime,
         ?int $excludeBookingId = null,
-        ?string $timezone = null
+        ?string $timezone = null,
+        bool $withLock = false
     ): bool {
         $tz = $timezone ?: 'UTC';
         $startTimeStr = (string) $startTime;
@@ -150,6 +151,18 @@ class BookingRepository implements BookingRepositoryInterface
             $dateObj->toDateString(),
             $dateObj->copy()->addDay()->toDateString(),
         ];
+
+        // Pessimistically lock this master's rows so concurrent booking
+        // transactions for the same master block until this one resolves.
+        if ($withLock) {
+            Booking::query()
+                ->where('master_id', $masterId)
+                ->whereIn('date', $dateRange)
+                ->where('status', '!=', 'cancelled')
+                ->where('payment_status', '!=', 'refunded')
+                ->lockForUpdate()
+                ->get(['id']);
+        }
 
         $breaks = Booking::query()
             ->where('master_id', $masterId)
