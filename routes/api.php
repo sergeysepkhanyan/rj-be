@@ -130,6 +130,11 @@ Route::middleware(['set.locale'])->group(function () {
     Route::post('/bookings/batch', [BookingsController::class, 'storeBatch'])
         ->middleware(['throttle:5,1', 'idempotency']);
 
+    // Payment verification fallback for bookings (works for guests and
+    // authenticated users); authorized by binding the intent to the booking.
+    Route::post('/bookings/{booking}/verify-payment', [BookingPaymentController::class, 'verifyPayment'])
+        ->middleware('throttle:10,1');
+
     Route::middleware(['jwt.custom', 'verified'])->group(function () {
 
         Route::post('image/upload', [FilesController::class, 'upload']);

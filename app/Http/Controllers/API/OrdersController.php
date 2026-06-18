@@ -93,6 +93,17 @@ class OrdersController extends Controller
             $paymentIntent = $this->stripeClient->retrievePaymentIntent($paymentIntentId);
             $paymentStatus = $paymentIntent['status'] ?? null;
 
+            // Bind the intent to this order — a succeeded intent for a different
+            // order must never be able to mark this one paid.
+            $intentOrderId = data_get($paymentIntent, 'metadata.order_id');
+            if ($intentOrderId !== null && (string) $intentOrderId !== (string) $order->id) {
+                return ApiResponse::error(
+                    ['payment_intent_id' => ['Payment intent does not belong to this order']],
+                    'Payment not verified',
+                    422
+                );
+            }
+
             if ($paymentStatus === 'succeeded') {
                 // Update payment record
                 $payment = $order->latestPayment;

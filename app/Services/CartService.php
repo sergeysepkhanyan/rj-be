@@ -373,11 +373,15 @@ class CartService
                         ]),
                     ]);
 
-                    // If gift card fully covers the order, mark as paid immediately
+                    // If gift card fully covers the order, mark as paid immediately.
+                    // amount = cash charged (0 here); the gift-card cash was already
+                    // recognised as turnover when the card was purchased, so leaving
+                    // the full total would double-count it.
                     if ($giftCardAmountApplied >= $total) {
                         $order->update([
                             'status' => \App\Enums\OrderStatus::Paid->value,
                             'paid_at' => now(),
+                            'amount' => 0,
                         ]);
                         $this->cartRepository->deleteBySession($userId, $guestSessionId);
 

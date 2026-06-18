@@ -335,6 +335,17 @@ class OrderService
                 }
             }
 
+            \App\Models\Payment::create([
+                'order_id' => $order->id,
+                'provider' => $paymentMethod,
+                'flow' => 'manual',
+                'amount' => $total,
+                'currency' => $currency,
+                'status' => 'paid',
+                'paid_at' => now(),
+                'idempotency_key' => (string) Str::uuid(),
+            ]);
+
             if ($sendEmail && $customerEmail) {
                 $this->sendOrderConfirmation($order);
             }
@@ -605,9 +616,15 @@ class OrderService
     {
         OrderStateMachine::assertTransition($order->status, $status);
 
-        $order = $this->orderRepository->update($order, [
-            'status' => $status,
-        ]);
+        $updateData = ['status' => $status];
+
+        // Stamp paid_at the first time an order reaches a paid-counted status;
+        // getTodaysTurnover() filters on paid_at, so a NULL hides the revenue.
+        if ($order->paid_at === null && in_array($status, ['paid', 'processing', 'shipped', 'fulfilled'], true)) {
+            $updateData['paid_at'] = now();
+        }
+
+        $order = $this->orderRepository->update($order, $updateData);
 
         OrderStatusHistory::create([
             'order_id' => $order->id,

@@ -167,6 +167,17 @@ class BookingPaymentController extends Controller
                 );
             }
 
+            // Bind the intent to this booking — a succeeded intent for a
+            // different booking must never be able to confirm this one.
+            $intentBookingId = data_get($paymentIntent, 'metadata.booking_id');
+            if ($intentBookingId !== null && (string) $intentBookingId !== (string) $booking->id) {
+                return ApiResponse::error(
+                    ['payment_intent_id' => 'Payment intent does not belong to this booking'],
+                    __('messages.payment.not_succeeded'),
+                    422
+                );
+            }
+
             // Re-validate slot availability before confirming the booking
             if (!$this->bookingService->areSlotsStillAvailable($booking)) {
                 $this->bookingService->cancelBookingDueToSlotConflict($booking);
@@ -177,43 +188,7 @@ class BookingPaymentController extends Controller
                 );
             }
 
-            // Payment succeeded - update booking and order
-            DB::transaction(function () use ($booking, $paymentIntentId) {
-                $order = $booking->order;
-
-                if ($order) {
-                    // markPaid sets status='paid' AND paid_at=now() so the
-                    // turnover dashboard can see this revenue. A raw
-                    // ->update(['status'=>'paid']) leaves paid_at NULL and
-                    // hides the order from getTodaysTurnover().
-                    $this->orderService->markPaid($order, [
-                        'stripe_payment_intent_id' => $paymentIntentId,
-                    ]);
-
-                    // Update payment record if exists
-                    $payment = $order->payment;
-                    if ($payment) {
-                        $payment->update([
-                            'status' => 'paid',
-                            'paid_at' => now(),
-                        ]);
-                    }
-                }
-
-                // Update booking status
-                $booking->update([
-                    'status' => 'confirmed',
-                    'payment_status' => 'paid',
-                ]);
-
-                // If batch booking, mark all bookings as paid
-                if ($booking->batch_id) {
-                    $this->bookingService->markBatchBookingsPaid($booking->batch_id);
-                }
-
-                // Send confirmation email
-                $this->bookingService->sendBookingConfirmation($booking);
-            });
+            $this->finalizeBookingPayment($booking, $paymentIntentId);
 
             return ApiResponse::success([
                 'booking_id' => $booking->id,
@@ -244,6 +219,118 @@ class BookingPaymentController extends Controller
                 500
             );
         }
+    }
+
+    /**
+     * Guest-accessible payment confirmation fallback. Authorization is by
+     * binding the succeeded PaymentIntent to this booking (metadata.booking_id),
+     * mirroring the public order verify-payment endpoint.
+     */
+    public function verifyPayment(Request $request, Booking $booking): JsonResponse
+    {
+        $paymentIntentId = $request->input('payment_intent_id');
+
+        if (!$paymentIntentId) {
+            return ApiResponse::error(
+                ['payment_intent_id' => 'Payment intent ID is required'],
+                __('validation.required', ['attribute' => 'payment intent ID']),
+                422
+            );
+        }
+
+        if ($booking->payment_status === 'paid') {
+            return ApiResponse::success([
+                'booking_id' => $booking->id,
+                'payment_status' => 'paid',
+                'already_paid' => true,
+            ], __('messages.booking.already_paid'));
+        }
+
+        try {
+            $paymentIntent = $this->stripeClient->retrievePaymentIntent($paymentIntentId);
+            $status = data_get($paymentIntent, 'status');
+
+            if ($status !== 'succeeded') {
+                return ApiResponse::error(
+                    ['stripe_status' => $status],
+                    __('messages.payment.not_succeeded'),
+                    422
+                );
+            }
+
+            $intentBookingId = data_get($paymentIntent, 'metadata.booking_id');
+            if ((string) $intentBookingId !== (string) $booking->id) {
+                return ApiResponse::error(
+                    ['payment_intent_id' => 'Payment intent does not belong to this booking'],
+                    __('messages.payment.not_succeeded'),
+                    422
+                );
+            }
+
+            if (!$this->bookingService->areSlotsStillAvailable($booking)) {
+                $this->bookingService->cancelBookingDueToSlotConflict($booking);
+                return ApiResponse::error(
+                    ['slot' => 'The requested time slot is no longer available. The booking has been cancelled and a refund initiated.'],
+                    __('messages.booking.slot_no_longer_available'),
+                    409
+                );
+            }
+
+            $this->finalizeBookingPayment($booking, $paymentIntentId);
+
+            return ApiResponse::success([
+                'booking_id' => $booking->id,
+                'payment_status' => 'paid',
+            ], __('messages.payment.confirmed'));
+        } catch (\Throwable $e) {
+            \Log::error('BookingPaymentController::verifyPayment error', [
+                'booking_id' => $booking->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return ApiResponse::error(
+                null,
+                __('messages.payment.confirmation_failed'),
+                500
+            );
+        }
+    }
+
+    /**
+     * Marks a booking + its order paid after a verified successful payment.
+     * markPaid sets status='paid' AND paid_at=now() so turnover sees the revenue;
+     * a raw ->update(['status'=>'paid']) would leave paid_at NULL.
+     */
+    private function finalizeBookingPayment(Booking $booking, string $paymentIntentId): void
+    {
+        DB::transaction(function () use ($booking, $paymentIntentId) {
+            $order = $booking->order;
+
+            if ($order) {
+                $this->orderService->markPaid($order, [
+                    'stripe_payment_intent_id' => $paymentIntentId,
+                ]);
+
+                $payment = $order->latestPayment;
+                if ($payment) {
+                    $payment->update([
+                        'status' => 'paid',
+                        'paid_at' => now(),
+                    ]);
+                }
+            }
+
+            $booking->update([
+                'status' => 'confirmed',
+                'payment_status' => 'paid',
+            ]);
+
+            if ($booking->batch_id) {
+                $this->bookingService->markBatchBookingsPaid($booking->batch_id);
+            }
+
+            $this->bookingService->sendBookingConfirmation($booking);
+        });
     }
 
     /**
@@ -310,6 +397,9 @@ class BookingPaymentController extends Controller
                 $order->update([
                     'status' => 'paid',
                     'paid_at' => now(),
+                    // amount = cash charged (0); the gift-card cash was recognised as
+                    // turnover at purchase, so keeping the full total double-counts it.
+                    'amount' => 0,
                     'meta' => array_merge($order->meta ?? [], [
                         'gift_card_code' => $giftCardCode,
                         'gift_card_amount' => $total,

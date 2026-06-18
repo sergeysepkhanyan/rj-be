@@ -34,8 +34,9 @@ class ExpirePendingOrders extends Command
 
         $count = 0;
         foreach ($expired as $order) {
-            // Skip if a payment actually succeeded but the status lagged.
-            if ($order->latestPayment && $order->latestPayment->status === 'paid') {
+            // Skip if a payment actually succeeded (or partially captured) but
+            // the status lagged — cancelling would strand funds Stripe holds.
+            if ($order->latestPayment && in_array($order->latestPayment->status, ['paid', 'partially_paid'], true)) {
                 continue;
             }
 

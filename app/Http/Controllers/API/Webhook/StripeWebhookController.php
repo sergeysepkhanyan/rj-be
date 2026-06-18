@@ -204,12 +204,17 @@ class StripeWebhookController extends Controller
                 $paymentUpdate['status'] = 'failed';
                 $paymentUpdate['failed_at'] = now();
                 if ($order) {
-                    $order = $this->orderService->cancel($order, ['reason' => 'payment_failed']);
-                    $order->refresh();
-                    $this->orderService->cancelBookingForOrder($order);
-
-                    // Send payment failed notification
-                    $this->sendPaymentFailedNotification($order, $object);
+                    try {
+                        $order = $this->orderService->cancel($order, ['reason' => 'payment_failed']);
+                        $order->refresh();
+                        $this->orderService->cancelBookingForOrder($order);
+                        $this->sendPaymentFailedNotification($order, $object);
+                    } catch (\InvalidArgumentException $e) {
+                        \Log::warning('[stripe][webhook] Skipped cancel on payment_failed (order not cancellable)', [
+                            'order_id' => $order->id,
+                            'status' => $order->status,
+                        ]);
+                    }
                 }
                 break;
 
@@ -217,9 +222,16 @@ class StripeWebhookController extends Controller
                 $paymentUpdate['status'] = 'cancelled';
                 $paymentUpdate['failed_at'] = now();
                 if ($order) {
-                    $order = $this->orderService->cancel($order, ['reason' => 'canceled']);
-                    $order->refresh();
-                    $this->orderService->cancelBookingForOrder($order);
+                    try {
+                        $order = $this->orderService->cancel($order, ['reason' => 'canceled']);
+                        $order->refresh();
+                        $this->orderService->cancelBookingForOrder($order);
+                    } catch (\InvalidArgumentException $e) {
+                        \Log::warning('[stripe][webhook] Skipped cancel on canceled (order not cancellable)', [
+                            'order_id' => $order->id,
+                            'status' => $order->status,
+                        ]);
+                    }
                 }
                 break;
 

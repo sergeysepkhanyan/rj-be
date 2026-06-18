@@ -119,11 +119,16 @@ class AdminOrderResource extends JsonResource
                 $subtotal = round($totalAmount / (1 + $vatRate), 2);
                 $tax = round($totalAmount - $subtotal, 2);
             }
-        } elseif (in_array($this->type, ['gift_card', 'service_package'])) {
-            // Gift cards & service packages: price is the base price, tax is added on top.
-            // The stored amount is the base price; total = amount + tax.
+        } elseif ($this->type === 'gift_card') {
+            // Gift cards: stored amount is the base price; tax is added on top.
             $subtotal = (float) $this->amount;
             $tax = round($subtotal * $vatRate, 2);
+        } elseif ($this->type === 'service_package') {
+            // Service packages store the gross amount charged (base + VAT);
+            // derive the tax-exclusive subtotal back out of it.
+            $total = (float) $this->amount;
+            $subtotal = round($total / (1 + $vatRate), 2);
+            $tax = round($total - $subtotal, 2);
         } elseif ($this->type === 'booking' && $this->orderable instanceof Booking) {
             // Get all bookings (including batch bookings)
             $allBookings = $this->resource->getAllBookings();
@@ -314,6 +319,11 @@ class AdminOrderResource extends JsonResource
         $paymentMethodBrand = null;
 
         if (!$this->relationLoaded('latestPayment') || !$this->latestPayment) {
+            $metaMethod = $this->meta['payment_method'] ?? null;
+            if ($metaMethod) {
+                $paymentId = $this->reference ?? "#{$this->id}";
+                $paymentMethod = ucfirst($metaMethod);
+            }
             return [$paymentId, $paymentMethod, $paymentMethodLast4, $paymentMethodBrand];
         }
 
@@ -456,6 +466,8 @@ class AdminOrderResource extends JsonResource
 
         if ($this->type === 'booking' && $this->relationLoaded('orderable') && $this->orderable instanceof Booking) {
             $method = $this->orderable->paid_payment_method;
+        } else {
+            $method = $this->meta['payment_method'] ?? null;
         }
 
         // If method is already set (e.g. "gift_card,cash"), return as-is
