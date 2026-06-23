@@ -94,6 +94,13 @@ class OrderResource extends JsonResource
             $subtotal = round($totalAmount / (1 + $vatRate), 2);
             $tax = round($totalAmount - $subtotal, 2);
             $quantity = 1; // Default quantity when items aren't loaded
+        } elseif ($this->type === 'service_package') {
+            // Gross (base + VAT) lives in meta so it survives a gift-card
+            // reduction of order.amount.
+            $gross = (float) ($this->meta['total_amount'] ?? $this->amount);
+            $subtotal = round($gross / (1 + $vatRate), 2);
+            $tax = round($gross - $subtotal, 2);
+            $quantity = 1;
         } elseif ($this->type === 'booking' && $this->relationLoaded('orderable')) {
             // Get all bookings (including batch bookings)
             $allBookings = $this->resource->getAllBookings();
@@ -284,14 +291,16 @@ class OrderResource extends JsonResource
                         $packageName = $this->orderable->name ?? null;
                         $packageId = $packageId ?? ($this->orderable->id ?? null);
                     }
+                    $pkgGross = (float) ($this->meta['total_amount'] ?? $this->amount);
+                    $pkgBase = (float) ($this->meta['base_price'] ?? round($pkgGross / 1.05, 2));
                     return [[
                         'id' => $packageId ?? 0,
                         'name' => $packageName ?? 'Service Package',
                         'quantity' => 1,
-                        'unitPrice' => (string) $this->amount,
-                        'subtotal' => (string) $this->amount,
-                        'finalPrice' => (string) $this->amount,
-                        'tax' => '0',
+                        'unitPrice' => (string) $pkgBase,
+                        'subtotal' => (string) $pkgBase,
+                        'finalPrice' => (string) $pkgBase,
+                        'tax' => (string) ($this->meta['tax_amount'] ?? round($pkgGross - $pkgBase, 2)),
                         'type' => 'service_package',
                     ]];
                 }

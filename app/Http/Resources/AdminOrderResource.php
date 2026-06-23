@@ -124,11 +124,11 @@ class AdminOrderResource extends JsonResource
             $subtotal = (float) $this->amount;
             $tax = round($subtotal * $vatRate, 2);
         } elseif ($this->type === 'service_package') {
-            // Service packages store the gross amount charged (base + VAT);
-            // derive the tax-exclusive subtotal back out of it.
-            $total = (float) $this->amount;
-            $subtotal = round($total / (1 + $vatRate), 2);
-            $tax = round($total - $subtotal, 2);
+            // Gross (base + VAT) lives in meta so it survives a gift-card
+            // reduction of order.amount; derive the tax-exclusive subtotal from it.
+            $gross = (float) ($this->meta['total_amount'] ?? $this->amount);
+            $subtotal = round($gross / (1 + $vatRate), 2);
+            $tax = round($gross - $subtotal, 2);
         } elseif ($this->type === 'booking' && $this->orderable instanceof Booking) {
             // Get all bookings (including batch bookings)
             $allBookings = $this->resource->getAllBookings();

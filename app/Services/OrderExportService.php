@@ -659,8 +659,9 @@ class OrderExportService
                 }
             }
         } elseif ($order->type === 'service_package') {
-            // Stored amount is the gross charged (base + 5% VAT); split it back out.
-            $gross = (float) $order->amount;
+            // Gross (base + 5% VAT) lives in meta so it survives a gift-card
+            // reduction of order.amount; split it back out.
+            $gross = (float) ($order->meta['total_amount'] ?? $order->amount);
             $base = round($gross / 1.05, 2);
             $items[] = [
                 'name' => $order->meta['service_package_name'] ?? 'Service Package',
