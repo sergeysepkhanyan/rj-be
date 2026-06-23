@@ -658,6 +658,29 @@ class OrderExportService
                     }
                 }
             }
+        } elseif ($order->type === 'service_package') {
+            // Stored amount is the gross charged (base + 5% VAT); split it back out.
+            $gross = (float) $order->amount;
+            $base = round($gross / 1.05, 2);
+            $items[] = [
+                'name' => $order->meta['service_package_name'] ?? 'Service Package',
+                'quantity' => 1,
+                'unitPrice' => $base,
+                'subtotal' => $base,
+            ];
+            $subtotal = $base;
+            $tax = round($gross - $base, 2);
+        } elseif ($order->type === 'gift_card') {
+            // Gift cards are sold at face value with no VAT.
+            $amount = (float) $order->amount;
+            $items[] = [
+                'name' => $order->meta['gift_card_name'] ?? 'Gift Card',
+                'quantity' => 1,
+                'unitPrice' => $amount,
+                'subtotal' => $amount,
+            ];
+            $subtotal = $amount;
+            $tax = 0;
         }
 
         // For ecommerce orders, calculate tax as 5% of subtotal
