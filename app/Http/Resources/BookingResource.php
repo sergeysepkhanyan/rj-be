@@ -107,6 +107,8 @@ class BookingResource extends BaseResource
             'paymentStatus' => $data['payment_status'] ?? null,
             'paidPaymentMethod' => $this->paid_payment_method,
             'giftCardCode'  => $this->gift_card_code,
+            'giftCardAmount' => $this->resolveBookingGiftCardAmount(),
+            'amountPaid'    => ($this->relationLoaded('order') && $this->order) ? (float) $this->order->amount : null,
             'tipAmount'     => $this->tip_amount ? (float) $this->tip_amount : 0,
             'cancelledBy'   => $this->when($this->cancelledBy, new UserResource($this->cancelledBy)),
             'cancelledAt'   => $this->cancelled_at,
@@ -208,6 +210,23 @@ class BookingResource extends BaseResource
                         : null),
             ],
         ];
+    }
+
+    /**
+     * Gift card applied to this booking. The card may be recorded on the order
+     * (meta) or only as a GiftCardUsage row, so check both.
+     */
+    protected function resolveBookingGiftCardAmount(): ?float
+    {
+        if ($this->relationLoaded('order') && $this->order && !empty($this->order->meta['gift_card_amount'])) {
+            return (float) $this->order->meta['gift_card_amount'];
+        }
+
+        $usage = \App\Models\GiftCardUsage::where('used_for_type', 'booking')
+            ->where('used_for_id', $this->id)
+            ->first();
+
+        return $usage ? (float) $usage->amount_used : null;
     }
 }
 

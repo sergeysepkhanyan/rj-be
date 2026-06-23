@@ -690,7 +690,25 @@ class OrderExportService
         }
         $total = $order->amount;
 
-        // Calculate discount
+        // Gift card — resolve BEFORE the discount so the discount isn't inflated
+        // by the gift-card amount (order.amount is already net of the gift card).
+        $meta = $order->meta ?? [];
+        $giftCardCode = $meta['gift_card_code'] ?? null;
+        $giftCardAmount = (float) ($meta['gift_card_amount'] ?? 0);
+
+        if (!$giftCardCode && $order->type === 'booking' && $order->orderable instanceof Booking) {
+            $giftCardCode = $order->orderable->gift_card_code;
+        }
+        if ($giftCardCode && $giftCardAmount <= 0 && $order->type === 'booking' && $order->orderable instanceof Booking) {
+            $usage = \App\Models\GiftCardUsage::where('used_for_type', 'booking')
+                ->where('used_for_id', $order->orderable->id)
+                ->first();
+            if ($usage) {
+                $giftCardAmount = (float) $usage->amount_used;
+            }
+        }
+
+        // Calculate discount — the reduction NOT explained by the gift card.
         $discount = 0;
         $discountLabel = null;
         if ($order->type === 'booking' && $order->orderable instanceof Booking) {
@@ -701,10 +719,9 @@ class OrderExportService
                     $discountLabel = $booking->discount_label;
                 }
             }
-            // Total order discount = subtotal + tax - actual total
-            $expectedTotal = $subtotal + $tax;
+            $expectedTotal = $subtotal + $tax - $giftCardAmount;
             if ($expectedTotal > $total) {
-                $discount = $expectedTotal - $total;
+                $discount = round($expectedTotal - $total, 2);
             }
         }
 
@@ -723,24 +740,6 @@ class OrderExportService
             $paymentMethod = ($pm->brand ? ucfirst($pm->brand) : 'Card') . ' ...' . $pm->last4;
         } elseif ($order->latestPayment?->provider === 'stripe') {
             $paymentMethod = 'Card';
-        }
-
-        // Gift card
-        $meta = $order->meta ?? [];
-        $giftCardCode = $meta['gift_card_code'] ?? null;
-        $giftCardAmount = (float) ($meta['gift_card_amount'] ?? 0);
-
-        // For booking orders, also check booking model and GiftCardUsage
-        if (!$giftCardCode && $order->type === 'booking' && $order->orderable instanceof Booking) {
-            $giftCardCode = $order->orderable->gift_card_code;
-        }
-        if ($giftCardCode && $giftCardAmount <= 0 && $order->type === 'booking' && $order->orderable instanceof Booking) {
-            $usage = \App\Models\GiftCardUsage::where('used_for_type', 'booking')
-                ->where('used_for_id', $order->orderable->id)
-                ->first();
-            if ($usage) {
-                $giftCardAmount = (float) $usage->amount_used;
-            }
         }
 
         // If gift card fully covers the order, show "Gift Card" as payment method
