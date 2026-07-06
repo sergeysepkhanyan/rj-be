@@ -36,6 +36,15 @@ class GiftCardService
             }
         }
 
+        if ($order->getTypeValue() === 'service_package') {
+            $usages = $usages->merge(
+                GiftCardUsage::where('used_for_type', 'service_package')
+                    ->where('used_for_id', $order->id)
+                    ->whereNull('reversed_at')
+                    ->get()
+            );
+        }
+
         $this->reverseUsages($usages);
     }
 

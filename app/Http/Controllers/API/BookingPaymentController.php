@@ -307,6 +307,14 @@ class BookingPaymentController extends Controller
             $order = $booking->order;
 
             if ($order) {
+                // Lock the order (same row the webhook locks) so a concurrent webhook can't
+                // finalize this booking at the same time — avoids duplicate confirmation
+                // emails / referral completion. If the webhook already paid it, stop here.
+                $lockedOrder = \App\Models\Order::whereKey($order->id)->lockForUpdate()->first();
+                if ($lockedOrder && $lockedOrder->status === 'paid') {
+                    return;
+                }
+
                 $this->orderService->markPaid($order, [
                     'stripe_payment_intent_id' => $paymentIntentId,
                 ]);
@@ -406,11 +414,26 @@ class BookingPaymentController extends Controller
                     ]),
                 ]);
 
+                // Record a gift_card payment so the method isn't blank in reports/exports.
+                \App\Models\Payment::create([
+                    'order_id' => $order->id,
+                    'provider' => 'gift_card',
+                    'flow' => 'manual',
+                    'amount' => 0,
+                    'currency' => $order->currency ?? 'AED',
+                    'status' => 'paid',
+                    'paid_at' => now(),
+                    'idempotency_key' => (string) \Illuminate\Support\Str::uuid(),
+                ]);
+
                 $booking->update([
                     'status' => 'confirmed',
                     'payment_status' => 'paid',
                     'payment_mode' => 'pay_now',
                 ]);
+
+                // A captured (gift-card) payment is a transaction — promote Lead → Client.
+                $this->orderService->promoteOrderCustomer($order);
 
                 if ($booking->batch_id) {
                     $this->bookingService->markBatchBookingsPaid($booking->batch_id);

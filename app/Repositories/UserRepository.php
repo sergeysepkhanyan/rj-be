@@ -71,13 +71,33 @@ class UserRepository implements UserRepositoryInterface
             ->get();
     }
 
-    public function paginateClients(int $perPage = 10, int $page = 1)
+    public function paginateClients(int $perPage = 10, int $page = 1, array $filters = [])
     {
-        return User::whereHas('role', function ($q) {
+        $query = User::whereHas('role', function ($q) {
             $q->where('slug', 'client');
         })
-            ->with(['role', 'referral', 'manualReferral'])
-            ->orderByDesc('created_at')
+            ->with(['role', 'referral', 'manualReferral']);
+
+        if (!empty($filters['status']) && in_array($filters['status'], ['lead', 'client'], true)) {
+            $query->where('customer_status', $filters['status']);
+        }
+
+        if (isset($filters['account']) && in_array($filters['account'], ['guest', 'registered'], true)) {
+            $query->where('has_account', $filters['account'] === 'registered');
+        }
+
+        if (!empty($filters['search'])) {
+            $search = $filters['search'];
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('first_name', 'like', "%{$search}%")
+                  ->orWhere('last_name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%")
+                  ->orWhere('mobile', 'like', "%{$search}%");
+            });
+        }
+
+        return $query->orderByDesc('created_at')
             ->paginate($perPage, ['*'], 'page', $page);
     }
 

@@ -161,20 +161,15 @@ class GiftCardPurchaseController extends Controller
                 'expires_at' => now()->addYear(),
             ]);
 
-            if (!$userId && ($metadata['buyer_phone'] ?? null)) {
-                $phone = $metadata['buyer_phone'];
-                $email = $metadata['buyer_email'] ?? '';
-                if (!\App\Models\User::where('mobile', $phone)->orWhere('email', $email)->exists()) {
-                    if (!\App\Models\Lead::where('phone', $phone)->exists()) {
-                        \App\Models\Lead::create([
-                            'name' => $metadata['buyer_name'] ?? 'Unknown',
-                            'phone' => $phone,
-                            'email' => $email,
-                            'source' => 'order',
-                            'status' => 'new',
-                        ]);
-                    }
-                }
+            if (!$userId && (($metadata['buyer_email'] ?? null) || ($metadata['buyer_phone'] ?? null))) {
+                $customerService = app(\App\Services\CustomerService::class);
+                $customer = $customerService->resolveForTransaction([
+                    'name' => $metadata['buyer_name'] ?? null,
+                    'email' => $metadata['buyer_email'] ?? null,
+                    'phone' => $metadata['buyer_phone'] ?? null,
+                    'source' => 'online',
+                ]);
+                $order->forceFill(['user_id' => $customer->id])->save();
             }
 
             return $purchase;

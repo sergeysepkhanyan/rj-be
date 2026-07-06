@@ -60,11 +60,23 @@ class User extends Authenticatable implements JWTSubject, CanResetPasswordContra
         // tracks how a client was acquired (online | walk_in | offline | booking | manual).
         'registration_source',
         'product_discount_tier_id',
+        'has_account',
+        'customer_status',
+        'contact_declined',
+        'marketing_opt_in',
+        'marketing_opt_in_at',
+        'unsubscribe_token',
+        'first_transacted_at',
     ];
 
     protected $casts = [
         'email_verified_at' => 'datetime',
         'temporary_password_used_at' => 'datetime',
+        'has_account' => 'boolean',
+        'contact_declined' => 'boolean',
+        'marketing_opt_in' => 'boolean',
+        'marketing_opt_in_at' => 'datetime',
+        'first_transacted_at' => 'datetime',
     ];
 
     protected $hidden = [
@@ -154,6 +166,28 @@ class User extends Authenticatable implements JWTSubject, CanResetPasswordContra
     public function isLocked(): bool
     {
         return $this->status === 'locked';
+    }
+
+    public function isRegistered(): bool
+    {
+        return (bool) $this->has_account;
+    }
+
+    public function isClient(): bool
+    {
+        return $this->customer_status === 'client';
+    }
+
+    public function isLead(): bool
+    {
+        return $this->customer_status === 'lead';
+    }
+
+    public function scopeCustomers($query)
+    {
+        return $query->whereHas('role', function ($q) {
+            $q->where('slug', 'client');
+        });
     }
 
 

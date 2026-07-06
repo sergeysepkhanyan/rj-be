@@ -17,6 +17,8 @@ class StoreInStoreOrderRequest extends BaseFormRequest
         'giftCardCode' => 'gift_card_code',
         'giftCardAmount' => 'gift_card_amount',
         'clientUserId' => 'client_user_id',
+        'contactDeclined' => 'contact_declined',
+        'marketingOptIn' => 'marketing_opt_in',
     ];
 
     public function rules(): array
@@ -24,7 +26,9 @@ class StoreInStoreOrderRequest extends BaseFormRequest
         return [
             'customerName' => ['required', 'string', 'max:255'],
             'customerEmail' => ['nullable', 'email', 'max:255'],
-            'customerPhone' => ['nullable', 'string', 'max:50'],
+            'customerPhone' => ['nullable', 'string', 'max:50', 'regex:/^[+\-0-9]{7,20}$/', new \App\Rules\UaePhone],
+            'contactDeclined' => ['sometimes', 'boolean'],
+            'marketingOptIn' => ['sometimes', 'boolean'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['required', 'integer', 'exists:products,id'],
             'items.*.name' => ['required', 'string', 'max:255'],
@@ -46,5 +50,22 @@ class StoreInStoreOrderRequest extends BaseFormRequest
             'giftCardAmount' => ['nullable', 'numeric', 'min:0'],
             'clientUserId' => ['nullable', 'integer', 'exists:users,id'],
         ];
+    }
+
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator) {
+            // Email AND phone are mandatory at first touch UNLESS the customer explicitly
+            // declined (a logged option) — this prevents silent blank / fake-data records.
+            $declined = filter_var($this->input('contactDeclined'), FILTER_VALIDATE_BOOLEAN);
+            if (! $declined) {
+                if (blank($this->input('customerEmail'))) {
+                    $validator->errors()->add('customerEmail', 'Customer email is required unless the customer declined to provide contact details.');
+                }
+                if (blank($this->input('customerPhone'))) {
+                    $validator->errors()->add('customerPhone', 'Customer phone is required unless the customer declined to provide contact details.');
+                }
+            }
+        });
     }
 }

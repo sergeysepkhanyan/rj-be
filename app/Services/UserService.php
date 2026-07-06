@@ -262,9 +262,9 @@ class UserService
         return $this->userRepository->allMasters();
     }
 
-    public function getPaginatedClients(int $perPage = 1, int $page = 1)
+    public function getPaginatedClients(int $perPage = 1, int $page = 1, array $filters = [])
     {
-        return $this->userRepository->paginateClients($perPage, $page);
+        return $this->userRepository->paginateClients($perPage, $page, $filters);
     }
 
     public function getMastersForSubservice(int $subserviceId)

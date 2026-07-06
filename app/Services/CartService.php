@@ -11,7 +11,6 @@ use App\Models\OrderItem;
 use App\Models\PaymentMethod;
 use App\Models\Product;
 use App\Models\User;
-use App\Models\Lead;
 use App\Repositories\Interfaces\CartItemRepositoryInterface;
 use App\Repositories\Interfaces\OrderRepositoryInterface;
 use Illuminate\Http\Exceptions\HttpResponseException;
@@ -30,6 +29,7 @@ class CartService
         protected OrderRepositoryInterface $orderRepository,
         protected PaymentService $paymentService,
         protected ProductDiscountTierService $productDiscountTierService,
+        protected CustomerService $customerService,
     ) {}
 
     public function listCart(?string $guestSessionId = null): Collection
@@ -163,7 +163,8 @@ class CartService
         ?int $billingAddressId = null,
         array $billingAddress = [],
         $paymentMethodId = null,
-        ?string $giftCardCode = null
+        ?string $giftCardCode = null,
+        bool $marketingOptIn = false
     ): Order {
         [$userId, $guestSessionId] = $this->resolveSession($guestSessionId);
 
@@ -179,7 +180,8 @@ class CartService
             $billingAddressId,
             $billingAddress,
             $paymentMethodId,
-            $giftCardCode
+            $giftCardCode,
+            $marketingOptIn
         ) {
             $items = $this->cartRepository->listBySessionForUpdate($userId, $guestSessionId);
 
@@ -297,6 +299,7 @@ class CartService
                     'customer_name' => $customerName,
                     'customer_email' => $customerEmail,
                     'customer_phone' => $customerPhone,
+                    'marketing_opt_in' => $marketingOptIn ?: null,
                     'product_discount_percentage' => $productDiscountPercentage > 0 ? $productDiscountPercentage : null,
                     'product_discount_amount' => $productDiscountAmount > 0 ? $productDiscountAmount : null,
                 ], fn ($v) => $v !== null),
@@ -383,11 +386,22 @@ class CartService
                             'paid_at' => now(),
                             'amount' => 0,
                         ]);
+
+                        // Record a gift_card payment so the method isn't blank in reports/exports.
+                        \App\Models\Payment::create([
+                            'order_id' => $order->id,
+                            'provider' => 'gift_card',
+                            'flow' => 'manual',
+                            'amount' => 0,
+                            'currency' => $order->currency ?? 'AED',
+                            'status' => 'paid',
+                            'paid_at' => now(),
+                            'idempotency_key' => (string) \Illuminate\Support\Str::uuid(),
+                        ]);
+
                         $this->cartRepository->deleteBySession($userId, $guestSessionId);
 
-                        if (!$userId) {
-                            $this->createLeadFromOrder($customerName, $customerEmail, $customerPhone, $shippingAddress);
-                        }
+                        $this->linkOrderCustomer($order, $customerName, $customerEmail, $customerPhone, $shippingAddress, true);
 
                         // Send gift card balance notification
                         if ($purchase->buyer_email) {
@@ -431,7 +445,7 @@ class CartService
             $this->cartRepository->deleteBySession($userId, $guestSessionId);
 
             if (!$userId) {
-                $this->createLeadFromOrder($customerName, $customerEmail, $customerPhone, $shippingAddress);
+                $this->linkOrderCustomer($order, $customerName, $customerEmail, $customerPhone, $shippingAddress, false);
             }
 
             return $order->load(['items.product.files', 'latestPayment', 'shippingAddress.country', 'billingAddress.country']);
@@ -478,40 +492,39 @@ class CartService
         return abs(round($a, 2) - round($b, 2)) <= $epsilon;
     }
 
-    protected function createLeadFromOrder(string $customerName, string $customerEmail, string $customerPhone, array $shippingAddress = []): void
+    protected function linkOrderCustomer(Order $order, ?string $customerName, ?string $customerEmail, ?string $customerPhone, array $shippingAddress, bool $paid): void
     {
-        if (!$customerPhone) {
-            return;
-        }
+        $optIn = (bool) ($order->meta['marketing_opt_in'] ?? false);
 
-        // Don't create lead if a registered user with this phone/email exists
-        if (User::where('mobile', $customerPhone)->orWhere('email', $customerEmail)->exists()) {
-            return;
-        }
-
-        // Don't create duplicate lead
-        if (Lead::where('phone', $customerPhone)->exists()) {
-            return;
-        }
-
-        // Build the best name from shipping address first/last name, fallback to customer name
-        $name = $customerName;
-        if (!empty($shippingAddress['name']) || !empty($shippingAddress['lastName'])) {
-            $firstName = $shippingAddress['name'] ?? '';
-            $lastName = $shippingAddress['lastName'] ?? '';
-            $fullName = trim("{$firstName} {$lastName}");
-            if ($fullName) {
-                $name = $fullName;
+        if ($order->user_id) {
+            $customer = $order->user;
+        } else {
+            $name = $customerName;
+            if (!empty($shippingAddress['name']) || !empty($shippingAddress['lastName'])) {
+                $fullName = trim(($shippingAddress['name'] ?? '') . ' ' . ($shippingAddress['lastName'] ?? ''));
+                if ($fullName) {
+                    $name = $fullName;
+                }
             }
+
+            $customer = $this->customerService->resolveForTransaction([
+                'name' => $name,
+                'email' => $customerEmail,
+                'phone' => $customerPhone,
+                'source' => 'online',
+                'marketing_opt_in' => $optIn,
+            ]);
+            $order->forceFill(['user_id' => $customer->id])->save();
         }
 
-        Lead::create([
-            'name' => $name ?: 'Unknown',
-            'phone' => $customerPhone,
-            'email' => $customerEmail ?: null,
-            'source' => 'order',
-            'status' => 'new',
-        ]);
+        // Capture consent for logged-in customers too (opt-in only, never opt-out).
+        if ($optIn && $customer) {
+            $this->customerService->applyMarketingConsent($customer, ['marketing_opt_in' => true]);
+        }
+
+        if ($paid && $customer) {
+            $this->customerService->markTransacted($customer, $order->paid_at ?? now());
+        }
     }
 
     protected function resolveSession(?string $guestSessionId): array

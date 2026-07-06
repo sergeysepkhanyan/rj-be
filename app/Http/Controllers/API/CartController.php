@@ -111,6 +111,7 @@ class CartController extends Controller
 
         $paymentMethod = $paymentMethodToken ?: $paymentMethodId;
         $giftCardCode = $request->input('gift_card_code') ?? $request->input('giftCardCode');
+        $marketingOptIn = filter_var($request->input('marketing_opt_in') ?? $request->input('marketingOptIn') ?? false, FILTER_VALIDATE_BOOLEAN);
 
         $order = $this->cartService->checkout(
             $guestSessionId,
@@ -123,7 +124,8 @@ class CartController extends Controller
             $billingAddressId,
             $billingAddress,
             $paymentMethod,
-            $giftCardCode
+            $giftCardCode,
+            $marketingOptIn
         );
 
         return ApiResponse::success([

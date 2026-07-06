@@ -39,7 +39,13 @@ class TrackingConfigTest extends TestCase
 
     public function test_public_tracking_config_endpoint(): void
     {
-        TrackingConfig::create(['id' => 1, 'google_analytics_id' => 'UA-123456']);
+        // The public endpoint reads the singleton config at id=1 (findOrCreate → find(1)).
+        // `id` is not mass-assignable, so set it explicitly — otherwise the row lands on
+        // the auto-increment id (which transaction rollback doesn't reset), find(1) misses,
+        // and an empty config is returned.
+        $config = new TrackingConfig(['google_analytics_id' => 'UA-123456']);
+        $config->id = 1;
+        $config->save();
 
         $response = $this->getJson('/api/tracking-config/public');
 

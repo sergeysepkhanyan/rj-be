@@ -40,8 +40,59 @@ class OrderService
         protected BookingRepositoryInterface $bookingRepository,
         protected PaymentService $paymentService,
         protected AddressRepositoryInterface $addressRepository,
-        protected GiftCardService $giftCardService
+        protected GiftCardService $giftCardService,
+        protected CustomerService $customerService
     ) {}
+
+    /**
+     * Ensure the order is attributed to a unified customer record. Reads an
+     * existing user_id, else the contact captured in meta (or the underlying
+     * booking), creating a guest customer when needed. Returns the customer.
+     */
+    protected function resolveOrderCustomer(Order $order): ?User
+    {
+        $customer = $order->user_id ? $order->user : null;
+
+        if (! $customer) {
+            $meta = $order->meta ?? [];
+            $declined = (bool) ($meta['contact_declined'] ?? false);
+            $contact = [
+                'name' => $meta['customer_name'] ?? null,
+                'email' => $meta['customer_email'] ?? null,
+                'phone' => $meta['customer_phone'] ?? null,
+                'source' => ($meta['order_type'] ?? null) === 'in_store' ? 'walk_in' : 'online',
+                'declined' => $declined,
+                'marketing_opt_in' => (bool) ($meta['marketing_opt_in'] ?? false),
+            ];
+
+            if (empty($contact['email']) && empty($contact['phone'])) {
+                $booking = $order->orderable;
+                if ($booking instanceof Booking) {
+                    $contact['name'] = $contact['name'] ?: $booking->customer_name;
+                    $contact['email'] = $booking->customer_email;
+                    $contact['phone'] = $booking->customer_phone;
+                    $contact['source'] = 'booking';
+                }
+            }
+
+            // No contact and not an explicit decline: nothing to attribute.
+            if (empty($contact['email']) && empty($contact['phone']) && ! $declined) {
+                return null;
+            }
+
+            $customer = $this->customerService->resolveForTransaction($contact);
+            $order->forceFill(['user_id' => $customer->id])->save();
+        }
+
+        // Attribute the underlying booking to the customer so service visits
+        // count toward loyalty, even for guests with no online account.
+        $booking = $order->orderable;
+        if ($booking instanceof Booking && ! $booking->user_id) {
+            $this->bookingRepository->update($booking, ['user_id' => $customer->id]);
+        }
+
+        return $customer;
+    }
 
     public function createManually(array $data, bool $sendEmail = false): Order
     {
@@ -125,6 +176,8 @@ class OrderService
             }
 
             $this->assertPersistedLineItemsMatchManualOrder($order, $items, (float) $data['subtotal']);
+
+            $this->resolveOrderCustomer($order);
 
             if ($sendEmail) {
                 $this->sendOrderConfirmation($order);
@@ -270,6 +323,8 @@ class OrderService
                     'customer_phone' => $customerPhone,
                     'payment_method' => $paymentMethod,
                     'order_type' => 'in_store',
+                    'contact_declined' => (bool) ($data['contact_declined'] ?? false),
+                    'marketing_opt_in' => (bool) ($data['marketing_opt_in'] ?? false),
                     'discount_type' => $data['discount_type'] ?? null,
                     'discount_value' => $data['discount_value'] ?? null,
                     'discount_label' => $data['discount_label'] ?? null,
@@ -350,12 +405,10 @@ class OrderService
                 $this->sendOrderConfirmation($order);
             }
 
-            // Upgrade product discount tier for the client
-            if ($clientUserId) {
-                $clientUser = \App\Models\User::find($clientUserId);
-                if ($clientUser) {
-                    app(\App\Services\ProductDiscountTierService::class)->checkAndUpgradeUser($clientUser);
-                }
+            $customer = $this->resolveOrderCustomer($order);
+            if ($customer) {
+                $this->customerService->markTransacted($customer, $order->paid_at);
+                app(\App\Services\ProductDiscountTierService::class)->checkAndUpgradeUser($customer);
             }
 
             return $order->load(['items.product']);
@@ -433,7 +486,21 @@ class OrderService
         // so no need to decrement again here for ecommerce orders.
         // Manual/in-store orders decrement at creation time.
 
+        $customer = $this->resolveOrderCustomer($order);
+        $this->customerService->markTransacted($customer, $order->paid_at);
+
         return $order;
+    }
+
+    /**
+     * Promote the order's customer to Client (forward-only) for captured-payment
+     * paths that finalize an order WITHOUT going through markPaid — gift-card
+     * bookings and service-package purchases. Idempotent via markTransacted.
+     */
+    public function promoteOrderCustomer(Order $order): void
+    {
+        $customer = $this->resolveOrderCustomer($order);
+        $this->customerService->markTransacted($customer, $order->paid_at);
     }
 
     public function cancel(Order $order, array $meta = []): Order

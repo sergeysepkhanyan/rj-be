@@ -31,29 +31,17 @@
                             </div>
 
                             <div style="font-size:15px; line-height:1.6; color:#333; margin-bottom:24px;">
-                                You currently get <strong>{{ $tierValue }}% discount</strong> on all bookings. Keep booking to level up again!
+                                You currently get <strong>{{ $tierValue }}% discount</strong> on all bookings.
                             </div>
                         @else
                             <div style="font-size:22px; font-weight:800; color:#111; margin-bottom:12px; text-align:center; padding:20px; background:#f6f7fb; border-radius:12px;">
                                 Your discount level has been reset.
                             </div>
 
-                            @if($firstTierName && $firstTierThreshold)
-                                <div style="font-size:15px; line-height:1.6; color:#333; margin-bottom:24px;">
-                                    Book <strong>{{ $firstTierThreshold }}</strong> more appointments to unlock <strong>{{ $firstTierName }}</strong>!
-                                </div>
-                            @else
-                                <div style="font-size:15px; line-height:1.6; color:#333; margin-bottom:24px;">
-                                    Keep booking to unlock discount levels!
-                                </div>
-                            @endif
+                            <div style="font-size:15px; line-height:1.6; color:#333; margin-bottom:24px;">
+                                Your current discount level reflects your recent activity with us.
+                            </div>
                         @endif
-
-                        <div style="text-align:center; margin-bottom:16px;">
-                            <a href="{{ $bookingUrl }}" style="display:inline-block; padding:14px 32px; background:#111; color:#fff; text-decoration:none; border-radius:8px; font-size:14px; font-weight:700;">
-                                Book Now
-                            </a>
-                        </div>
                     </td>
                 </tr>
 

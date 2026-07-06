@@ -31,12 +31,17 @@ class ReferralRewardEarnedMail extends Mailable implements ShouldQueue
 
         $userName = $this->user->name ?? trim(($this->user->first_name ?? '') . ' ' . ($this->user->last_name ?? '')) ?: 'Valued Customer';
 
+        $availableRewardsCount = \App\Models\ComplimentaryReward::where('user_id', $this->user->id)
+            ->where('status', 'available')
+            ->count();
+
         return $this->subject('You earned a complimentary reward!')
             ->from(config('mail.from.address'), config('mail.from.name'))
             ->view('emails.referral-reward-earned')
             ->with([
                 'userName' => $userName,
                 'rewards' => $rewardsList,
+                'availableRewardsCount' => $availableRewardsCount,
             ]);
     }
 }

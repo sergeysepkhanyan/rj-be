@@ -60,6 +60,25 @@ class ServicePackagePurchaseController extends Controller
 
             // Gift card covers the whole price — finalize now, no card charge.
             if ($remaining <= 0.005) {
+                // No Stripe intent exists to dedup on here, so guard against a double-submit
+                // (double-click / retry) creating two purchases + a double gift-card debit.
+                $recent = ServicePackagePurchase::where('user_id', (int) $user->id)
+                    ->where('service_package_id', $package->id)
+                    ->where('created_at', '>=', now()->subSeconds(15))
+                    ->latest('id')
+                    ->first();
+                if ($recent) {
+                    $recentOrder = $recent->order;
+                    return ApiResponse::success([
+                        'fullyCovered' => true,
+                        'order' => $recentOrder ? ['id' => $recentOrder->id, 'reference' => $recentOrder->reference] : null,
+                        'purchase' => [
+                            'code' => $recent->code,
+                            'expiresAt' => $recent->expires_at->toIso8601String(),
+                        ],
+                    ], 'Service package purchased successfully', 201);
+                }
+
                 $purchase = DB::transaction(fn () => $this->finalizePackagePurchase(
                     $package,
                     (int) $user->id,
@@ -208,17 +227,36 @@ class ServicePackagePurchaseController extends Controller
         $giftCardAmount = 0.0;
         $purchaseGc = null;
 
+        // What the card actually captured (0 on the fully-gift-card-covered path).
+        $capturedCash = 0.0;
+        if ($stripeRaw) {
+            $capturedMinor = (int) (data_get($stripeRaw, 'amount_received') ?? data_get($stripeRaw, 'amount') ?? 0);
+            $capturedCash = round(max(0, $capturedMinor) / 100, 2);
+        }
+
         if ($giftCardCode) {
             $purchaseGc = \App\Models\GiftCardPurchase::where('code', $giftCardCode)
                 ->where('status', 'active')
                 ->lockForUpdate()
                 ->first();
 
-            if (!$purchaseGc || $purchaseGc->isExpired() || (float) $purchaseGc->balance <= 0) {
-                throw new \RuntimeException('Gift card is not valid or has no balance.');
-            }
+            $usable = $purchaseGc && !$purchaseGc->isExpired() && (float) $purchaseGc->balance > 0;
 
-            $giftCardAmount = min((float) $purchaseGc->balance, $totalAmount);
+            if (!$usable) {
+                // Gift card no longer usable. If the card already captured the full gross,
+                // proceed on cash alone; otherwise there is no valid payment to honour.
+                if ($capturedCash + 0.005 >= $totalAmount) {
+                    $purchaseGc = null;
+                } else {
+                    throw new \RuntimeException('Gift card is not valid or has no balance.');
+                }
+            } else {
+                // A captured card payment is a completed transaction — never discard it.
+                // The gift card covers the remainder of the gross, capped at whatever
+                // balance is still available (it may have dropped since checkout).
+                $remaining = round($totalAmount - $capturedCash, 2);
+                $giftCardAmount = min((float) $purchaseGc->balance, max(0.0, $remaining));
+            }
         }
 
         $cashCharged = round($totalAmount - $giftCardAmount, 2);
@@ -226,11 +264,22 @@ class ServicePackagePurchaseController extends Controller
             $cashCharged = 0.0;
         }
 
-        // Verify Stripe captured at least the cash portion that was due.
-        if ($cashCharged > 0) {
-            $capturedMinor = (int) (data_get($stripeRaw, 'amount_received') ?? data_get($stripeRaw, 'amount') ?? 0);
-            if ($capturedMinor < (int) round($cashCharged * 100)) {
-                throw new \RuntimeException('Payment amount mismatch');
+        // The card must cover the cash the gift card did not. If the gift-card balance fell
+        // short after a card charge, honour the captured payment (log + absorb the shortfall)
+        // rather than strand a customer who was already charged. With no card captured
+        // (fully-covered path) nothing was taken, so it is safe to reject and let them retry.
+        if ($cashCharged - $capturedCash > 0.01) {
+            if ($capturedCash > 0) {
+                \Log::warning('[service-package] gift-card shortfall at capture; honouring captured payment', [
+                    'total' => $totalAmount,
+                    'captured_cash' => $capturedCash,
+                    'gift_card_applied' => $giftCardAmount,
+                    'shortfall' => round($cashCharged - $capturedCash, 2),
+                    'gift_card_code' => $giftCardCode,
+                ]);
+                $cashCharged = $capturedCash;
+            } else {
+                throw new \RuntimeException('Gift card balance is no longer sufficient.');
             }
         }
 
@@ -306,7 +355,7 @@ class ServicePackagePurchaseController extends Controller
             }
         }
 
-        return ServicePackagePurchase::create([
+        $purchase = ServicePackagePurchase::create([
             'service_package_id' => $package->id,
             'user_id' => $userId,
             'order_id' => $order->id,
@@ -315,5 +364,10 @@ class ServicePackagePurchaseController extends Controller
             'purchased_at' => now(),
             'expires_at' => now()->addDays($package->validity_days),
         ]);
+
+        // A captured service-package payment is a transaction — promote Lead → Client.
+        app(\App\Services\OrderService::class)->promoteOrderCustomer($order);
+
+        return $purchase;
     }
 }

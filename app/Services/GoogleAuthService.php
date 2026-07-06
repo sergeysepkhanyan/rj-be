@@ -169,28 +169,29 @@ class GoogleAuthService
                 $this->denyGoogleLink('errors.auth.google_account_mismatch');
             }
 
+            $wasGuest = ! $user->has_account;
             $user->update([
                 'google_id' => $googleId,
+                'has_account' => true,
                 'email_verified_at' => $user->email_verified_at ?? ($googleUser['email_verified'] ? now() : null),
             ]);
             $user->refresh();
 
+            if ($wasGuest) {
+                app(CustomerService::class)->linkGuestTransactions($user);
+            }
+
             return $user;
         }
 
-        $roleId = UserRole::query()
-            ->where('slug', 'client')
-            ->value('id');
-
-        return User::create([
-            'user_role_id' => $roleId,
+        return app(CustomerService::class)->registerOrUpgrade($email, [
             'first_name' => $googleUser['first_name'] ?: $this->extractFirstName($googleUser['name']),
             'last_name' => $googleUser['last_name'] ?: $this->extractLastName($googleUser['name']),
-            'email' => $email,
             'google_id' => $googleId,
             'email_verified_at' => $googleUser['email_verified'] ? now() : null,
             'password' => bcrypt(Str::random(32)),
             'status' => 'active',
+            'registration_source' => 'online',
         ]);
     }
 

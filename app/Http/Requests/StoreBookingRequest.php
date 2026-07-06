@@ -27,6 +27,7 @@ class StoreBookingRequest extends BaseFormRequest
         'complimentaryRewardId' => 'complimentary_reward_id',
         'servicePackagePurchaseId' => 'service_package_purchase_id',
         'servicePackageItemId' => 'service_package_item_id',
+        'clientUserId' => 'client_user_id',
     ];
 
     public function rules(): array
@@ -38,7 +39,7 @@ class StoreBookingRequest extends BaseFormRequest
 
             'timezone' => ['nullable', 'string', 'max:64'],
             'customerName' => ['required', 'string', 'max:255'],
-            'customerPhone' => ['required', 'string', 'max:50', 'regex:/^[+\-0-9]+$/'],
+            'customerPhone' => ['required', 'string', 'max:50', 'regex:/^[+\-0-9]{7,20}$/', new \App\Rules\UaePhone],
             'customerEmail' => ['required', 'email'],
 
             'paymentMode' => ['required', 'string', Rule::in(['pay_now', 'pay_later'])],
@@ -67,6 +68,7 @@ class StoreBookingRequest extends BaseFormRequest
             'complimentaryRewardId' => ['nullable', 'integer', 'exists:complimentary_rewards,id'],
             'servicePackagePurchaseId' => ['nullable', 'integer', 'exists:service_package_purchases,id'],
             'servicePackageItemId' => ['nullable', 'integer', 'exists:service_package_items,id'],
+            'clientUserId' => ['nullable', 'integer', 'exists:users,id'],
         ];
     }
 

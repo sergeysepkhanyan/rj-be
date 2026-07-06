@@ -92,6 +92,15 @@ class BookingsController extends Controller
         ], __('success.break.deleted'));
     }
 
+    public function markNoShow(Booking $booking): JsonResponse
+    {
+        $updated = $this->bookingService->markBookingNoShow($booking);
+
+        return ApiResponse::success([
+            'booking' => new BookingResource($updated),
+        ], 'Booking marked as no-show');
+    }
+
     public function markPaid(Request $request, Booking $booking): JsonResponse
     {
         if ($booking->type !== 'booking') {

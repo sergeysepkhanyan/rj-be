@@ -8,7 +8,6 @@ use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\SignupRequest;
 use App\Http\Resources\UserResource;
 use App\Mail\VerifyEmailMail;
-use App\Models\Lead;
 use App\Models\User;
 use App\Models\UserRole;
 use App\Services\ApiResponse;
@@ -29,27 +28,24 @@ class AuthController extends Controller
             ->where('slug', 'client')
             ->value('id');
 
-        $user = User::create([
+        $attributes = [
             'user_role_id' => $roleId,
             'first_name' => $data['first_name'],
             'last_name' => $data['last_name'],
-            'email' => $data['email'],
+            'name' => trim(($data['first_name'] ?? '') . ' ' . ($data['last_name'] ?? '')) ?: null,
             'mobile' => $data['mobile'],
             'date_of_birth' => $data['date_of_birth'] ?? null,
             'password' => Hash::make($data['password']),
-        ]);
+            'registration_source' => 'online',
+        ];
 
-        Lead::query()
-            ->whereNull('converted_user_id')
-            ->where(function ($q) use ($user) {
-                $q->where('email', $user->email)
-                  ->orWhere('phone', $user->mobile);
-            })
-            ->update([
-                'converted_user_id' => $user->id,
-                'converted_at' => now(),
-                'status' => 'converted',
-            ]);
+        // Capture marketing consent only when opted in — never clobber a prior opt-in to false.
+        if (filter_var($data['marketing_opt_in'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
+            $attributes['marketing_opt_in'] = true;
+            $attributes['marketing_opt_in_at'] = now();
+        }
+
+        $user = app(\App\Services\CustomerService::class)->registerOrUpgrade($data['email'], $attributes);
 
         $redirectTo = $data['redirect_to'] ?? null;
         Mail::to($user->email)->queue(new VerifyEmailMail($user, $redirectTo));
@@ -66,6 +62,7 @@ class AuthController extends Controller
     ): JsonResponse
     {
         $credentials = $request->only(['email', 'password']);
+        $credentials['email'] = trim(strtolower((string) $credentials['email']));
 
         $user = User::query()->where('email', $credentials['email'])->first();
 

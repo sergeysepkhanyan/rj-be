@@ -33,7 +33,10 @@
                         </table>
 
                         <p style="font-size:16px; color:#444; line-height:1.6; margin:16px 0 0;">
-                            You can redeem these rewards when making your next booking. We look forward to seeing you soon!
+                            <strong>Your current balance:</strong> {{ $availableRewardsCount ?? 0 }} complimentary {{ ($availableRewardsCount ?? 0) === 1 ? 'reward' : 'rewards' }} ready to redeem.
+                        </p>
+                        <p style="font-size:16px; color:#444; line-height:1.6; margin:8px 0 0;">
+                            Redeem in-store with our team, or online when you book — no account required. We look forward to seeing you soon!
                         </p>
                     </td>
                 </tr>

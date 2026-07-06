@@ -19,7 +19,7 @@ class StoreOrderRequest extends BaseFormRequest
         return [
             'customerName' => ['required', 'string', 'max:255'],
             'customerEmail' => ['required', 'email', 'max:255'],
-            'customerPhone' => ['required', 'string', 'max:50', 'regex:/^[+\-0-9]+$/'],
+            'customerPhone' => ['required', 'string', 'max:50', 'regex:/^[+\-0-9]{7,20}$/', new \App\Rules\UaePhone],
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['required', 'integer', 'exists:products,id'],
             'items.*.name' => ['required', 'string', 'max:255'],

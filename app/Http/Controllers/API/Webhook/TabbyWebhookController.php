@@ -72,6 +72,13 @@ class TabbyWebhookController extends Controller
                 try {
                     DB::beginTransaction();
 
+                    // Lock the order for this transaction so a concurrent delivery can't pass
+                    // the already-paid guard at the same time and double-fire side effects.
+                    $lockedOrder = \App\Models\Order::whereKey($order->id)->with('orderable')->lockForUpdate()->first();
+                    if ($lockedOrder) {
+                        $order = $lockedOrder;
+                    }
+
                     $wasAlreadyPaid = $order->status === \App\Enums\OrderStatus::Paid->value;
 
                     $this->paymentRepo->update($payment, $paymentUpdate);

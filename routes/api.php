@@ -64,6 +64,8 @@ use Illuminate\Support\Facades\Route;
 Route::middleware(['set.locale'])->group(function () {
     Route::post('/contact', [ContactController::class, 'store'])
         ->middleware('throttle:contact');
+
+    Route::get('/marketing/unsubscribe/{token}', [\App\Http\Controllers\API\MarketingPreferenceController::class, 'unsubscribe']);
     Route::prefix('content')->group(function () {
         Route::get('/home', [PageContentController::class, 'home']);
         Route::get('/about', [PageContentController::class, 'about']);
@@ -338,6 +340,12 @@ Route::middleware(['set.locale'])->group(function () {
         Route::get('/admin/clients/{user}/bookings', [ClientsController::class, 'bookings']);
         Route::get('/admin/clients/{user}/orders', [ClientsController::class, 'orders']);
         Route::get('/admin/clients/{user}/wishlist', [ClientsController::class, 'wishlist']);
+        Route::get('/admin/clients/{user}/rewards', [ClientsController::class, 'rewards']);
+        Route::post('/admin/clients/{user}/rewards/{reward}/redeem', [ClientsController::class, 'redeemReward']);
+        Route::get('/admin/clients/{user}/possible-duplicates', [ClientsController::class, 'possibleDuplicates']);
+        Route::post('/admin/clients/{user}/merge/{duplicate}', [ClientsController::class, 'mergeDuplicate']);
+        Route::get('/admin/marketing/audience', [\App\Http\Controllers\API\Admin\MarketingCampaignController::class, 'audience']);
+        Route::post('/admin/marketing/campaign', [\App\Http\Controllers\API\Admin\MarketingCampaignController::class, 'send']);
         Route::patch('/admin/clients/{user}/toggle-lock', [ClientsController::class, 'toggleLock']);
         Route::post('/admin/clients/{user}/notes', [ClientsController::class, 'addNote']);
         Route::delete('/admin/clients/{user}/notes/{note}', [ClientsController::class, 'deleteNote']);
@@ -378,6 +386,7 @@ Route::middleware(['set.locale'])->group(function () {
         Route::put('/admin/booking/break/{booking}', [AdminBookingsController::class, 'updateBreak']);
         Route::get('/admin/bookings', [AdminBookingsController::class, 'index']);
         Route::patch('/admin/bookings/{booking}/mark-paid', [AdminBookingsController::class, 'markPaid']);
+        Route::patch('/admin/bookings/{booking}/mark-no-show', [AdminBookingsController::class, 'markNoShow']);
         Route::post('/admin/bookings/validate-gift-card', [AdminBookingsController::class, 'validateGiftCard']);
 
         Route::get('/admin/orders', [AdminOrdersController::class, 'index']);

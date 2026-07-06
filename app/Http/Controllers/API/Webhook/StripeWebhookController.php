@@ -107,6 +107,14 @@ class StripeWebhookController extends Controller
                 try {
                     DB::beginTransaction();
 
+                    // Lock the order for this transaction so a concurrent delivery (or the
+                    // verifyPayment poll) can't pass the already-paid guard at the same time
+                    // and double-fire side effects (duplicate emails, Zoho sync, gift card).
+                    $lockedOrder = \App\Models\Order::whereKey($order->id)->with('orderable')->lockForUpdate()->first();
+                    if ($lockedOrder) {
+                        $order = $lockedOrder;
+                    }
+
                     $previousOrderStatus = $order->status;
                     $previousPaymentStatus = $payment->status;
 
@@ -347,20 +355,17 @@ class StripeWebhookController extends Controller
                     ->queue(new \App\Mail\GiftCardPurchasedMail($purchase, 'recipient'));
             }
 
-            // Create lead for non-registered buyers
-            if (!$order->user_id && $purchase->buyer_phone) {
-                $phone = $purchase->buyer_phone;
-                if (!\App\Models\User::where('mobile', $phone)->orWhere('email', $purchase->buyer_email)->exists()) {
-                    if (!\App\Models\Lead::where('phone', $phone)->exists()) {
-                        \App\Models\Lead::create([
-                            'name' => $purchase->buyer_name,
-                            'phone' => $phone,
-                            'email' => $purchase->buyer_email,
-                            'source' => 'order',
-                            'status' => 'new',
-                        ]);
-                    }
-                }
+            // Record the gift-card buyer as a customer (captured payment = client)
+            if (!$order->user_id && ($purchase->buyer_email || $purchase->buyer_phone)) {
+                $customerService = app(\App\Services\CustomerService::class);
+                $customer = $customerService->resolveForTransaction([
+                    'name' => $purchase->buyer_name,
+                    'email' => $purchase->buyer_email,
+                    'phone' => $purchase->buyer_phone,
+                    'source' => 'online',
+                ]);
+                $order->forceFill(['user_id' => $customer->id])->save();
+                $customerService->markTransacted($customer, $order->paid_at);
             }
         } catch (\Throwable $e) {
             \Log::error('[stripe][webhook] Failed to handle gift card payment success', [

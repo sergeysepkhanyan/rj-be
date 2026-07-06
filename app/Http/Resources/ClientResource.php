@@ -44,6 +44,10 @@ class ClientResource extends BaseResource
             'dateOfBirth' => $data['date_of_birth'] ?? null,
             'role' => $this->role->name ?? null,
 
+            'accountStatus' => ($data['has_account'] ?? false) ? 'registered' : 'guest',
+            'customerStatus' => $data['customer_status'] ?? 'lead',
+            'contactDeclined' => (bool) ($data['contact_declined'] ?? false),
+            'marketingOptIn' => (bool) ($data['marketing_opt_in'] ?? false),
             'registrationSource' => $data['registration_source'] ?? null,
             'bookingsCount' => $this->clientBookings->count(),
             // Mirrors ClientsController::show() so the list count matches the

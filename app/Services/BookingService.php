@@ -10,7 +10,6 @@ use App\Mail\BookingRescheduledAdminNotificationMail;
 use App\Mail\BookingRescheduledMail;
 use App\Mail\NewBookingAdminNotificationMail;
 use App\Models\Booking;
-use App\Models\Lead;
 use App\Models\User;
 use App\Models\Weekday;
 use App\Repositories\Interfaces\BookingRepositoryInterface;
@@ -45,6 +44,7 @@ class BookingService
         protected ReferralRewardService $referralRewardService,
         protected LoyaltyService $loyaltyService,
         protected ServicePackageService $servicePackageService,
+        protected CustomerService $customerService,
     ) {}
 
     public function getAllBooking()
@@ -1233,10 +1233,16 @@ class BookingService
         $order = $booking->order?->load('latestPayment');
 
         if ($booking->payment_status === 'paid' && $order && $canRefund) {
-            $this->paymentService->refundOrderPayment($order, [
-                'booking_id' => (string) $booking->id,
-                'reason' => 'booking_cancelled',
-            ]);
+            // Only card payments go back through Stripe; gift-card / cash / manual
+            // bookings have no Stripe payment, so guard the gateway call to avoid
+            // aborting the cancellation. orderService->refund() then reverses any
+            // gift-card usage and marks the order refunded for every payment type.
+            if ($order->latestPayment?->provider === 'stripe') {
+                $this->paymentService->refundOrderPayment($order, [
+                    'booking_id' => (string) $booking->id,
+                    'reason' => 'booking_cancelled',
+                ]);
+            }
             $this->orderService->refund($order, ['reason' => 'booking_cancelled']);
             $booking->payment_status = 'refunded';
         } elseif ($booking->payment_status === 'paid' && ! $canRefund) {
@@ -1326,10 +1332,17 @@ class BookingService
             $payment = $booking->order->latestPayment;
 
             if ($payment) {
-                $this->paymentRepository->update($payment, [
+                $paymentUpdate = [
                     'status' => 'paid',
                     'paid_at' => now(),
-                ]);
+                ];
+                // Admin overrode the method (e.g. a pending Stripe row marked paid by cash);
+                // reflect the chosen method instead of leaving the stale gateway provider.
+                if (!empty($paymentDetails['paid_payment_method'])) {
+                    $paymentUpdate['provider'] = $paymentDetails['paid_payment_method'];
+                    $paymentUpdate['flow'] = 'manual';
+                }
+                $this->paymentRepository->update($payment, $paymentUpdate);
             } else {
                 // No Payment record exists (e.g. pay_later bookings). Create one
                 // so the turnover dashboard and reports can track this revenue.
@@ -1348,11 +1361,50 @@ class BookingService
 
         $this->referralRewardService->completeReferral($booking->fresh());
 
-        // Check loyalty tier upgrade after marking paid
+        // Check loyalty tier upgrade after marking paid. markPaid()/resolveOrderCustomer
+        // may have back-filled booking.user_id in the DB (guest bookings), so refresh the
+        // in-memory instance before reading it — otherwise a guest's visit tier is skipped.
+        $booking->refresh();
         if ($booking->user_id) {
             $user = User::find($booking->user_id);
             if ($user) {
                 $this->loyaltyService->checkAndUpgradeUser($user);
+            }
+        }
+
+        return $booking->fresh()->load(['services.bookable', 'services.master', 'master', 'order.latestPayment']);
+    }
+
+    /**
+     * Mark a booking as a no-show. Per the client data model: money already
+     * captured is RETAINED (no refund), the person's Lead/Client status is
+     * untouched (forward-only), and the appointment gets its own first-class
+     * status. cancel_reason is also set so legacy no-show stats keep counting.
+     */
+    public function markBookingNoShow(Booking $booking): Booking
+    {
+        if (($booking->type ?? 'booking') !== 'booking') {
+            $this->throwValidation([], 'messages.booking.only_bookings_can_be_cancelled');
+        }
+
+        if (in_array($booking->status, ['cancelled', 'completed', 'no_show'], true)) {
+            $this->throwValidation(['status' => 'Only an active booking can be marked as a no-show.'], 'messages.booking.only_bookings_can_be_cancelled');
+        }
+
+        $booking->update([
+            'status' => 'no_show',
+            'cancel_reason' => 'no_show',
+            'cancelled_at' => now(),
+        ]);
+
+        // An unpaid no-show never transacted — its pending order and referral are dropped.
+        // A PAID no-show keeps everything: the fee is retained, so the revenue, the
+        // completed referral and the loyalty visit all stand.
+        if ($booking->payment_status !== 'paid') {
+            $this->referralRewardService->cancelReferral($booking);
+            $booking->loadMissing('order');
+            if ($booking->order && !in_array($booking->order->status, ['paid', 'refunded', 'cancelled'], true)) {
+                $booking->order->update(['status' => 'cancelled', 'cancelled_at' => now()]);
             }
         }
 
@@ -1634,27 +1686,19 @@ class BookingService
 
     protected function createLeadFromBooking(Booking $booking): void
     {
-        $phone = $booking->customer_phone;
-        if (! $phone) {
+        if ($booking->user_id) {
             return;
         }
 
-        $existingUser = User::where('mobile', $phone)->first();
-        if ($existingUser) {
+        if (! $booking->customer_email && ! $booking->customer_phone) {
             return;
         }
 
-        $existingLead = Lead::where('phone', $phone)->first();
-        if ($existingLead) {
-            return;
-        }
-
-        Lead::create([
-            'name' => $booking->customer_name ?? 'Unknown',
-            'phone' => $phone,
+        $this->customerService->resolveForTransaction([
+            'name' => $booking->customer_name,
             'email' => $booking->customer_email,
+            'phone' => $booking->customer_phone,
             'source' => 'booking',
-            'status' => 'new',
         ]);
     }
 

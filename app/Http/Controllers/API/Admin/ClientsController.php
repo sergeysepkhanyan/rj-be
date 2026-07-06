@@ -29,7 +29,7 @@ class ClientsController extends Controller
         $validated = $request->validate([
             'firstName' => ['required', 'string', 'min:2', 'max:255', 'regex:/^(?=.*\pL)[\pL\pM\s\'\-.]+$/u'],
             'lastName'  => ['nullable', 'string', 'max:255'],
-            'email'     => ['required', 'email:rfc', 'max:255', 'unique:users,email,NULL,id,deleted_at,NULL'],
+            'email'     => ['required', 'email:rfc', 'max:255', \Illuminate\Validation\Rule::unique('users', 'email')->whereNull('deleted_at')->where('has_account', true)],
             'mobile'    => ['required', 'string', 'max:20', 'regex:/^\+[1-9]\d{6,18}$/'],
             'source'    => ['nullable', 'string', 'in:online,walk_in,offline,booking,manual'],
             'notes'     => ['nullable', 'string', 'max:1000'],
@@ -38,32 +38,19 @@ class ClientsController extends Controller
             'mobile.regex' => 'Mobile must include a country code and at least 7 digits.',
         ]);
 
-        $clientRoleId = \App\Models\UserRole::query()->where('slug', 'client')->value('id');
-
-        $user = User::create([
-            'user_role_id' => $clientRoleId,
-            'name' => trim($validated['firstName'] . ' ' . ($validated['lastName'] ?? '')) ?: null,
+        $user = app(\App\Services\CustomerService::class)->resolveForTransaction([
             'first_name' => $validated['firstName'],
             'last_name' => $validated['lastName'] ?? null,
+            'name' => trim($validated['firstName'] . ' ' . ($validated['lastName'] ?? '')) ?: null,
             'email' => $validated['email'],
-            'mobile' => $validated['mobile'],
-            'status' => 'active',
-            'email_verified_at' => now(),
-            'registration_source' => $validated['source'] ?? 'manual',
+            'phone' => $validated['mobile'],
+            'source' => $validated['source'] ?? 'manual',
         ]);
 
-        // Link any pre-existing Lead with matching contact details.
-        Lead::query()
-            ->whereNull('converted_user_id')
-            ->where(function ($q) use ($user) {
-                $q->where('email', $user->email)
-                  ->orWhere('phone', $user->mobile);
-            })
-            ->update([
-                'converted_user_id' => $user->id,
-                'converted_at' => now(),
-                'status' => 'converted',
-            ]);
+        $user->forceFill([
+            'mobile' => $validated['mobile'],
+            'email_verified_at' => $user->email_verified_at ?? now(),
+        ])->save();
 
         if (!empty($validated['notes'])) {
             ClientNote::create([
@@ -97,7 +84,7 @@ class ClientsController extends Controller
         $update = [];
         if (array_key_exists('firstName', $validated)) $update['first_name'] = $validated['firstName'];
         if (array_key_exists('lastName', $validated))  $update['last_name']  = $validated['lastName'];
-        if (array_key_exists('email', $validated))     $update['email']      = $validated['email'];
+        if (array_key_exists('email', $validated))     $update['email']      = $validated['email'] !== null ? trim(strtolower($validated['email'])) : null;
         if (array_key_exists('mobile', $validated))    $update['mobile']     = $validated['mobile'];
         if (array_key_exists('source', $validated))    $update['registration_source'] = $validated['source'];
 
@@ -122,7 +109,13 @@ class ClientsController extends Controller
         $perPage = (int) $request->get('per_page', 10);
         $page    = (int) $request->get('page', 1);
 
-        $clients = $this->userService->getPaginatedClients($perPage, $page);
+        $filters = [
+            'status'  => $request->get('status'),
+            'account' => $request->get('account'),
+            'search'  => $request->get('search'),
+        ];
+
+        $clients = $this->userService->getPaginatedClients($perPage, $page, $filters);
 
         return ApiResponse::success([
             'users' => ClientResource::collection($clients),
@@ -545,5 +538,91 @@ class ClientsController extends Controller
         $results = array_slice($results, 0, $limit);
 
         return ApiResponse::success(['results' => $results]);
+    }
+
+    /**
+     * List a client's complimentary rewards (available + recently redeemed) so staff
+     * can see and release them in-store against the real record.
+     */
+    public function rewards(User $user): \Illuminate\Http\JsonResponse
+    {
+        $rewards = \App\Models\ComplimentaryReward::where('user_id', $user->id)
+            ->with('subService')
+            ->orderByRaw("FIELD(status,'available','redeemed','expired')")
+            ->orderByDesc('earned_at')
+            ->get()
+            ->map(fn ($reward) => [
+                'id' => $reward->id,
+                'status' => $reward->status,
+                'subService' => $reward->subService ? [
+                    'id' => $reward->subService->id,
+                    'name' => $reward->subService->name,
+                ] : null,
+                'earnedAt' => $reward->earned_at,
+                'redeemedAt' => $reward->redeemed_at,
+            ]);
+
+        return ApiResponse::success(['rewards' => $rewards]);
+    }
+
+    /**
+     * Staff redeems a complimentary reward in-store (walk-in, no login needed).
+     * Verified against the real client record; idempotent (only 'available' redeems).
+     */
+    public function redeemReward(User $user, \App\Models\ComplimentaryReward $reward): \Illuminate\Http\JsonResponse
+    {
+        if ((int) $reward->user_id !== (int) $user->id) {
+            return ApiResponse::error(null, 'This reward does not belong to this client', 422);
+        }
+
+        if ($reward->status !== 'available') {
+            return ApiResponse::error(null, 'This reward is not available for redemption', 422);
+        }
+
+        $reward->update([
+            'status' => 'redeemed',
+            'redeemed_at' => now(),
+        ]);
+
+        return ApiResponse::success([
+            'reward' => [
+                'id' => $reward->id,
+                'status' => $reward->status,
+                'redeemedAt' => $reward->redeemed_at,
+            ],
+        ], 'Reward redeemed');
+    }
+
+    /**
+     * Phone-matched possible duplicates (different email, same phone) for staff to review.
+     */
+    public function possibleDuplicates(User $user): \Illuminate\Http\JsonResponse
+    {
+        $dupes = app(\App\Services\CustomerService::class)->possibleDuplicates($user);
+
+        return ApiResponse::success([
+            'duplicates' => $dupes->map(fn ($u) => [
+                'id' => $u->id,
+                'name' => $u->name ?: trim(($u->first_name ?? '') . ' ' . ($u->last_name ?? '')),
+                'email' => $u->email,
+                'mobile' => $u->mobile,
+                'customerStatus' => $u->customer_status,
+                'hasAccount' => (bool) $u->has_account,
+            ])->values(),
+        ]);
+    }
+
+    /**
+     * Staff-confirmed merge of a duplicate INTO this client (never automatic).
+     */
+    public function mergeDuplicate(User $user, User $duplicate): \Illuminate\Http\JsonResponse
+    {
+        if ((int) $user->id === (int) $duplicate->id) {
+            return ApiResponse::error(null, 'Cannot merge a client into itself', 422);
+        }
+
+        app(\App\Services\CustomerService::class)->mergeCustomers($user, $duplicate);
+
+        return ApiResponse::success(null, 'Clients merged successfully');
     }
 }
