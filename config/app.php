@@ -68,6 +68,13 @@ return [
     'timezone' => 'UTC',
 
     /*
+    | The salon's local timezone. Timestamps are stored in UTC, but business-day
+    | reporting (e.g. today's turnover) must be bucketed by the salon's local day
+    | so a payment just after local midnight counts for the correct day.
+    */
+    'business_timezone' => env('BUSINESS_TIMEZONE', 'Asia/Dubai'),
+
+    /*
     |--------------------------------------------------------------------------
     | Application Locale Configuration
     |--------------------------------------------------------------------------

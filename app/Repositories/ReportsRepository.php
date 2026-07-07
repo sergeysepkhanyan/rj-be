@@ -18,7 +18,14 @@ class ReportsRepository implements ReportsRepositoryInterface
 {
     public function getTodaysTurnover(?string $date = null): Collection
     {
-        $targetDate = $date ? Carbon::parse($date) : Carbon::today();
+        // Bucket by the salon's local day. paid_at is stored in UTC, so a payment
+        // just after local midnight (e.g. 00:08 GST = 20:08 UTC the day before)
+        // must still count for the local day — compare against the UTC range that
+        // spans that local day, not DATE(paid_at) in UTC.
+        $tz = config('app.business_timezone', 'Asia/Dubai');
+        $dayStart = ($date ? Carbon::parse($date) : Carbon::now())->setTimezone($tz)->startOfDay();
+        $startUtc = $dayStart->copy()->utc();
+        $endUtc = $dayStart->copy()->addDay()->utc();
 
         // Money received and not refunded. Includes every status reachable
         // after 'paid' except 'refunded' / 'return_approved' (about to refund),
@@ -27,7 +34,8 @@ class ReportsRepository implements ReportsRepositoryInterface
 
         return Order::query()
             ->whereIn('status', $countedStatuses)
-            ->whereDate('paid_at', $targetDate)
+            ->where('paid_at', '>=', $startUtc)
+            ->where('paid_at', '<', $endUtc)
             ->selectRaw('currency, SUM(amount) as total')
             ->groupBy('currency')
             ->get()
