@@ -203,7 +203,7 @@ class ClientsController extends Controller
 
         $bookings = Booking::where('user_id', $user->id)
             ->where('type', 'booking')
-            ->with(['master', 'services.bookable', 'services.master'])
+            ->with(['master', 'services.bookable', 'services.master', 'servicePackagePurchase.servicePackage'])
             ->orderBy('date', 'desc')
             ->orderBy('start_time', 'desc')
             ->paginate($perPage);
