@@ -45,6 +45,7 @@ class AdminOrderResource extends JsonResource
             'productName' => $productName,
             'productId' => $productId,
             'productImage' => $productImage,
+            'serviceDetails' => $this->resolveServiceDetails(),
             'paymentMethod' => $paymentMethod,
             'paymentMethodLast4' => $paymentMethodLast4,
             'paymentMethodBrand' => $paymentMethodBrand,
@@ -220,6 +221,39 @@ class AdminOrderResource extends JsonResource
         }
 
         return [$productName, $productId, $quantity, $productImage];
+    }
+
+    /**
+     * Full per-service breakdown for a booking order (every service across all
+     * batch bookings), so the order detail lists each service instead of the
+     * compact "X +N more" summary. Empty for non-booking orders.
+     *
+     * @return array<int, array{name: ?string, master: ?string, date: ?string, startTime: ?string, endTime: ?string, price: float}>
+     */
+    protected function resolveServiceDetails(): array
+    {
+        if ($this->type !== 'booking' || ! ($this->orderable instanceof Booking)) {
+            return [];
+        }
+
+        $rows = [];
+        foreach ($this->resource->getAllBookings() as $booking) {
+            $booking->loadMissing('services.bookable', 'services.master');
+            foreach ($booking->services as $service) {
+                $rows[] = [
+                    'name' => $service->bookable?->name,
+                    'master' => $service->master?->name,
+                    'date' => $service->date instanceof \DateTimeInterface
+                        ? $service->date->format('Y-m-d')
+                        : ($service->date ? (string) $service->date : null),
+                    'startTime' => $service->start_time ? substr((string) $service->start_time, 0, 5) : null,
+                    'endTime' => $service->end_time ? substr((string) $service->end_time, 0, 5) : null,
+                    'price' => (float) ($service->final_price ?? $service->price ?? 0),
+                ];
+            }
+        }
+
+        return $rows;
     }
 
     protected function ensureItemsLoaded(): void

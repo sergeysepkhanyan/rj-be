@@ -30,6 +30,42 @@ class BookingConfirmedMail extends Mailable implements ShouldQueue
         $payload = (new BookingResource($booking))->resolve();
         $payload = $this->stripMissingValues($payload);
 
+        // Multi-service (batch) appointment → aggregate ALL bookings in the batch
+        // into a single email: one combined services list and the batch grand totals.
+        if ($booking->batch_id) {
+            $batchBookings = Booking::where('batch_id', $booking->batch_id)
+                ->with(['services.bookable', 'services.master', 'master'])
+                ->orderBy('id')
+                ->get();
+
+            if ($batchBookings->count() > 1) {
+                $allServices = [];
+                $baseTotal = 0.0;
+                $vatTotal = 0.0;
+                $linesTotal = 0.0;
+                $grandTotal = 0.0;
+
+                foreach ($batchBookings as $b) {
+                    $p = $this->stripMissingValues((new BookingResource($b))->resolve());
+                    foreach (($p['services'] ?? []) as $svc) {
+                        $allServices[] = $svc;
+                    }
+                    $baseTotal  += (float) ($p['vat']['baseTotal'] ?? 0);
+                    $vatTotal   += (float) ($p['vat']['vatTotal'] ?? 0);
+                    $linesTotal += (float) ($p['vat']['finalTotalFromLines'] ?? 0);
+                    $grandTotal += (float) ($p['totalPrice'] ?? 0);
+                }
+
+                $payload['services'] = $allServices;
+                $payload['vat'] = array_merge(is_array($payload['vat'] ?? null) ? $payload['vat'] : [], [
+                    'baseTotal'           => round($baseTotal, 2),
+                    'vatTotal'            => round($vatTotal, 2),
+                    'finalTotalFromLines' => round($linesTotal, 2),
+                ]);
+                $payload['totalPrice'] = round($grandTotal, 2);
+            }
+        }
+
         $reference = $payload['reference'] ?? ('#' . ($payload['id'] ?? $booking->id));
         $addToCalendarUrl = URL::temporarySignedRoute(
             'booking.calendar.ics',

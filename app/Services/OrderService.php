@@ -84,11 +84,15 @@ class OrderService
             $order->forceFill(['user_id' => $customer->id])->save();
         }
 
-        // Attribute the underlying booking to the customer so service visits
-        // count toward loyalty, even for guests with no online account.
         $booking = $order->orderable;
-        if ($booking instanceof Booking && ! $booking->user_id) {
-            $this->bookingRepository->update($booking, ['user_id' => $customer->id]);
+        if ($booking instanceof Booking) {
+            if ($booking->batch_id) {
+                Booking::where('batch_id', $booking->batch_id)
+                    ->whereNull('user_id')
+                    ->update(['user_id' => $customer->id]);
+            } elseif (! $booking->user_id) {
+                $this->bookingRepository->update($booking, ['user_id' => $customer->id]);
+            }
         }
 
         return $customer;

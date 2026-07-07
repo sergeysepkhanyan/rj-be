@@ -1747,17 +1747,23 @@ class BookingService
     {
         $email = $booking->customer_email;
 
-        if ($email) {
+        $isPrimaryOfBatch = true;
+        if ($booking->batch_id) {
+            $primaryId = Booking::where('batch_id', $booking->batch_id)->min('id');
+            $isPrimaryOfBatch = ((int) $booking->id === (int) $primaryId);
+        }
+
+        if ($email && $isPrimaryOfBatch) {
             Mail::to($email)->queue(new BookingConfirmedMail($booking));
         }
 
-        $this->sendAdminBookingNotification($booking, 'new');
+        if ($isPrimaryOfBatch) {
+            $this->sendAdminBookingNotification($booking, 'new');
+        }
 
-        // Complete referral when booking is confirmed/paid
         $this->referralRewardService->completeReferral($booking);
 
-        // Check loyalty tier upgrade after booking confirmation
-        if ($booking->user_id) {
+        if ($isPrimaryOfBatch && $booking->user_id) {
             $user = User::find($booking->user_id);
             if ($user) {
                 $this->loyaltyService->checkAndUpgradeUser($user);
@@ -1823,13 +1829,6 @@ class BookingService
         }
     }
 
-    /**
-     * Re-validate that all service slots for a booking are still available.
-     * Used before confirming payment to prevent double-bookings if the slot
-     * was taken or the master's schedule changed after payment was initiated.
-     *
-     * @return bool true if all slots are still available
-     */
     public function areSlotsStillAvailable(Booking $booking): bool
     {
         $booking->loadMissing('services');
