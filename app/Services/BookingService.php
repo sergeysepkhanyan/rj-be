@@ -680,8 +680,8 @@ class BookingService
                         ]),
                     ]);
 
-                    if ($purchase->buyer_email) {
-                        \Illuminate\Support\Facades\Mail::to($purchase->buyer_email)
+                    if ($purchase->notificationEmail()) {
+                        \Illuminate\Support\Facades\Mail::to($purchase->notificationEmail())
                             ->queue(new \App\Mail\GiftCardBalanceDeductedMail($purchase, $giftCardAmountApplied));
                     }
 
@@ -1601,8 +1601,8 @@ class BookingService
                         ]),
                     ]);
 
-                    if ($purchase->buyer_email) {
-                        \Illuminate\Support\Facades\Mail::to($purchase->buyer_email)
+                    if ($purchase->notificationEmail()) {
+                        \Illuminate\Support\Facades\Mail::to($purchase->notificationEmail())
                             ->queue(new \App\Mail\GiftCardBalanceDeductedMail($purchase, $giftCardAmountApplied));
                     }
 

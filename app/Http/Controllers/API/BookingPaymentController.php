@@ -441,8 +441,8 @@ class BookingPaymentController extends Controller
 
                 $this->bookingService->sendBookingConfirmation($booking);
 
-                if ($purchase->buyer_email) {
-                    Mail::to($purchase->buyer_email)->queue(new GiftCardBalanceDeductedMail($purchase, $total));
+                if ($purchase->notificationEmail()) {
+                    Mail::to($purchase->notificationEmail())->queue(new GiftCardBalanceDeductedMail($purchase, $total));
                 }
 
                 return ['booking_id' => $booking->id, 'payment_status' => 'paid'];
@@ -533,8 +533,8 @@ class BookingPaymentController extends Controller
                     ]);
                 }
 
-                if ($purchase->buyer_email) {
-                    Mail::to($purchase->buyer_email)->queue(new GiftCardBalanceDeductedMail($purchase, $giftCardAmountApplied));
+                if ($purchase->notificationEmail()) {
+                    Mail::to($purchase->notificationEmail())->queue(new GiftCardBalanceDeductedMail($purchase, $giftCardAmountApplied));
                 }
 
                 return [

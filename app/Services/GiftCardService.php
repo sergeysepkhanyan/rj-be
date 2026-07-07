@@ -2,9 +2,11 @@
 
 namespace App\Services;
 
+use App\Mail\GiftCardBalanceRestoredMail;
 use App\Models\GiftCardUsage;
 use App\Models\Order;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 
 class GiftCardService
 {
@@ -54,14 +56,14 @@ class GiftCardService
     protected function reverseUsages($usages): void
     {
         foreach ($usages as $usage) {
-            DB::transaction(function () use ($usage) {
+            $restored = DB::transaction(function () use ($usage) {
                 $usage = GiftCardUsage::whereKey($usage->id)
                     ->whereNull('reversed_at')
                     ->lockForUpdate()
                     ->first();
 
                 if (!$usage) {
-                    return;
+                    return null;
                 }
 
                 $purchase = $usage->purchase()->lockForUpdate()->first();
@@ -74,7 +76,15 @@ class GiftCardService
                 }
 
                 $usage->update(['reversed_at' => now()]);
+
+                return $purchase ? ['purchase' => $purchase, 'amount' => (float) $usage->amount_used] : null;
             });
+
+            // Notify the card holder that their balance was credited back (after commit).
+            if ($restored && $restored['purchase']->notificationEmail()) {
+                Mail::to($restored['purchase']->notificationEmail())
+                    ->queue(new GiftCardBalanceRestoredMail($restored['purchase'], $restored['amount']));
+            }
         }
     }
 }

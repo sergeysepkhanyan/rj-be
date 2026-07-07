@@ -387,9 +387,9 @@ class OrderService
                         'verified_by' => auth()->id(),
                     ]);
 
-                    // Notify gift card buyer about balance deduction
-                    if ($purchase->buyer_email) {
-                        Mail::to($purchase->buyer_email)->queue(new GiftCardBalanceDeductedMail($purchase, $amountToDeduct));
+                    // Notify gift card holder about balance deduction
+                    if ($purchase->notificationEmail()) {
+                        Mail::to($purchase->notificationEmail())->queue(new GiftCardBalanceDeductedMail($purchase, $amountToDeduct));
                     }
                 }
             }

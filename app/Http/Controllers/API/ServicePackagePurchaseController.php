@@ -349,8 +349,8 @@ class ServicePackagePurchaseController extends Controller
                 'verified_by' => $userId,
             ]);
 
-            if ($purchaseGc->buyer_email) {
-                \Illuminate\Support\Facades\Mail::to($purchaseGc->buyer_email)
+            if ($purchaseGc->notificationEmail()) {
+                \Illuminate\Support\Facades\Mail::to($purchaseGc->notificationEmail())
                     ->queue(new \App\Mail\GiftCardBalanceDeductedMail($purchaseGc, $giftCardAmount));
             }
         }

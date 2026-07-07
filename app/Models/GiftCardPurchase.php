@@ -55,6 +55,16 @@ class GiftCardPurchase extends Model
         return $this->balance <= 0;
     }
 
+    /**
+     * The address for balance notifications (deducted / restored). The recipient
+     * is the card holder who spends it and cares about the balance; fall back to
+     * the buyer when the card has no separate recipient (self-purchase).
+     */
+    public function notificationEmail(): ?string
+    {
+        return $this->recipient_email ?: $this->buyer_email;
+    }
+
     public static function generateCode(): string
     {
         do {

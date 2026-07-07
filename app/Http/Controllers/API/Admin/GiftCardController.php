@@ -169,6 +169,9 @@ class GiftCardController extends Controller
                             'name' => $u->verifier->name,
                         ] : null,
                         'createdAt' => $u->created_at?->toIso8601String(),
+                        // When set, this usage was reversed (order refunded/cancelled) and
+                        // its amount was credited back to the balance.
+                        'reversedAt' => $u->reversed_at?->toIso8601String(),
                     ];
                 }),
             ];
