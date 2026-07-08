@@ -79,20 +79,8 @@ class ReferralRewardService
 
     public function assignReferrer(Booking $booking, int $referrerUserId): ?BookingReferral
     {
-        // Don't allow self-referral by user id
-        if ($booking->user_id && (int) $booking->user_id === $referrerUserId) {
-            return null;
-        }
-
-        // Don't allow self-referral by email / phone match (guest checkout)
-        $referrer = User::find($referrerUserId);
-        if (!$referrer) {
-            return null;
-        }
-        if (
-            ($booking->customer_email && $referrer->email && strcasecmp($booking->customer_email, $referrer->email) === 0)
-            || ($booking->customer_phone && $referrer->mobile && $booking->customer_phone === $referrer->mobile)
-        ) {
+        // No self-referral (by id, or by email/phone match on guest checkout).
+        if ($this->isSelfReferral($booking, $referrerUserId)) {
             return null;
         }
 
@@ -116,6 +104,56 @@ class ReferralRewardService
             'referrer_user_id' => $referrerUserId,
             'status' => 'pending',
         ]);
+    }
+
+    /**
+     * True when the referrer would be referring themselves — same account, or the
+     * booking's guest contact matches the referrer's email/phone. An unknown
+     * referrer id also counts as invalid.
+     */
+    public function isSelfReferral(Booking $booking, int $referrerUserId): bool
+    {
+        if ($booking->user_id && (int) $booking->user_id === $referrerUserId) {
+            return true;
+        }
+
+        $referrer = User::find($referrerUserId);
+        if (!$referrer) {
+            return true;
+        }
+
+        return ($booking->customer_email && $referrer->email && strcasecmp($booking->customer_email, $referrer->email) === 0)
+            || ($booking->customer_phone && $referrer->mobile && $booking->customer_phone === $referrer->mobile);
+    }
+
+    /**
+     * Apply a referrer chosen or changed while editing a booking: create, update,
+     * or remove the pending referral. A referral that has already completed (the
+     * referrer was credited toward a reward) is left untouched.
+     */
+    public function setReferrer(Booking $booking, ?int $referrerUserId): void
+    {
+        $existing = BookingReferral::where('booking_id', $booking->id)->first();
+
+        // Never disturb an already-credited referral.
+        if ($existing && $existing->status === 'completed') {
+            return;
+        }
+
+        // Referrer removed, or the new choice is an invalid self-referral → no referral.
+        if (!$referrerUserId || $this->isSelfReferral($booking, $referrerUserId)) {
+            $existing?->delete();
+            return;
+        }
+
+        if (!$existing) {
+            $this->assignReferrer($booking, $referrerUserId);
+            return;
+        }
+
+        if ((int) $existing->referrer_user_id !== $referrerUserId) {
+            $existing->update(['referrer_user_id' => $referrerUserId]);
+        }
     }
 
     public function completeReferral(Booking $booking): void

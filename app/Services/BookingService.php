@@ -831,6 +831,17 @@ class BookingService
                 }
             }
 
+            // Apply a referrer chosen/changed during edit (create/update/remove the
+            // pending referral). Only when the caller actually sent referrer_user_id.
+            if (array_key_exists('referrer_user_id', $data)) {
+                $this->referralRewardService->setReferrer(
+                    $booking,
+                    $data['referrer_user_id'] !== null && $data['referrer_user_id'] !== ''
+                        ? (int) $data['referrer_user_id']
+                        : null
+                );
+            }
+
             return $booking->load(['services.bookable', 'services.master', 'bookingReferral.referrer']);
         });
     }
