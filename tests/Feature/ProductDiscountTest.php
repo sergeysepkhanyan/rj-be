@@ -2,12 +2,15 @@
 
 namespace Tests\Feature;
 
+use App\Mail\ProductDiscountTierDowngradedMail;
+use App\Mail\ProductDiscountTierUpgradedMail;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\ProductDiscountTier;
 use App\Models\User;
 use App\Services\ProductDiscountTierService;
+use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 /**
@@ -48,6 +51,7 @@ class ProductDiscountTest extends TestCase
 
     public function test_tier_upgrades_on_spend_and_downgrades_on_refund(): void
     {
+        Mail::fake();
         $service = app(ProductDiscountTierService::class);
         $tier = ProductDiscountTier::create([
             'name' => 'Gold',
@@ -57,11 +61,12 @@ class ProductDiscountTest extends TestCase
         ]);
         $user = User::factory()->create();
 
-        // No qualifying spend yet → no tier.
+        // No qualifying spend yet → no tier, no email.
         $service->checkAndUpgradeUser($user);
         $this->assertNull($user->fresh()->product_discount_tier_id);
+        Mail::assertNothingQueued();
 
-        // A paid ecommerce order over the threshold → tier assigned.
+        // A paid ecommerce order over the threshold → tier assigned + upgrade email.
         $order = Order::create([
             'user_id' => $user->id,
             'type' => 'ecommerce',
@@ -73,10 +78,12 @@ class ProductDiscountTest extends TestCase
         ]);
         $service->checkAndUpgradeUser($user->fresh());
         $this->assertSame($tier->id, $user->fresh()->product_discount_tier_id);
+        Mail::assertQueued(ProductDiscountTierUpgradedMail::class, 1);
 
-        // Refunding that order drops qualifying spend below the threshold → downgrade.
+        // Refunding that order drops qualifying spend below the threshold → downgrade email.
         $order->update(['status' => 'refunded']);
         $service->checkAndUpgradeUser($user->fresh());
         $this->assertNull($user->fresh()->product_discount_tier_id);
+        Mail::assertQueued(ProductDiscountTierDowngradedMail::class, 1);
     }
 }
