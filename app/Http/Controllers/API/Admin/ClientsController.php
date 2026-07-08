@@ -587,6 +587,13 @@ class ClientsController extends Controller
             'redeemed_at' => now(),
         ]);
 
+        // Let the client know their reward was used (in-store redemptions have no
+        // booking confirmation to signal it, unlike online redemptions).
+        if ($user->email) {
+            \Illuminate\Support\Facades\Mail::to($user->email)
+                ->queue(new \App\Mail\ComplimentaryRewardRedeemedMail($user, $reward));
+        }
+
         return ApiResponse::success([
             'reward' => [
                 'id' => $reward->id,

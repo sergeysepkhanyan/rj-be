@@ -15,7 +15,7 @@
 </head>
 <body>
     <div class="header">
-        <h1 style="color: #4C3715; margin: 0;">R&J Beauty Lounge</h1>
+        <img src="{{ config('mail.logo_url') ?? asset('images/rj.png') }}" alt="R&J Beauty Lounge" style="max-width:160px; height:auto; display:block; margin:0 auto 8px;">
         <p style="color: #92846F; margin: 5px 0 0;">Gift Card</p>
     </div>
 
