@@ -51,6 +51,19 @@ class ReferrerUpdateTest extends TestCase
         $this->assertSame(0, BookingReferral::where('booking_id', $booking->id)->count());
     }
 
+    public function test_adding_a_referrer_to_an_already_paid_booking_completes_it_immediately(): void
+    {
+        $svc = app(ReferralRewardService::class);
+        $booking = $this->booking(['payment_status' => 'paid']);
+        $ref = User::factory()->create();
+
+        // Payment already happened, so completeReferral() ran before this referral
+        // existed — setReferrer must complete it now instead of leaving it pending.
+        $svc->setReferrer($booking, $ref->id);
+
+        $this->assertSame('completed', BookingReferral::where('booking_id', $booking->id)->value('status'));
+    }
+
     public function test_set_referrer_rejects_self_referral(): void
     {
         $svc = app(ReferralRewardService::class);

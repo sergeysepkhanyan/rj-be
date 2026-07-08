@@ -148,12 +148,15 @@ class ReferralRewardService
 
         if (!$existing) {
             $this->assignReferrer($booking, $referrerUserId);
-            return;
-        }
-
-        if ((int) $existing->referrer_user_id !== $referrerUserId) {
+        } elseif ((int) $existing->referrer_user_id !== $referrerUserId) {
             $existing->update(['referrer_user_id' => $referrerUserId]);
         }
+
+        // If the booking is already paid, the payment-time completeReferral() ran
+        // before this referral existed — so complete it now instead of leaving it
+        // pending forever. On an unpaid booking this is a no-op (stays pending
+        // until payment completes it normally).
+        $this->completeReferral($booking->fresh() ?? $booking);
     }
 
     public function completeReferral(Booking $booking): void
