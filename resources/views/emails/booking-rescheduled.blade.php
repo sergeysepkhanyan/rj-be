@@ -18,6 +18,10 @@
     // Check if this is a multi-date booking
     $serviceDates = collect($services)->pluck('date')->filter()->unique()->values();
     $isMultiDate = $serviceDates->count() > 1;
+
+    // Booking-level date is a Carbon (date cast) — format to Y-m-d so it doesn't
+    // render with a trailing 00:00:00.
+    $newDate = !empty($b['date']) ? \Illuminate\Support\Carbon::parse($b['date'])->format('Y-m-d') : '';
 @endphp
 
 <!doctype html>
@@ -40,7 +44,7 @@
                             @if($isMultiDate)
                                 • {{ $serviceDates->count() }} appointments
                             @else
-                                • {{ $b['date'] ?? '' }} at {{ $b['startTime'] ?? '' }}
+                                • {{ $newDate }} at {{ $b['startTime'] ?? '' }}
                             @endif
                         </div>
                     </td>
@@ -77,7 +81,7 @@
                                 @if($isMultiDate)
                                     {{ $serviceDates->count() }} appointments on different dates (see services below)
                                 @else
-                                    {{ $b['date'] ?? '' }} at {{ $b['startTime'] ?? '' }} - {{ $b['endTime'] ?? '' }}
+                                    {{ $newDate }} at {{ $b['startTime'] ?? '' }} - {{ $b['endTime'] ?? '' }}
                                 @endif
                             </div>
                         </div>

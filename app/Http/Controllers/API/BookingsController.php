@@ -169,9 +169,14 @@ class BookingsController extends Controller
         $newMasterId = $updated->master_id;
         $newServiceMasterIds = $updated->services->pluck('master_id')->sort()->values()->toArray();
 
+        // Times are stored as raw strings and re-saved as HH:MM on update (the DB
+        // holds HH:MM:SS), so compare on HH:MM only — otherwise editing anything
+        // else (e.g. the referrer) looks like a reschedule and wrongly emails the client.
+        $normTime = fn ($t) => $t === null ? null : substr((string) $t, 0, 5);
+
         $isRescheduled = $previousDate !== $newDate
-            || $previousStartTime !== $newStartTime
-            || $previousEndTime !== $newEndTime
+            || $normTime($previousStartTime) !== $normTime($newStartTime)
+            || $normTime($previousEndTime) !== $normTime($newEndTime)
             || $previousMasterId !== $newMasterId
             || $previousServiceMasterIds !== $newServiceMasterIds;
 
