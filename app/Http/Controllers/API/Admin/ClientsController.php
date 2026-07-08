@@ -547,20 +547,23 @@ class ClientsController extends Controller
     public function rewards(User $user): \Illuminate\Http\JsonResponse
     {
         $rewards = \App\Models\ComplimentaryReward::where('user_id', $user->id)
-            ->with('subService')
+            ->with(['subService', 'subServiceItem'])
             ->orderByRaw("FIELD(status,'available','redeemed','expired')")
             ->orderByDesc('earned_at')
             ->get()
-            ->map(fn ($reward) => [
-                'id' => $reward->id,
-                'status' => $reward->status,
-                'subService' => $reward->subService ? [
-                    'id' => $reward->subService->id,
-                    'name' => $reward->subService->name,
-                ] : null,
-                'earnedAt' => $reward->earned_at,
-                'redeemedAt' => $reward->redeemed_at,
-            ]);
+            ->map(function ($reward) {
+                $svc = $reward->subService ?: $reward->subServiceItem;
+                return [
+                    'id' => $reward->id,
+                    'status' => $reward->status,
+                    'subService' => $svc ? [
+                        'id' => $svc->id,
+                        'name' => $svc->name,
+                    ] : null,
+                    'earnedAt' => $reward->earned_at,
+                    'redeemedAt' => $reward->redeemed_at,
+                ];
+            });
 
         return ApiResponse::success(['rewards' => $rewards]);
     }

@@ -239,9 +239,16 @@ class ReferralRewardService
 
         for ($c = 0; $c < $newCycles; $c++) {
             foreach ($config->services as $rewardService) {
+                // A reward service targets a sub-service OR a specific item; skip a
+                // row that has neither (misconfigured) so it can't crash the award.
+                if (!$rewardService->sub_service_id && !$rewardService->sub_service_item_id) {
+                    continue;
+                }
+
                 $reward = ComplimentaryReward::create([
                     'user_id' => $referrerUserId,
                     'sub_service_id' => $rewardService->sub_service_id,
+                    'sub_service_item_id' => $rewardService->sub_service_item_id,
                     'status' => 'available',
                     'earned_at' => now(),
                 ]);
@@ -263,7 +270,7 @@ class ReferralRewardService
     {
         return ComplimentaryReward::where('user_id', $userId)
             ->where('status', 'available')
-            ->with('subService')
+            ->with(['subService', 'subServiceItem'])
             ->orderBy('earned_at', 'desc')
             ->get();
     }

@@ -19,13 +19,15 @@ class RewardsController extends Controller
 
         return ApiResponse::success([
             'rewards' => $rewards->map(function ($reward) {
+                $svc = $reward->subService ?: $reward->subServiceItem;
                 return [
                     'id' => $reward->id,
                     'subServiceId' => $reward->sub_service_id,
-                    'subService' => $reward->subService ? [
-                        'id' => $reward->subService->id,
-                        'name' => $reward->subService->name,
-                        'image' => $reward->subService->image ? asset('storage/' . $reward->subService->image) : null,
+                    'subServiceItemId' => $reward->sub_service_item_id,
+                    'subService' => $svc ? [
+                        'id' => $svc->id,
+                        'name' => $svc->name,
+                        'image' => $svc->image ? asset('storage/' . $svc->image) : null,
                     ] : null,
                     'status' => $reward->status,
                     'earnedAt' => $reward->earned_at,
@@ -49,13 +51,16 @@ class RewardsController extends Controller
 
         // Note: In a full implementation, the reward would be redeemed when linked to a booking.
         // For now, we return the reward details for the client to use during booking.
+        $svc = $reward->subService ?: $reward->subServiceItem;
+
         return ApiResponse::success([
             'reward' => [
                 'id' => $reward->id,
                 'subServiceId' => $reward->sub_service_id,
-                'subService' => $reward->subService ? [
-                    'id' => $reward->subService->id,
-                    'name' => $reward->subService->name,
+                'subServiceItemId' => $reward->sub_service_item_id,
+                'subService' => $svc ? [
+                    'id' => $svc->id,
+                    'name' => $svc->name,
                 ] : null,
                 'status' => $reward->status,
                 'earnedAt' => $reward->earned_at,

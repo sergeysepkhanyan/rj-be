@@ -11,6 +11,7 @@ class ComplimentaryReward extends Model
     protected $fillable = [
         'user_id',
         'sub_service_id',
+        'sub_service_item_id',
         'status',
         'earned_at',
         'redeemed_at',
@@ -32,6 +33,21 @@ class ComplimentaryReward extends Model
     public function subService(): BelongsTo
     {
         return $this->belongsTo(SubService::class);
+    }
+
+    public function subServiceItem(): BelongsTo
+    {
+        return $this->belongsTo(SubServiceItem::class);
+    }
+
+    /**
+     * The reward's service name, whether it is a sub-service or a specific item.
+     * Named resolve* (not serviceName) to avoid Eloquent treating a `serviceName`
+     * property access as a relationship.
+     */
+    public function resolveServiceName(): ?string
+    {
+        return $this->subService?->name ?? $this->subServiceItem?->name;
     }
 
     public function redeemedBooking(): BelongsTo

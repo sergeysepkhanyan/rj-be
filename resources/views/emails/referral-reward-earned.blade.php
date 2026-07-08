@@ -23,7 +23,7 @@
                                     <strong style="font-size:14px; color:#666;">Your New Rewards</strong>
                                 </td>
                             </tr>
-                            @foreach($rewards as $reward)
+                            @foreach($rewardLines as $reward)
                                 <tr>
                                     <td style="padding:12px 16px; border-bottom:1px solid #f0f0f0;">
                                         <span style="font-size:15px;">{{ $reward['serviceName'] }}</span>

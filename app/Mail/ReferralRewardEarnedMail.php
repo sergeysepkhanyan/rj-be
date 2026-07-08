@@ -20,12 +20,12 @@ class ReferralRewardEarnedMail extends Mailable implements ShouldQueue
 
     public function build(): ReferralRewardEarnedMail
     {
-        $rewards = $this->rewards->load('subService');
+        $rewards = $this->rewards->load(['subService', 'subServiceItem']);
 
         $rewardsList = $rewards->map(function ($reward) {
             return [
                 'id' => $reward->id,
-                'serviceName' => $reward->subService?->name ?? 'Complimentary Service',
+                'serviceName' => $reward->resolveServiceName() ?? 'Complimentary Service',
             ];
         });
 
@@ -40,7 +40,8 @@ class ReferralRewardEarnedMail extends Mailable implements ShouldQueue
             ->view('emails.referral-reward-earned')
             ->with([
                 'userName' => $userName,
-                'rewards' => $rewardsList,
+                // Distinct key so it isn't shadowed by the public $rewards (models).
+                'rewardLines' => $rewardsList,
                 'availableRewardsCount' => $availableRewardsCount,
             ]);
     }
