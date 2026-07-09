@@ -442,7 +442,11 @@ class AdminOrderResource extends JsonResource
 
             if ($discountType && $discountValue) {
                 $expectedTotal = $subtotal + $tax;
-                $actualTotal = (float) $this->amount;
+                // order.amount is already reduced by any gift card, so add it back to
+                // recover the pre-gift-card charged total. Otherwise the gift card is
+                // wrongly counted as discount (inflating it) and then subtracted again,
+                // producing a negative total on gift-card-paid bookings.
+                $actualTotal = (float) $this->amount + (float) ($this->resolveGiftCardAmount() ?? 0);
                 if ($expectedTotal > $actualTotal) {
                     $discountAmount = round($expectedTotal - $actualTotal, 2);
                 }
