@@ -30,12 +30,12 @@ class ClientsController extends Controller
             'firstName' => ['required', 'string', 'min:2', 'max:255', 'regex:/^(?=.*\pL)[\pL\pM\s\'\-.]+$/u'],
             'lastName'  => ['nullable', 'string', 'max:255'],
             'email'     => ['required', 'email:rfc', 'max:255', \Illuminate\Validation\Rule::unique('users', 'email')->whereNull('deleted_at')->where('has_account', true)],
-            'mobile'    => ['required', 'string', 'max:20', 'regex:/^\+[1-9]\d{6,18}$/'],
+            'mobile'    => ['required', 'string', 'max:20', 'regex:/^[+\-0-9]{7,20}$/', new \App\Rules\UaePhone],
             'source'    => ['nullable', 'string', 'in:online,walk_in,offline,booking,manual'],
             'notes'     => ['nullable', 'string', 'max:1000'],
         ], [
             'firstName.regex' => 'First name must contain letters.',
-            'mobile.regex' => 'Mobile must include a country code and at least 7 digits.',
+            'mobile.regex' => 'Mobile may contain only digits, + and -.',
         ]);
 
         $user = app(\App\Services\CustomerService::class)->resolveForTransaction([
@@ -74,11 +74,11 @@ class ClientsController extends Controller
             'firstName' => ['sometimes', 'string', 'min:2', 'max:255', 'regex:/^(?=.*\pL)[\pL\pM\s\'\-.]+$/u'],
             'lastName'  => ['nullable', 'string', 'max:255'],
             'email'     => ['sometimes', 'email:rfc', 'max:255', 'unique:users,email,' . $user->id . ',id,deleted_at,NULL'],
-            'mobile'    => ['sometimes', 'string', 'max:20', 'regex:/^\+[1-9]\d{6,18}$/'],
+            'mobile'    => ['sometimes', 'string', 'max:20', 'regex:/^[+\-0-9]{7,20}$/', new \App\Rules\UaePhone],
             'source'    => ['nullable', 'string', 'in:online,walk_in,offline,booking,manual'],
         ], [
             'firstName.regex' => 'First name must contain letters.',
-            'mobile.regex' => 'Mobile must include a country code and at least 7 digits.',
+            'mobile.regex' => 'Mobile may contain only digits, + and -.',
         ]);
 
         $update = [];
