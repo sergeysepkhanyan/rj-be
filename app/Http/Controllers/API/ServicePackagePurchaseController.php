@@ -188,7 +188,12 @@ class ServicePackagePurchaseController extends Controller
                 $paymentIntent
             ));
         } catch (\RuntimeException $e) {
-            return ApiResponse::error(null, $e->getMessage(), 422);
+            // No purchase was created, so any cash Stripe captured must go back.
+            $refunded = $this->refundCapturedIntent($request->paymentIntentId, $paymentIntent);
+
+            return ApiResponse::error(null, $refunded
+                ? $e->getMessage() . ' Your card payment has been refunded — please purchase again and pay the full amount by card.'
+                : $e->getMessage(), 422);
         }
 
         $order = $purchase->order;
@@ -203,6 +208,37 @@ class ServicePackagePurchaseController extends Controller
                 'expiresAt' => $purchase->expires_at->toIso8601String(),
             ],
         ], 'Service package purchased successfully');
+    }
+
+    /**
+     * Refund whatever Stripe captured for an intent whose purchase could not be created.
+     * The deterministic idempotency key makes a retried confirm reuse the same refund.
+     *
+     * @param  array<string,mixed>  $paymentIntent
+     */
+    private function refundCapturedIntent(string $paymentIntentId, array $paymentIntent): bool
+    {
+        $capturedMinor = (int) (data_get($paymentIntent, 'amount_received') ?? 0);
+        if ($capturedMinor <= 0) {
+            return false;
+        }
+
+        try {
+            $this->stripeClient->createRefund([
+                'payment_intent' => $paymentIntentId,
+                'reason' => 'requested_by_customer',
+            ], 'spo-refund-' . $paymentIntentId);
+
+            return true;
+        } catch (\Throwable $e) {
+            \Log::error('[service-package] refund failed after aborted purchase', [
+                'payment_intent_id' => $paymentIntentId,
+                'captured_minor' => $capturedMinor,
+                'error' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
     }
 
     /**

@@ -99,6 +99,19 @@ class AdminOrderResource extends JsonResource
         ];
     }
 
+    /**
+     * Line total before any per-item discount. `original_price` is only stored when the
+     * item was discounted (product discount or loyalty tier), so fall back to the paid subtotal.
+     */
+    protected function itemOriginalSubtotal(mixed $item): float
+    {
+        if ($item->original_price === null) {
+            return (float) $item->subtotal;
+        }
+
+        return round((float) $item->original_price * (int) $item->quantity, 2);
+    }
+
     /** @return array{0: float, 1: float} [subtotal, tax] */
     protected function calculateSubtotalAndTax(): array
     {
@@ -110,8 +123,10 @@ class AdminOrderResource extends JsonResource
             $this->ensureItemsLoaded();
             if ($this->items->isNotEmpty()) {
                 foreach ($this->items as $item) {
+                    // item.subtotal is already discounted; VAT is charged on what is actually paid.
+                    // Subtotal reports the pre-discount price so the Discount line below balances.
                     $itemSubtotal = (float) $item->subtotal;
-                    $subtotal += $itemSubtotal;
+                    $subtotal += $this->itemOriginalSubtotal($item);
                     $tax += $itemSubtotal * $vatRate;
                 }
             } else {
@@ -121,9 +136,10 @@ class AdminOrderResource extends JsonResource
                 $tax = round($totalAmount - $subtotal, 2);
             }
         } elseif ($this->type === 'gift_card') {
-            // Gift cards: stored amount is the base price; tax is added on top.
+            // Multi-purpose voucher: VAT is charged on redemption, not on the sale,
+            // so the order total is the card's face value. Matches OrderResource.
             $subtotal = (float) $this->amount;
-            $tax = round($subtotal * $vatRate, 2);
+            $tax = 0.0;
         } elseif ($this->type === 'service_package') {
             // Gross (base + VAT) lives in meta so it survives a gift-card
             // reduction of order.amount; derive the tax-exclusive subtotal from it.
@@ -461,6 +477,21 @@ class AdminOrderResource extends JsonResource
                 $discountValue = isset($meta['discount_value']) ? (float) $meta['discount_value'] : null;
                 $discountLabel = $meta['discount_label'] ?? null;
                 $discountAmount = isset($meta['discount_amount']) ? (float) $meta['discount_amount'] : null;
+            }
+        }
+
+        // Customer product checkouts carry no order-level discount — the saving lives on each
+        // item as original_price vs unit_price (covers product discounts and loyalty tiers alike).
+        if (!$discountType && $this->type === 'ecommerce') {
+            $this->ensureItemsLoaded();
+            $itemsDiscount = 0.0;
+            foreach ($this->items as $item) {
+                $itemsDiscount += $this->itemOriginalSubtotal($item) - (float) $item->subtotal;
+            }
+
+            if ($itemsDiscount > 0.005) {
+                $discountType = 'item';
+                $discountAmount = round($itemsDiscount, 2);
             }
         }
 
