@@ -28,7 +28,13 @@ class ServicePackagePurchaseController extends Controller
         $request->validate([
             'servicePackageId' => 'required|integer|exists:service_packages,id',
             'giftCardCode' => 'nullable|string',
+            'marketingOptIn' => 'sometimes|boolean',
         ]);
+
+        $marketingOptIn = filter_var(
+            $request->input('marketingOptIn') ?? $request->input('marketing_opt_in') ?? false,
+            FILTER_VALIDATE_BOOLEAN
+        );
 
         $package = ServicePackage::where('id', $request->servicePackageId)
             ->where('status', 'active')
@@ -87,7 +93,8 @@ class ServicePackagePurchaseController extends Controller
                     $totalAmount,
                     $giftCardCode,
                     null,
-                    null
+                    null,
+                    $marketingOptIn
                 ));
 
                 $order = $purchase->order;
@@ -123,6 +130,7 @@ class ServicePackagePurchaseController extends Controller
         if ($giftCardCode && $giftCardApplied > 0) {
             $payload['metadata[gift_card_code]'] = $giftCardCode;
         }
+        $payload['metadata[marketing_opt_in]'] = $marketingOptIn ? '1' : '0';
 
         $paymentIntent = $this->stripeClient->createPaymentIntent($payload, (string) Str::uuid());
 
@@ -175,6 +183,7 @@ class ServicePackagePurchaseController extends Controller
         $totalAmount = round($basePrice + $taxAmount, 2);
         $userId = !empty($metadata['user_id']) ? (int) $metadata['user_id'] : auth()->id();
         $giftCardCode = $metadata['gift_card_code'] ?? null;
+        $marketingOptIn = ($metadata['marketing_opt_in'] ?? '0') === '1';
 
         try {
             $purchase = DB::transaction(fn () => $this->finalizePackagePurchase(
@@ -185,7 +194,8 @@ class ServicePackagePurchaseController extends Controller
                 $totalAmount,
                 $giftCardCode,
                 $request->paymentIntentId,
-                $paymentIntent
+                $paymentIntent,
+                $marketingOptIn
             ));
         } catch (\RuntimeException $e) {
             // No purchase was created, so any cash Stripe captured must go back.
@@ -258,7 +268,8 @@ class ServicePackagePurchaseController extends Controller
         float $totalAmount,
         ?string $giftCardCode,
         ?string $stripePaymentIntentId,
-        ?array $stripeRaw
+        ?array $stripeRaw,
+        bool $marketingOptIn = false
     ): ServicePackagePurchase {
         $giftCardAmount = 0.0;
         $purchaseGc = null;
@@ -345,6 +356,7 @@ class ServicePackagePurchaseController extends Controller
                 'gift_card_code' => $giftCardCode,
                 'gift_card_amount' => $giftCardAmount > 0 ? $giftCardAmount : null,
                 'payment_method' => $cashCharged > 0 ? 'card' : 'gift_card',
+                'marketing_opt_in' => $marketingOptIn,
             ],
         ]);
 

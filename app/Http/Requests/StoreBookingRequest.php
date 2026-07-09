@@ -24,6 +24,7 @@ class StoreBookingRequest extends BaseFormRequest
         'paymentProvider' => 'payment_provider',
         'guestSessionId' => 'guest_session_id',
         'referrerUserId' => 'referrer_user_id',
+        'marketingOptIn' => 'marketing_opt_in',
         'complimentaryRewardId' => 'complimentary_reward_id',
         'servicePackagePurchaseId' => 'service_package_purchase_id',
         'servicePackageItemId' => 'service_package_item_id',
@@ -44,6 +45,7 @@ class StoreBookingRequest extends BaseFormRequest
 
             'paymentMode' => ['required', 'string', Rule::in(['pay_now', 'pay_later'])],
             'paymentProvider' => ['sometimes', 'string', Rule::in(['stripe'])],
+            'marketingOptIn' => ['sometimes', 'boolean'],
 
             'services' => ['required', 'array', 'min:1'],
 

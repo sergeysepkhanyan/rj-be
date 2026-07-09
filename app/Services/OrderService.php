@@ -95,6 +95,12 @@ class OrderService
             }
         }
 
+        // Applies for every order type, including the early-return above where the customer
+        // already had an account — otherwise a logged-in buyer's consent is never recorded.
+        $this->customerService->applyMarketingConsent($customer, [
+            'marketing_opt_in' => (bool) (($order->meta ?? [])['marketing_opt_in'] ?? false),
+        ]);
+
         return $customer;
     }
 

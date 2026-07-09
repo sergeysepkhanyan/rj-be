@@ -599,7 +599,7 @@ class BookingService
 
             $this->clearSelectionsAfterBooking($user?->id, $data['guest_session_id'] ?? null);
 
-            $this->createLeadFromBooking($booking);
+            $this->createLeadFromBooking($booking, filter_var($data['marketing_opt_in'] ?? false, FILTER_VALIDATE_BOOLEAN));
 
             // Assign referrer if provided
             if (!empty($data['referrer_user_id'])) {
@@ -1545,7 +1545,7 @@ class BookingService
             $this->clearSelectionsAfterBooking($user?->id, $data['guest_session_id'] ?? null);
 
             if (! empty($bookings)) {
-                $this->createLeadFromBooking($bookings[0]);
+                $this->createLeadFromBooking($bookings[0], filter_var($data['marketing_opt_in'] ?? false, FILTER_VALIDATE_BOOLEAN));
             }
 
             $primaryBooking = $bookings[0];
@@ -1695,9 +1695,14 @@ class BookingService
             ->get();
     }
 
-    protected function createLeadFromBooking(Booking $booking): void
+    protected function createLeadFromBooking(Booking $booking, bool $marketingOptIn = false): void
     {
+        // A booker with an account is not a lead; record their consent directly.
         if ($booking->user_id) {
+            if ($marketingOptIn && ($user = User::find($booking->user_id))) {
+                $this->customerService->applyMarketingConsent($user, ['marketing_opt_in' => true]);
+            }
+
             return;
         }
 
@@ -1710,6 +1715,7 @@ class BookingService
             'email' => $booking->customer_email,
             'phone' => $booking->customer_phone,
             'source' => 'booking',
+            'marketing_opt_in' => $marketingOptIn,
         ]);
     }
 

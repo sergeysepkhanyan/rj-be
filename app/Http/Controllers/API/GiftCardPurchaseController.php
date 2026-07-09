@@ -29,7 +29,13 @@ class GiftCardPurchaseController extends Controller
             'recipientName' => 'required|string|max:255',
             'recipientEmail' => 'nullable|email|max:255',
             'personalMessage' => 'nullable|string|max:500',
+            'marketingOptIn' => 'sometimes|boolean',
         ]);
+
+        $marketingOptIn = filter_var(
+            $request->input('marketingOptIn') ?? $request->input('marketing_opt_in') ?? false,
+            FILTER_VALIDATE_BOOLEAN
+        );
 
         $giftCard = GiftCard::where('id', $request->giftCardId)
             ->where('status', 'active')
@@ -56,6 +62,7 @@ class GiftCardPurchaseController extends Controller
             // metadata values cap at 500 chars, which matches the FE limit.
             'metadata[personal_message]' => mb_substr((string) ($request->personalMessage ?? ''), 0, 500),
             'metadata[user_id]' => (string) (auth()->id() ?? ''),
+            'metadata[marketing_opt_in]' => $marketingOptIn ? '1' : '0',
         ];
 
         $paymentIntent = $this->stripeClient->createPaymentIntent($payload, (string) Str::uuid());
@@ -130,6 +137,7 @@ class GiftCardPurchaseController extends Controller
                     'personal_message' => $metadata['personal_message'] ?? null,
                     'gift_card_id' => $giftCard->id,
                     'gift_card_name' => $giftCard->name,
+                    'marketing_opt_in' => ($metadata['marketing_opt_in'] ?? '0') === '1',
                 ],
             ]);
 
@@ -161,15 +169,23 @@ class GiftCardPurchaseController extends Controller
                 'expires_at' => now()->addYear(),
             ]);
 
+            $marketingOptIn = ($metadata['marketing_opt_in'] ?? '0') === '1';
+            $customerService = app(\App\Services\CustomerService::class);
+
             if (!$userId && (($metadata['buyer_email'] ?? null) || ($metadata['buyer_phone'] ?? null))) {
-                $customerService = app(\App\Services\CustomerService::class);
                 $customer = $customerService->resolveForTransaction([
                     'name' => $metadata['buyer_name'] ?? null,
                     'email' => $metadata['buyer_email'] ?? null,
                     'phone' => $metadata['buyer_phone'] ?? null,
                     'source' => 'online',
+                    'marketing_opt_in' => $marketingOptIn,
                 ]);
                 $order->forceFill(['user_id' => $customer->id])->save();
+            } elseif ($userId && $marketingOptIn) {
+                $buyer = \App\Models\User::find($userId);
+                if ($buyer) {
+                    $customerService->applyMarketingConsent($buyer, ['marketing_opt_in' => true]);
+                }
             }
 
             return $purchase;
